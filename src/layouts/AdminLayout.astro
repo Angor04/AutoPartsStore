@@ -1,0 +1,67 @@
+---
+// src/layouts/AdminLayout.astro
+// Layout para el panel de administración
+
+import BaseLayout from "./BaseLayout.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="flex min-h-screen bg-charcoal-50">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-charcoal-900 text-ivory-50 shadow-lg">
+      <div class="p-6 border-b border-charcoal-700">
+        <h2 class="text-xl font-serif font-bold">AutoPartsStore</h2>
+        <p class="text-sm text-charcoal-300">Panel de Administración</p>
+      </div>
+
+      <nav class="mt-6">
+        <a href="/admin" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
+          Dashboard
+        </a>
+        <a href="/admin/productos" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
+          Productos
+        </a>
+        <a href="/admin/categorias" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
+          Categorías
+        </a>
+        <a href="/admin/pedidos" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
+          Pedidos
+        </a>
+        <a href="/admin/ajustes" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
+          Ajustes
+        </a>
+      </nav>
+
+      <div class="absolute bottom-0 left-0 right-0 w-64 p-6 border-t border-charcoal-700">
+        <form method="POST" action="/api/auth/logout">
+          <button type="submit" class="w-full bg-navy-500 hover:bg-navy-600 text-white font-medium py-2 px-4 rounded transition-colors">
+            Cerrar Sesión
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-auto">
+      <div class="p-8">
+        <!-- Top Bar -->
+        <div class="mb-8">
+          <h1 class="text-3xl font-serif font-bold text-charcoal-900">{title}</h1>
+          {description && <p class="text-charcoal-600 mt-2">{description}</p>}
+        </div>
+
+        <!-- Content -->
+        <div>
+          <slot />
+        </div>
+      </div>
+    </main>
+  </div>
+</BaseLayout>

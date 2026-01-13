@@ -1,0 +1,135 @@
+---
+// src/layouts/PublicLayout.astro
+// Layout para la tienda pública con header y footer
+
+import BaseLayout from "./BaseLayout.astro";
+import CartIcon from "@/components/islands/CartIcon";
+import { getCategories } from "@/lib/supabase";
+
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+}
+
+const { title, description, image } = Astro.props;
+const categorias = await getCategories();
+---
+
+<BaseLayout title={title} description={description} image={image}>
+  <div class="flex flex-col min-h-screen bg-ivory-50">
+    <!-- Header -->
+    <header class="z-50 bg-white border-b border-charcoal-200 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Top Bar -->
+        <div class="flex items-center justify-between py-1">
+          <!-- Logo -->
+          <a href="/" class="flex-shrink-0 flex items-center gap-2">
+            <img 
+              src="https://res.cloudinary.com/ddi0g76bk/image/upload/v1768210429/logo_btu63x.webp" 
+              alt="AutoPartsStore" 
+              class="h-32 w-32 object-contain"
+            />
+            <h1 class="text-xl font-bold text-red-600">
+              AutoPartsStore
+            </h1>
+          </a>
+
+          <!-- Search Bar -->
+          <div class="flex-1 max-w-2xl mx-8">
+            <form action="/productos" method="get" class="relative">
+              <input 
+                type="text" 
+                name="q" 
+                placeholder="Buscar recambios..." 
+                class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-charcoal-400 hover:text-red-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </form>
+          </div>
+
+          <!-- Cart Icon -->
+          <div class="ml-6">
+            <CartIcon client:load />
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="hidden md:flex space-x-6 py-1.5 overflow-x-auto">
+          <a href="/productos" class="text-charcoal-700 hover:text-red-600 transition-colors font-medium text-sm whitespace-nowrap">
+            Productos
+          </a>
+          {categorias.map((cat) => (
+            <a href={`/categoria/${cat.slug}`} class="text-charcoal-600 hover:text-red-600 transition-colors text-sm whitespace-nowrap">
+              {cat.nombre}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-charcoal-900 text-ivory-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          <!-- About -->
+          <div>
+            <h3 class="text-lg font-serif font-semibold mb-4">AutoPartsStore</h3>
+            <p class="text-ivory-200 text-sm">
+              Tienda online de recambios y piezas para coches con envío rápido y garantía.
+            </p>
+          </div>
+
+          <!-- Links -->
+          <div>
+            <h4 class="text-sm font-semibold mb-4 uppercase tracking-wide">Tienda</h4>
+            <ul class="space-y-2 text-sm text-ivory-200">
+              <li><a href="/productos" class="hover:text-ivory-50 transition-colors">Todos los productos</a></li>
+            </ul>
+          </div>
+
+          <!-- Customer Service -->
+          <div>
+            <h4 class="text-sm font-semibold mb-4 uppercase tracking-wide">Ayuda</h4>
+            <ul class="space-y-2 text-sm text-ivory-200">
+              <li><a href="#" class="hover:text-ivory-50 transition-colors">Contacto</a></li>
+              <li><a href="#" class="hover:text-ivory-50 transition-colors">Envíos</a></li>
+              <li><a href="#" class="hover:text-ivory-50 transition-colors">Devoluciones</a></li>
+            </ul>
+          </div>
+
+          <!-- Legal -->
+          <div>
+            <h4 class="text-sm font-semibold mb-4 uppercase tracking-wide">Legal</h4>
+            <ul class="space-y-2 text-sm text-ivory-200">
+              <li><a href="#" class="hover:text-ivory-50 transition-colors">Términos y condiciones</a></li>
+              <li><a href="#" class="hover:text-ivory-50 transition-colors">Privacidad</a></li>
+              <li><a href="#" class="hover:text-ivory-50 transition-colors">Cookies</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Bottom -->
+        <div class="border-t border-charcoal-800 pt-8">
+          <div class="flex flex-col md:flex-row justify-between items-center text-sm text-ivory-200">
+            <p>&copy; 2025 AutoPartsStore. Todos los derechos reservados.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+              <a href="#" class="hover:text-ivory-50 transition-colors">Instagram</a>
+              <a href="#" class="hover:text-ivory-50 transition-colors">Facebook</a>
+              <a href="#" class="hover:text-ivory-50 transition-colors">LinkedIn</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>

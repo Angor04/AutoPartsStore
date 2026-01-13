@@ -1,0 +1,114 @@
+---
+// src/pages/admin/index.astro
+// Dashboard de administración
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Button from "@/components/ui/Button.astro";
+
+// Aquí verificaremos que el usuario esté autenticado vía middleware
+const title = "Dashboard";
+const description = "Bienvenido al panel de administración";
+---
+
+<AdminLayout title={title} description={description}>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Stats Cards -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-charcoal-600 text-sm font-medium">Productos</p>
+          <p class="text-3xl font-serif font-bold text-navy-500 mt-2">156</p>
+        </div>
+        <div class="w-12 h-12 bg-navy-100 rounded-lg flex items-center justify-center">
+          <svg class="w-6 h-6 text-navy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-charcoal-600 text-sm font-medium">Pedidos</p>
+          <p class="text-3xl font-serif font-bold text-gold-500 mt-2">42</p>
+        </div>
+        <div class="w-12 h-12 bg-gold-100 rounded-lg flex items-center justify-center">
+          <svg class="w-6 h-6 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-charcoal-600 text-sm font-medium">Ingresos</p>
+          <p class="text-3xl font-serif font-bold text-green-600 mt-2">€6.200</p>
+        </div>
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-charcoal-600 text-sm font-medium">Clientes</p>
+          <p class="text-3xl font-serif font-bold text-purple-500 mt-2">234</p>
+        </div>
+        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+          <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM6 20h12a6 6 0 016-6H0a6 6 0 016 6z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Recent Orders -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h3 class="text-lg font-serif font-bold text-charcoal-900 mb-4">
+        Pedidos Recientes
+      </h3>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between p-4 bg-charcoal-50 rounded-lg">
+          <div>
+            <p class="font-medium text-charcoal-900">Pedido #12345</p>
+            <p class="text-sm text-charcoal-600">2025-01-08</p>
+          </div>
+          <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+            Completado
+          </span>
+        </div>
+      </div>
+      <a href="/admin/pedidos" class="text-navy-500 hover:text-navy-700 font-medium text-sm mt-4 inline-block">
+        Ver todos →
+      </a>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h3 class="text-lg font-serif font-bold text-charcoal-900 mb-4">
+        Accesos Rápidos
+      </h3>
+      <div class="space-y-2">
+        <a href="/admin/productos/nuevo" class="block p-4 bg-charcoal-50 hover:bg-charcoal-100 rounded-lg transition-colors font-medium text-navy-500">
+          + Crear Nuevo Producto
+        </a>
+        <a href="/admin/productos" class="block p-4 bg-charcoal-50 hover:bg-charcoal-100 rounded-lg transition-colors font-medium text-navy-500">
+          Gestionar Productos
+        </a>
+        <a href="/admin/categorias" class="block p-4 bg-charcoal-50 hover:bg-charcoal-100 rounded-lg transition-colors font-medium text-navy-500">
+          Categorías
+        </a>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

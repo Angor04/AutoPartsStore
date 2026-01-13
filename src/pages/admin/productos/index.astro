@@ -1,0 +1,76 @@
+---
+// src/pages/admin/productos/index.astro
+// Gestión de productos
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Button from "@/components/ui/Button.astro";
+import { getProducts } from "@/lib/supabase";
+import { formatPrice } from "@/lib/utils";
+
+const products = await getProducts();
+
+const title = "Gestión de Productos";
+const description = "Crear, editar y eliminar productos";
+---
+
+<AdminLayout title={title} description={description}>
+  <div class="mb-6 flex justify-between items-center">
+    <div>
+      <p class="text-charcoal-600">Total de productos: <span class="font-bold text-navy-500">{products.length}</span></p>
+    </div>
+    <Button href="/admin/productos/nuevo" variant="primary" size="lg">
+      + Nuevo Producto
+    </Button>
+  </div>
+
+  <!-- Products Table -->
+  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-charcoal-50 border-b border-charcoal-200">
+        <tr>
+          <th class="px-6 py-4 text-left text-sm font-semibold text-charcoal-900">Nombre</th>
+          <th class="px-6 py-4 text-left text-sm font-semibold text-charcoal-900">Categoría</th>
+          <th class="px-6 py-4 text-right text-sm font-semibold text-charcoal-900">Precio</th>
+          <th class="px-6 py-4 text-right text-sm font-semibold text-charcoal-900">Stock</th>
+          <th class="px-6 py-4 text-center text-sm font-semibold text-charcoal-900">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-charcoal-100">
+        {products.length > 0 ? (
+          products.map((product) => (
+            <tr class="hover:bg-charcoal-50 transition-colors">
+              <td class="px-6 py-4 text-charcoal-900 font-medium">{product.name}</td>
+              <td class="px-6 py-4 text-charcoal-600">-</td>
+              <td class="px-6 py-4 text-right text-charcoal-900 font-semibold">
+                {formatPrice(product.price)}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <span class={`px-3 py-1 rounded-full text-sm font-medium ${
+                  product.stock > 0
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {product.stock}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center space-x-2">
+                <a href={`/admin/productos/${product.id}`} class="text-navy-500 hover:text-navy-700 font-medium text-sm">
+                  Editar
+                </a>
+                <button class="text-red-500 hover:text-red-700 font-medium text-sm">
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colspan="5" class="px-6 py-8 text-center text-charcoal-600">
+              No hay productos aún. <a href="/admin/productos/nuevo" class="text-navy-500 hover:text-navy-700">Crea uno aquí</a>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

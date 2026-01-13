@@ -1,0 +1,55 @@
+---
+// src/layouts/BaseLayout.astro
+// Layout base que contiene la estructura HTML básica
+
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+}
+
+const { title, description = "AutoPartsStore - Recambios y Piezas para Coches", image } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {image && <meta property="og:image" content={image} />}
+    <meta name="theme-color" content="#dc2626" />
+    <link rel="canonical" href={canonicalURL} />
+    <title>{title} | AutoPartsStore</title>
+    
+    <!-- Prefetch Supabase -->
+    <link rel="preconnect" href="https://your-project.supabase.co" />
+    
+    <!-- Estilos Tailwind -->
+    <style is:global>
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
+      
+      * {
+        @apply box-border;
+      }
+      
+      html {
+        scroll-behavior: smooth;
+      }
+      
+      body {
+        @apply bg-ivory-50 text-charcoal-900 font-sans;
+      }
+      
+      h1, h2, h3, h4, h5, h6 {
+        @apply font-serif font-semibold;
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

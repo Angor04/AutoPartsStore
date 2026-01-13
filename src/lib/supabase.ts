@@ -1,0 +1,210 @@
+// src/lib/supabase.ts
+
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types';
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_KEY = import.meta.env.SUPABASE_SERVICE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+// Cliente para operaciones públicas (lectura de productos)
+export const supabaseClient = createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+// Cliente para operaciones de servidor con permisos de admin
+let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
+
+export const getSupabaseAdmin = () => {
+  if (!supabaseAdmin) {
+    if (!SUPABASE_SERVICE_KEY) {
+      throw new Error('Missing Supabase service key for admin operations');
+    }
+    supabaseAdmin = createClient<Database>(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+  }
+  return supabaseAdmin;
+};
+
+// Funciones de utilidad para operaciones comunes
+export async function getCategories() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('categorias')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching categories:', err);
+    return [];
+  }
+}
+
+export async function getCategoryBySlug(slug: string) {
+  const { data, error } = await supabaseClient
+    .from('categorias')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    console.error('Error fetching category:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getProducts() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('productos')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching products:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching products:', err);
+    return [];
+  }
+}
+
+export async function getProductBySlug(slug: string) {
+  const { data, error } = await supabaseClient
+    .from('productos')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    console.error('Error fetching product:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getProductsByCategory(categoryId: string) {
+  try {
+    const { data, error } = await supabaseClient
+      .from('productos')
+      .select('*')
+      .eq('categoria_id', categoryId);
+
+    if (error) {
+      console.error('Error fetching products by category:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching products by category:', err);
+    return [];
+  }
+}
+
+export async function getFeaturedProducts(limit = 6) {
+  try {
+    const { data, error } = await supabaseClient
+      .from('productos')
+      .select('*')
+      .eq('destacado', true)
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching featured products:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching featured products:', err);
+    return [];
+  }
+}
+
+export async function checkAndUpdateStock(productId: string, quantity: number) {
+  const admin = getSupabaseAdmin();
+
+  // Obtener el stock actual
+  const { data: product, error: fetchError } = await admin
+    .from('productos')
+    .select('stock')
+    .eq('id', productId)
+    .single();
+
+  if (fetchError || !product) {
+    throw new Error('Product not found');
+  }
+
+  if (product.stock < quantity) {
+    throw new Error('Insufficient stock');
+  }
+
+  // Actualizar el stock de forma atómica
+  const { error: updateError } = await admin
+    .from('productos')
+    .update({ stock: product.stock - quantity })
+    .eq('id', productId)
+    .eq('stock', product.stock); // Garantizar atomicidad
+
+  if (updateError) {
+    throw new Error('Failed to update stock');
+  }
+
+  return true;
+}
+
+export async function getSetting(key: string) {
+  const { data, error } = await supabaseClient
+    .from('configuracion')
+    .select('valor')
+    .eq('clave', key)
+    .single();
+
+  if (error) {
+    return null;
+  }
+
+  return data?.valor;
+}
+
+export async function updateSetting(key: string, value: any) {
+  const admin = getSupabaseAdmin();
+
+  const { error } = await admin
+    .from('configuracion')
+    .upsert({
+      clave: key,
+      valor: value,
+      actualizada_en: new Date().toISOString(),
+    });
+
+  if (error) {
+    throw new Error(`Failed to update setting: ${error.message}`);
+  }
+
+  return true;
+}

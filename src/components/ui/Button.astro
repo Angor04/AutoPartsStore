@@ -1,0 +1,55 @@
+---
+// src/components/ui/Button.astro
+// Componente de botón reutilizable
+
+interface Props {
+  href?: string;
+  variant?: "primary" | "secondary" | "outline" | "ghost";
+  size?: "sm" | "md" | "lg";
+  disabled?: boolean;
+  type?: "button" | "submit" | "reset";
+  class?: string;
+  children?: any;
+}
+
+const {
+  href,
+  variant = "primary",
+  size = "md",
+  disabled = false,
+  type = "button",
+  class: className = "",
+} = Astro.props;
+
+const baseStyles = "inline-flex items-center justify-center font-medium rounded transition-all duration-200 cursor-pointer font-sans";
+
+const variantStyles = {
+  primary: "bg-red-600 text-ivory-50 hover:bg-red-700 active:bg-red-800",
+  secondary: "bg-amber-500 text-charcoal-900 hover:bg-amber-600 active:bg-amber-700",
+  outline: "border-2 border-red-600 text-red-600 hover:bg-red-50 active:bg-red-100",
+  ghost: "text-red-600 hover:bg-red-50 active:bg-red-100",
+};
+
+const sizeStyles = {
+  sm: "px-3 py-1.5 text-sm",
+  md: "px-4 py-2 text-base",
+  lg: "px-6 py-3 text-lg",
+};
+
+const disabledStyles = disabled ? "opacity-50 cursor-not-allowed" : "";
+
+const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabledStyles} ${className}`;
+const isExternal = href && href.startsWith("http");
+---
+
+{href && (
+  <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noopener noreferrer" : undefined} class={classes}>
+    <slot />
+  </a>
+)}
+
+{!href && (
+  <button type={type} disabled={disabled} class={classes}>
+    <slot />
+  </button>
+)}

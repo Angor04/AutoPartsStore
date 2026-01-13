@@ -1,0 +1,141 @@
+---
+// src/pages/debug-supabase.astro
+// Página de debug para verificar Supabase
+
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { supabaseClient } from "@/lib/supabase";
+
+// Test 1: Verificar conexión
+let connectionTest = "⏳ Probando...";
+try {
+  const { data: healthCheck, error: healthError } = await supabaseClient
+    .from('categorias')
+    .select('COUNT(*)', { count: 'exact', head: true });
+  connectionTest = healthError ? `❌ Error: ${healthError.message}` : "✅ Conexión OK";
+} catch (err: any) {
+  connectionTest = `❌ Excepción: ${err.message}`;
+}
+
+// Test 2: Contar categorías
+let categoriasCount = 0;
+let categoriasError = "";
+try {
+  const { data, error, count } = await supabaseClient
+    .from('categorias')
+    .select('*', { count: 'exact' });
+  if (error) {
+    categoriasError = error.message;
+  } else {
+    categoriasCount = count || 0;
+  }
+} catch (err: any) {
+  categoriasError = err.message;
+}
+
+// Test 3: Contar productos
+let productosCount = 0;
+let productosError = "";
+try {
+  const { data, error, count } = await supabaseClient
+    .from('productos')
+    .select('*', { count: 'exact' });
+  if (error) {
+    productosError = error.message;
+  } else {
+    productosCount = count || 0;
+  }
+} catch (err: any) {
+  productosError = err.message;
+}
+
+// Test 4: Obtener un ejemplo de producto
+let productoEjemplo = null;
+let productoError = "";
+try {
+  const { data, error } = await supabaseClient
+    .from('productos')
+    .select('id, nombre, precio, urls_imagenes')
+    .limit(1);
+  if (error) {
+    productoError = error.message;
+  } else {
+    productoEjemplo = data?.[0] || null;
+  }
+} catch (err: any) {
+  productoError = err.message;
+}
+
+// Test 5: Obtener un ejemplo de categoría
+let categoriaEjemplo = null;
+let categoriaError = "";
+try {
+  const { data, error } = await supabaseClient
+    .from('categorias')
+    .select('id, nombre, slug')
+    .limit(1);
+  if (error) {
+    categoriaError = error.message;
+  } else {
+    categoriaEjemplo = data?.[0] || null;
+  }
+} catch (err: any) {
+  categoriaError = err.message;
+}
+---
+
+<PublicLayout title="Debug Supabase" description="Verificar estado de Supabase">
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-8 text-red-600">🔧 Debug Supabase</h1>
+
+    <!-- Prueba de conexión -->
+    <div class="bg-white rounded-lg p-6 mb-6 border-2 border-charcoal-200">
+      <h2 class="text-xl font-bold mb-4">1. Conexión</h2>
+      <p class="text-lg">{connectionTest}</p>
+    </div>
+
+    <!-- Categorías -->
+    <div class="bg-white rounded-lg p-6 mb-6 border-2 border-charcoal-200">
+      <h2 class="text-xl font-bold mb-4">2. Categorías</h2>
+      <p class="text-lg font-mono">
+        Total: <span class="text-2xl font-bold text-green-600">{categoriasCount}</span>
+      </p>
+      {categoriasError && <p class="text-red-600 mt-2">❌ Error: {categoriasError}</p>}
+      {categoriaEjemplo && (
+        <div class="bg-ivory-50 p-4 rounded mt-4 text-sm font-mono">
+          <p>Ejemplo: {JSON.stringify(categoriaEjemplo, null, 2)}</p>
+        </div>
+      )}
+    </div>
+
+    <!-- Productos -->
+    <div class="bg-white rounded-lg p-6 mb-6 border-2 border-charcoal-200">
+      <h2 class="text-xl font-bold mb-4">3. Productos</h2>
+      <p class="text-lg font-mono">
+        Total: <span class="text-2xl font-bold text-green-600">{productosCount}</span>
+      </p>
+      {productosError && <p class="text-red-600 mt-2">❌ Error: {productosError}</p>}
+      {productoEjemplo && (
+        <div class="bg-ivory-50 p-4 rounded mt-4 text-sm font-mono">
+          <p>Ejemplo: {JSON.stringify(productoEjemplo, null, 2)}</p>
+        </div>
+      )}
+    </div>
+
+    <!-- Resumen -->
+    <div class="bg-amber-50 rounded-lg p-6 border-2 border-amber-200">
+      <h2 class="text-xl font-bold mb-4">📊 Resumen</h2>
+      {productosCount === 0 ? (
+        <div class="space-y-2">
+          <p class="text-red-600 font-bold">⚠️ NO HAY PRODUCTOS EN LA BASE DE DATOS</p>
+          <p class="text-sm">Necesitas ejecutar el SQL para insertar los 20 productos de prueba.</p>
+        </div>
+      ) : (
+        <div class="space-y-2">
+          <p class="text-green-600 font-bold">✅ Hay {productosCount} productos</p>
+          <p class="text-green-600 font-bold">✅ Hay {categoriasCount} categorías</p>
+          <p class="text-sm">Todo está listo. Los productos deberían aparecer en /productos</p>
+        </div>
+      )}
+    </div>
+  </div>
+</PublicLayout>

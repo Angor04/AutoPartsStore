@@ -1,0 +1,58 @@
+---
+// src/pages/categoria/[slug].astro
+// Página de categoría con filtrado
+
+export const prerender = false;
+
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import ProductCard from "@/components/product/ProductCard.astro";
+import CartSlideOver from "@/components/ui/CartSlideOver.astro";
+import { getCategories, getProductsByCategory, getProducts } from "@/lib/supabase";
+
+const slug = Astro.params.slug;
+const categorias = await getCategories();
+const categoria = categorias.find((c) => c.slug === slug);
+
+if (!categoria) {
+  return new Response("Categoría no encontrada", { status: 404 });
+}
+
+const productos = await getProductsByCategory(categoria.id);
+
+const title = categoria.nombre;
+const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCase()}`;
+---
+---
+
+<PublicLayout title={title} description={description}>
+  <CartSlideOver />
+
+  <!-- Header -->
+  <div class="bg-red-600 text-ivory-50 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h1 class="text-4xl font-serif font-bold">{categoria.nombre}</h1>
+      <p class="text-ivory-200 mt-2">{categoria.descripcion || description}</p>
+    </div>
+  </div>
+
+  <!-- Products Grid -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    {productos.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {productos.map((product) => (
+          <ProductCard product={product} />
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-12">
+        <p class="text-lg text-charcoal-600">
+          No hay productos en esta categoría aún</p>
+      </div>
+    )}
+  </div>
+          No hay productos en esta categoría
+        </p>
+      </div>
+    )}
+  </div>
+</PublicLayout>

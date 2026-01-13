@@ -1,0 +1,86 @@
+---
+// src/pages/carrito.astro
+// Página del carrito
+
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import Button from "@/components/ui/Button.astro";
+
+const title = "Tu Carrito";
+const description = "Revisa y gestiona los artículos en tu carrito";
+---
+
+<PublicLayout title={title} description={description}>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-8">
+      <a href="/" class="hover:text-navy-500">Inicio</a>
+      <span>/</span>
+      <span>Carrito</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Items -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <h1 class="text-2xl font-serif font-bold text-charcoal-900 mb-8">
+            {title}
+          </h1>
+
+          <div id="cart-items-container" class="divide-y divide-charcoal-100">
+            <!-- Los items se renderizarán aquí -->
+            <div class="text-center py-8 text-charcoal-500">
+              <p>Tu carrito está vacío</p>
+              <Button href="/productos" variant="primary" class="mt-4">
+                Continuar Comprando
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm p-8 h-fit sticky top-24">
+          <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-6">
+            Resumen
+          </h2>
+
+          <div class="space-y-4 mb-6">
+            <div class="flex justify-between text-charcoal-700">
+              <span>Subtotal:</span>
+              <span id="subtotal" class="font-semibold">0,00 €</span>
+            </div>
+            <div class="flex justify-between text-charcoal-700">
+              <span>Envío:</span>
+              <span id="shipping" class="font-semibold">Gratis</span>
+            </div>
+            <div class="flex justify-between text-charcoal-700">
+              <span>Impuestos:</span>
+              <span id="taxes" class="font-semibold">0,00 €</span>
+            </div>
+          </div>
+
+          <div class="border-t border-charcoal-100 pt-4 mb-6">
+            <div class="flex justify-between text-lg">
+              <span class="font-serif font-bold text-charcoal-900">Total:</span>
+              <span id="total" class="font-serif font-bold text-navy-500">0,00 €</span>
+            </div>
+          </div>
+
+          <Button variant="primary" size="lg" class="w-full mb-3">
+            Proceder al Pago
+          </Button>
+
+          <Button href="/productos" variant="ghost" size="lg" class="w-full">
+            Continuar Comprando
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Este script será completado en la próxima fase cuando integrados el carrito cliente con el servidor
+    console.log("Página de carrito lista");
+  </script>
+</PublicLayout>
