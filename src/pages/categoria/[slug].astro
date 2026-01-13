@@ -22,37 +22,76 @@ const productos = await getProductsByCategory(categoria.id);
 const title = categoria.nombre;
 const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCase()}`;
 ---
----
 
 <PublicLayout title={title} description={description}>
   <CartSlideOver />
 
   <!-- Header -->
-  <div class="bg-red-600 text-ivory-50 py-12">
+  <div class="bg-red-600 text-ivory-50 py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 class="text-4xl font-serif font-bold">{categoria.nombre}</h1>
-      <p class="text-ivory-200 mt-2">{categoria.descripcion || description}</p>
+      <h1 class="text-3xl font-bold">{categoria.nombre}</h1>
+      <p class="text-ivory-200 mt-2 text-sm">{categoria.descripcion || description}</p>
     </div>
   </div>
 
-  <!-- Products Grid -->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    {productos.length > 0 ? (
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {productos.map((product) => (
-          <ProductCard product={product} />
-        ))}
+  <!-- Products Section -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <!-- Sidebar Filters -->
+      <aside class="lg:col-span-1">
+        <div class="bg-white rounded-lg p-6 shadow-sm sticky top-24 border border-charcoal-200">
+          <h3 class="text-lg font-bold text-charcoal-900 mb-6">Filtros</h3>
+
+          <!-- Categories Filter -->
+          <div class="mb-8">
+            <h4 class="font-semibold text-charcoal-900 mb-4 text-sm">CATEGORÍAS</h4>
+            <ul class="space-y-2">
+              <li>
+                <a href="/productos" class="text-charcoal-600 hover:text-red-600 transition-colors text-sm">
+                  Todas
+                </a>
+              </li>
+              {categorias.map((cat) => (
+                <li>
+                  <a
+                    href={`/categoria/${cat.slug}`}
+                    class={cat.id === categoria.id ? "text-red-600 hover:text-red-700 font-medium text-sm" : "text-charcoal-600 hover:text-red-600 transition-colors text-sm"}
+                  >
+                    {cat.nombre}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <!-- Price Filter -->
+          <div>
+            <h4 class="font-semibold text-charcoal-900 mb-4">Precio</h4>
+            <input type="range" min="0" max="5000" class="w-full" />
+            <div class="flex justify-between text-sm text-charcoal-600 mt-2">
+              <span>0 €</span>
+              <span>5000 €</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Products Grid -->
+      <div class="lg:col-span-3">
+        {productos && productos.length > 0 ? (
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {productos.map((product) => (
+              <ProductCard product={product} />
+            ))}
+          </div>
+        ) : (
+          <div class="text-center py-16">
+            <p class="text-lg text-charcoal-600 mb-4">
+              No hay productos disponibles en esta categoría
+            </p>
+          </div>
+        )}
       </div>
-    ) : (
-      <div class="text-center py-12">
-        <p class="text-lg text-charcoal-600">
-          No hay productos en esta categoría aún</p>
-      </div>
-    )}
-  </div>
-          No hay productos en esta categoría
-        </p>
-      </div>
-    )}
+    </div>
   </div>
 </PublicLayout>

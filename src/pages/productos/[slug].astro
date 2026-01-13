@@ -12,7 +12,22 @@ import { formatPrice } from "@/lib/utils";
 
 const slug = Astro.params.slug;
 const productos = await getProducts();
-const producto = productos?.find((p) => p.slug === slug);
+
+console.log("Slug:", slug);
+console.log("Productos tipo:", typeof productos);
+console.log("Productos es array:", Array.isArray(productos));
+console.log("Productos cargados:", productos?.length || 0);
+
+let producto = null;
+
+if (Array.isArray(productos) && productos.length > 0) {
+  producto = productos.find((p) => {
+    const idString = String(p.id);
+    return p.slug === slug || idString === slug || p.id === parseInt(slug);
+  });
+}
+
+console.log("Producto encontrado:", producto?.nombre || "No encontrado");
 
 if (!producto) {
   return new Response("Producto no encontrado", { status: 404 });

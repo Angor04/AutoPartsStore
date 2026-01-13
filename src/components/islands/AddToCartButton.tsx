@@ -26,7 +26,9 @@ export default function AddToCartButton({
   const [isAdded, setIsAdded] = useState(false);
   const [message, setMessage] = useState('');
 
-  const currentQuantity = getItemQuantity(productId, items);
+  // Asegurar que items es un array
+  const itemsArray = Array.isArray(items) ? items : [];
+  const currentQuantity = getItemQuantity(productId, itemsArray);
   const maxAddable = Math.max(0, stock - currentQuantity);
   const isInStock = maxAddable > 0;
 
