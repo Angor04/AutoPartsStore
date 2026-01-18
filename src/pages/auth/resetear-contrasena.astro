@@ -1,0 +1,374 @@
+---
+// src/pages/auth/resetear-contrasena.astro
+// Página para resetear la contraseña
+
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const error = Astro.url.searchParams.get('error');
+const token = Astro.url.searchParams.get('token');
+const type = Astro.url.searchParams.get('type');
+
+// Redirigir si no hay token válido
+if (!token || type !== 'recovery') {
+  return Astro.redirect('/auth/login?error=Enlace de recuperación inválido o expirado');
+}
+---
+
+<BaseLayout title="Restablecer Contraseña" description="Crea una nueva contraseña">
+  <style>
+    .reset-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f9f9f9;
+      padding: 20px;
+    }
+
+    .reset-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+    }
+
+    .reset-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .reset-header h1 {
+      font-size: 26px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .reset-header p {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #dc2626;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+
+    .password-requirements {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .password-requirements h4 {
+      margin: 0 0 8px 0;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .password-requirements ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .password-requirements li {
+      margin-bottom: 4px;
+    }
+
+    .requirement {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .requirement-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+      font-size: 11px;
+      color: white;
+    }
+
+    .requirement-icon.pending {
+      background: #d1d5db;
+    }
+
+    .requirement-icon.satisfied {
+      background: #22c55e;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .submit-btn:hover {
+      background-color: #991b1b;
+    }
+
+    .submit-btn:disabled {
+      background-color: #d1d5db;
+      cursor: not-allowed;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px 14px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      border: 1px solid #fecaca;
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 13px;
+      color: #666;
+      margin-top: 20px;
+    }
+
+    .back-link {
+      color: #dc2626;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .password-strength {
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .password-strength-bar {
+      height: 100%;
+      width: 0%;
+      transition: all 0.3s ease;
+      border-radius: 2px;
+    }
+
+    .password-strength-bar.weak {
+      width: 33%;
+      background: #ef4444;
+    }
+
+    .password-strength-bar.medium {
+      width: 66%;
+      background: #f59e0b;
+    }
+
+    .password-strength-bar.strong {
+      width: 100%;
+      background: #22c55e;
+    }
+  </style>
+
+  <div class="reset-wrapper">
+    <div class="reset-card">
+      <div class="reset-header">
+        <h1>Restablecer Contraseña</h1>
+        <p>Crea una nueva contraseña segura para tu cuenta</p>
+      </div>
+
+      {error && <div class="error">{error}</div>}
+
+      <form method="POST" action="/api/auth/resetear-contrasena" id="resetForm">
+        <input type="hidden" name="token" value={token} />
+
+        <div class="form-group">
+          <label for="password">Nueva Contraseña</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            autocomplete="new-password"
+            required
+            minlength="8"
+          />
+          <div class="password-strength">
+            <div class="password-strength-bar" id="strengthBar"></div>
+          </div>
+        </div>
+
+        <div class="password-requirements" id="requirements">
+          <h4>Requisitos de la contraseña:</h4>
+          <div class="requirement" id="req-length">
+            <div class="requirement-icon pending">✓</div>
+            <span>Mínimo 8 caracteres</span>
+          </div>
+          <div class="requirement" id="req-uppercase">
+            <div class="requirement-icon pending">✓</div>
+            <span>Al menos una letra mayúscula</span>
+          </div>
+          <div class="requirement" id="req-lowercase">
+            <div class="requirement-icon pending">✓</div>
+            <span>Al menos una letra minúscula</span>
+          </div>
+          <div class="requirement" id="req-number">
+            <div class="requirement-icon pending">✓</div>
+            <span>Al menos un número</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm">Confirmar Contraseña</label>
+          <input
+            type="password"
+            id="confirm"
+            name="confirm"
+            placeholder="••••••••"
+            autocomplete="new-password"
+            required
+            minlength="8"
+          />
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Restablecer Contraseña</button>
+      </form>
+
+      <div class="footer-text">
+        <a href="/auth/login" class="back-link">Volver al inicio de sesión</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+    const confirmInput = document.getElementById('confirm') as HTMLInputElement;
+    const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+    const strengthBar = document.getElementById('strengthBar') as HTMLElement;
+    const form = document.getElementById('resetForm') as HTMLFormElement;
+
+    // Requisitos a verificar
+    const requirements = {
+      length: document.getElementById('req-length'),
+      uppercase: document.getElementById('req-uppercase'),
+      lowercase: document.getElementById('req-lowercase'),
+      number: document.getElementById('req-number'),
+    };
+
+    function checkRequirements(password: string) {
+      const checks = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+      };
+
+      Object.entries(checks).forEach(([key, satisfied]) => {
+        const req = requirements[key as keyof typeof requirements];
+        if (req) {
+          const icon = req.querySelector('.requirement-icon');
+          if (icon) {
+            icon.className = satisfied ? 'requirement-icon satisfied' : 'requirement-icon pending';
+          }
+        }
+      });
+
+      return checks;
+    }
+
+    function updateStrengthBar(password: string) {
+      const checks = checkRequirements(password);
+      const satisfiedCount = Object.values(checks).filter(Boolean).length;
+
+      strengthBar.className = 'password-strength-bar';
+
+      if (satisfiedCount <= 1) {
+        strengthBar.classList.add('weak');
+      } else if (satisfiedCount <= 3) {
+        strengthBar.classList.add('medium');
+      } else {
+        strengthBar.classList.add('strong');
+      }
+    }
+
+    function validateForm() {
+      if (!passwordInput.value || !confirmInput.value) {
+        submitBtn.disabled = true;
+        return;
+      }
+
+      const checks = checkRequirements(passwordInput.value);
+      const allSatisfied = Object.values(checks).every(Boolean);
+      const passwordsMatch = passwordInput.value === confirmInput.value;
+
+      submitBtn.disabled = !(allSatisfied && passwordsMatch);
+    }
+
+    passwordInput.addEventListener('input', (e) => {
+      const password = (e.target as HTMLInputElement).value;
+      updateStrengthBar(password);
+      validateForm();
+    });
+
+    confirmInput.addEventListener('input', validateForm);
+
+    // Validar en submit
+    form.addEventListener('submit', (e) => {
+      if (passwordInput.value !== confirmInput.value) {
+        e.preventDefault();
+        alert('Las contraseñas no coinciden');
+        return;
+      }
+
+      const checks = checkRequirements(passwordInput.value);
+      if (!Object.values(checks).every(Boolean)) {
+        e.preventDefault();
+        alert('Por favor cumple con todos los requisitos de contraseña');
+      }
+    });
+  </script>
+</BaseLayout>
