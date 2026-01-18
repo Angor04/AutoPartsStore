@@ -1,11 +1,11 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwind from '@astrojs/tailwind';
-import vercel from '@astrojs/vercel/serverless';
+import vercel from '@astrojs/vercel';
 
 // Configurado para Vercel
 export default defineConfig({
-  output: 'hybrid',
+  output: 'server',
   adapter: vercel(),
   site: process.env.SITE_URL || 'http://localhost:4322',
   integrations: [
