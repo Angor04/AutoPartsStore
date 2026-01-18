@@ -11,6 +11,18 @@ export function formatPrice(cents: number): string {
 }
 
 /**
+ * Formatea un número con separadores de miles
+ * @param num Número a formatear
+ * @returns String formateado (ej: "1,234,567.89")
+ */
+export function formatNumber(num: number): string {
+  return num.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
  * Convierte un string a un slug URL-safe
  * @param str String a convertir
  * @returns Slug URL-safe

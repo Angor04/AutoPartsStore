@@ -2,66 +2,81 @@
 // src/layouts/AdminLayout.astro
 // Layout para el panel de administración
 
-import BaseLayout from "./BaseLayout.astro";
-
 interface Props {
-  title: string;
+  title?: string;
   description?: string;
 }
 
-const { title, description } = Astro.props;
+const { title = "Panel Admin", description = "Administración de AutoPartsStore" } = Astro.props;
 ---
 
-<BaseLayout title={title} description={description}>
-  <div class="flex min-h-screen bg-charcoal-50">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-charcoal-900 text-ivory-50 shadow-lg">
-      <div class="p-6 border-b border-charcoal-700">
-        <h2 class="text-xl font-serif font-bold">AutoPartsStore</h2>
-        <p class="text-sm text-charcoal-300">Panel de Administración</p>
-      </div>
-
-      <nav class="mt-6">
-        <a href="/admin" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
-          Dashboard
-        </a>
-        <a href="/admin/productos" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
-          Productos
-        </a>
-        <a href="/admin/categorias" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
-          Categorías
-        </a>
-        <a href="/admin/pedidos" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
-          Pedidos
-        </a>
-        <a href="/admin/ajustes" class="block px-6 py-3 hover:bg-charcoal-800 transition-colors border-l-4 border-transparent hover:border-gold-500">
-          Ajustes
-        </a>
-      </nav>
-
-      <div class="absolute bottom-0 left-0 right-0 w-64 p-6 border-t border-charcoal-700">
-        <form method="POST" action="/api/auth/logout">
-          <button type="submit" class="w-full bg-navy-500 hover:bg-navy-600 text-white font-medium py-2 px-4 rounded transition-colors">
-            Cerrar Sesión
-          </button>
-        </form>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 overflow-auto">
-      <div class="p-8">
-        <!-- Top Bar -->
-        <div class="mb-8">
-          <h1 class="text-3xl font-serif font-bold text-charcoal-900">{title}</h1>
-          {description && <p class="text-charcoal-600 mt-2">{description}</p>}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title} - AutoPartsStore</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #f5f5f5;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="display: flex; height: 100vh; overflow: hidden;">
+      <!-- Sidebar -->
+      <aside style="width: 256px; background-color: #1a1a1a; color: white; display: flex; flex-direction: column; box-shadow: 0 10px 15px rgba(0,0,0,0.1);">
+        <!-- Logo -->
+        <div style="padding: 24px; border-bottom: 1px solid #333;">
+          <h1 style="font-size: 20px; font-weight: bold;">AutoPartsStore</h1>
+          <p style="font-size: 12px; color: #888; margin-top: 4px;">Panel de Administración</p>
         </div>
 
-        <!-- Content -->
-        <div>
+        <!-- Nav Menu -->
+        <nav style="flex: 1; padding: 24px 16px; display: flex; flex-direction: column; gap: 8px;">
+          <a href="/admin" style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 8px; text-decoration: none; color: white; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#333'" onmouseout="this.style.backgroundColor='transparent'">
+            <span>Dashboard</span>
+          </a>
+
+          <a href="/admin/productos" style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 8px; text-decoration: none; color: white; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#333'" onmouseout="this.style.backgroundColor='transparent'">
+            <span>Productos</span>
+          </a>
+
+          <a href="/admin/categorias" style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 8px; text-decoration: none; color: white; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#333'" onmouseout="this.style.backgroundColor='transparent'">
+            <span>Categorías</span>
+          </a>
+
+          <a href="/admin/ordenes" style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 8px; text-decoration: none; color: white; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#333'" onmouseout="this.style.backgroundColor='transparent'">
+            <span>Órdenes</span>
+          </a>
+
+          <a href="/admin/reportes" style="display: flex; gap: 12px; padding: 12px 16px; border-radius: 8px; text-decoration: none; color: white; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#333'" onmouseout="this.style.backgroundColor='transparent'">
+            <span>Reportes</span>
+          </a>
+        </nav>
+
+        <!-- Logout -->
+        <div style="padding: 16px; border-top: 1px solid #333;">
+          <a href="/api/auth/logout" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; background-color: #dc2626; color: white; border-radius: 8px; transition: background-color 0.3s; text-decoration: none; font-size: 14px; font-weight: 500;" onmouseover="this.style.backgroundColor='#b91c1c'" onmouseout="this.style.backgroundColor='#dc2626'">
+            <span>Salir</span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main style="flex: 1; overflow: auto;">
+        <div style="max-width: 1280px; margin: 0 auto; padding: 32px 24px;">
           <slot />
         </div>
-      </div>
-    </main>
-  </div>
-</BaseLayout>
+      </main>
+    </div>
+  </body>
+</html>

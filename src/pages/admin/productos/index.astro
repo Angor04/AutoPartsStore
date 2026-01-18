@@ -2,75 +2,519 @@
 // src/pages/admin/productos/index.astro
 // Gestión de productos
 
+export const prerender = false;
+
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import Button from "@/components/ui/Button.astro";
-import { getProducts } from "@/lib/supabase";
+import { getProducts, getCategories } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
 const products = await getProducts();
+const categories = await getCategories();
 
-const title = "Gestión de Productos";
-const description = "Crear, editar y eliminar productos";
+// Crear mapa de categorías para búsqueda rápida
+const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
 ---
 
-<AdminLayout title={title} description={description}>
-  <div class="mb-6 flex justify-between items-center">
-    <div>
-      <p class="text-charcoal-600">Total de productos: <span class="font-bold text-navy-500">{products.length}</span></p>
-    </div>
-    <Button href="/admin/productos/nuevo" variant="primary" size="lg">
-      + Nuevo Producto
-    </Button>
-  </div>
+<AdminLayout>
+  <style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 8px; padding: 30px; width: 90%; max-width: 500px; }
+    .modal-header { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #1a1a1a; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #764ba2; }
+    .btn-secondary { background: #e5e7eb; color: #1a1a1a; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .btn-danger { background: #ef4444; color: white; padding: 6px 12px; font-size: 13px; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f9fafb; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { font-weight: 600; color: #1a1a1a; }
+    td { color: #666; }
+    tbody tr:hover { background: #f3f4f6; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-stock { background: #dcfce7; color: #166534; }
+    .badge-stock-low { background: #fef3c7; color: #92400e; }
+    .badge-stock-out { background: #fee2e2; color: #991b1b; }
+    
+    .actions { display: flex; gap: 8px; }
+  </style>
 
-  <!-- Products Table -->
-  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-    <table class="w-full">
-      <thead class="bg-charcoal-50 border-b border-charcoal-200">
-        <tr>
-          <th class="px-6 py-4 text-left text-sm font-semibold text-charcoal-900">Nombre</th>
-          <th class="px-6 py-4 text-left text-sm font-semibold text-charcoal-900">Categoría</th>
-          <th class="px-6 py-4 text-right text-sm font-semibold text-charcoal-900">Precio</th>
-          <th class="px-6 py-4 text-right text-sm font-semibold text-charcoal-900">Stock</th>
-          <th class="px-6 py-4 text-center text-sm font-semibold text-charcoal-900">Acciones</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-charcoal-100">
-        {products.length > 0 ? (
-          products.map((product) => (
-            <tr class="hover:bg-charcoal-50 transition-colors">
-              <td class="px-6 py-4 text-charcoal-900 font-medium">{product.name}</td>
-              <td class="px-6 py-4 text-charcoal-600">-</td>
-              <td class="px-6 py-4 text-right text-charcoal-900 font-semibold">
-                {formatPrice(product.price)}
-              </td>
-              <td class="px-6 py-4 text-right">
-                <span class={`px-3 py-1 rounded-full text-sm font-medium ${
-                  product.stock > 0
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
-                  {product.stock}
-                </span>
-              </td>
-              <td class="px-6 py-4 text-center space-x-2">
-                <a href={`/admin/productos/${product.id}`} class="text-navy-500 hover:text-navy-700 font-medium text-sm">
-                  Editar
-                </a>
-                <button class="text-red-500 hover:text-red-700 font-medium text-sm">
-                  Eliminar
-                </button>
+  <div style="margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0;">Productos</h2>
+        <p style="color: #666; margin: 5px 0 0 0;">Total: {products.length} productos</p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo Producto</button>
+        <button class="btn" style="background: #10b981; color: white;" onclick="openOffersModal()">Gestionar Ofertas</button>
+      </div>
+    </div>
+
+    <!-- Modal para crear/editar -->
+    <div id="productModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header" id="modalTitle">Nuevo Producto</div>
+        <form id="productForm" onsubmit="handleSubmit(event)">
+          <input type="hidden" id="productId" name="id">
+          
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" id="nombre" name="nombre" required>
+          </div>
+
+          <div class="form-group">
+            <label>Descripción</label>
+            <textarea id="descripcion" name="descripcion"></textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+              <label>Precio Original *</label>
+              <input type="number" id="precio_original" name="precio_original" step="0.01" min="0">
+            </div>
+
+            <div class="form-group">
+              <label>Precio (con descuento)</label>
+              <input type="number" id="precio" name="precio" step="0.01" min="0" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Stock *</label>
+            <input type="number" id="stock" name="stock" min="0" required>
+          </div>
+
+          <div class="form-group">
+            <label>Categoría</label>
+            <select id="categoria_id" name="categoria_id">
+              <option value="">Sin categoría</option>
+              {categories.map(cat => (
+                <option value={cat.id}>{cat.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>URLs de Imágenes (separadas por coma)</label>
+            <input type="text" id="urls_imagenes" name="urls_imagenes" placeholder="https://... , https://...">
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal para gestionar ofertas -->
+    <div id="offersModal" class="modal">
+      <div class="modal-content" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
+        <div class="modal-header">Gestionar Ofertas</div>
+        
+        <div style="margin-bottom: 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div class="form-group">
+              <label>Precio Original</label>
+              <input type="number" id="offerPriceOriginal" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+            </div>
+            <div class="form-group">
+              <label>Precio con Descuento</label>
+              <input type="number" id="offerPrice" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn btn-primary" onclick="applyAllOffers()">Aplicar a TODOS</button>
+            <button class="btn" style="background: #8b5cf6; color: white;" onclick="applySelectedOffers()">Aplicar a Seleccionados</button>
+            <button class="btn btn-secondary" onclick="clearAllOffers()">Limpiar Todo</button>
+          </div>
+        </div>
+
+        <!-- Tabla de productos para seleccionar -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
+          <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-weight: 600;">Selecciona productos:</h3>
+          <div style="border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
+            <table style="width: 100%; font-size: 13px;">
+              <thead>
+                <tr style="background: #f9fafb;">
+                  <th style="padding: 10px;">
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="cursor: pointer;">
+                  </th>
+                  <th style="padding: 10px; text-align: left;">Producto</th>
+                  <th style="padding: 10px; text-align: right;">Precio Original</th>
+                  <th style="padding: 10px; text-align: right;">Precio Actual</th>
+                </tr>
+              </thead>
+              <tbody id="productsOffersList">
+                {products.map(product => (
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 10px; text-align: center;">
+                      <input type="checkbox" class="product-checkbox" value={product.id} style="cursor: pointer;">
+                    </td>
+                    <td style="padding: 10px;">{product.nombre}</td>
+                    <td style="padding: 10px; text-align: right;">{formatPrice(product.precio_original || product.precio)}</td>
+                    <td style="padding: 10px; text-align: right; color: #dc2626;">{formatPrice(product.precio)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeOffersModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div style="background: white; border-radius: 8px; overflow: hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.length === 0 ? (
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                No hay productos. <button onclick="openModal()" style="color: #667eea; text-decoration: underline; background: none; border: none; cursor: pointer;">Crear el primero</button>
               </td>
             </tr>
-          ))
-        ) : (
-          <tr>
-            <td colspan="5" class="px-6 py-8 text-center text-charcoal-600">
-              No hay productos aún. <a href="/admin/productos/nuevo" class="text-navy-500 hover:text-navy-700">Crea uno aquí</a>
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+          ) : (
+            products.map(product => (
+              <tr>
+                <td style="font-weight: 600; color: #1a1a1a;">{product.nombre}</td>
+                <td>{product.categoria_id ? categoryMap.get(product.categoria_id) : '-'}</td>
+                <td>{formatPrice(product.precio_original || product.precio)}</td>
+                <td>
+                  {product.stock === null || product.stock === 0 ? (
+                    <span class="badge badge-stock-out">Agotado</span>
+                  ) : product.stock < 5 ? (
+                    <span class="badge badge-stock-low">{product.stock} unidades</span>
+                  ) : (
+                    <span class="badge badge-stock">{product.stock} unidades</span>
+                  )}
+                </td>
+                <td>
+                  <div class="actions">
+                    <button class="btn btn-sm" data-product={JSON.stringify(product)} onclick="editProduct(this.dataset.product)" style="background: #dbeafe; color: #0369a1;">Editar</button>
+                    <button class="btn btn-danger" data-id={product.id} onclick="deleteProduct(this.dataset.id)">Eliminar</button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
   </div>
-</AdminLayout>
+
+  <script>
+    // Hacer funciones globales para que onclick funcione
+    (window as any).openModal = function(): void {
+      const modal = document.getElementById('productModal') as HTMLDivElement | null;
+      const form = document.getElementById('productForm') as HTMLFormElement | null;
+      const productId = document.getElementById('productId') as HTMLInputElement | null;
+      const modalTitle = document.getElementById('modalTitle') as HTMLElement | null;
+      
+      if (modal) modal.classList.add('show');
+      if (form) form.reset();
+      if (productId) productId.value = '';
+      if (modalTitle) modalTitle.textContent = 'Nuevo Producto';
+    };
+
+    (window as any).closeModal = function(): void {
+      const modal = document.getElementById('productModal') as HTMLDivElement | null;
+      if (modal) modal.classList.remove('show');
+    };
+
+    (window as any).openOffersModal = function(): void {
+      const modal = document.getElementById('offersModal');
+      if (modal) modal.classList.add('show');
+    };
+
+    (window as any).closeOffersModal = function(): void {
+      const modal = document.getElementById('offersModal');
+      if (modal) modal.classList.remove('show');
+    };
+
+    (window as any).toggleSelectAll = function(): void {
+      const selectAllElem = document.getElementById('selectAll') as HTMLInputElement | null;
+      if (!selectAllElem) return;
+      
+      const selectAll = selectAllElem.checked;
+      document.querySelectorAll('.product-checkbox').forEach((cb: Element) => {
+        if (cb instanceof HTMLInputElement) cb.checked = selectAll;
+      });
+    };
+
+    function getSelectedProducts(): number[] {
+      const selected: number[] = [];
+      document.querySelectorAll('.product-checkbox:checked').forEach((cb: Element) => {
+        if (cb instanceof HTMLInputElement && cb.value) {
+          selected.push(parseInt(cb.value));
+        }
+      });
+      return selected;
+    }
+
+    (window as any).applyAllOffers = async function(): Promise<void> {
+      try {
+        // Obtener todos los IDs de productos
+        const allProducts: number[] = [];
+        document.querySelectorAll('.product-checkbox').forEach((cb: Element) => {
+          if (cb instanceof HTMLInputElement && cb.value) {
+            allProducts.push(parseInt(cb.value));
+          }
+        });
+
+        if (allProducts.length === 0) {
+          alert('No hay productos en la lista');
+          return;
+        }
+
+        const precioOriginalElem = document.getElementById('offerPriceOriginal') as HTMLInputElement | null;
+        const precioElem = document.getElementById('offerPrice') as HTMLInputElement | null;
+        
+        if (!precioOriginalElem || !precioElem) {
+          alert('Error: No se encontraron los campos de precio');
+          return;
+        }
+        
+        const precioOriginal = (precioOriginalElem.value || '').trim();
+        const precio = (precioElem.value || '').trim();
+
+        // Validar que al menos un precio está presente
+        if (!precioOriginal && !precio) {
+          alert('Por favor ingresa al menos un precio');
+          return;
+        }
+
+        await applyOffers(allProducts);
+      } catch (err) {
+        console.error('Error in applyAllOffers:', err);
+      }
+    };
+
+    (window as any).applySelectedOffers = async function(): Promise<void> {
+      const selected = getSelectedProducts();
+
+      if (selected.length === 0) {
+        alert('Debes seleccionar al menos un producto');
+        return;
+      }
+
+      const precioOriginalElem = document.getElementById('offerPriceOriginal') as HTMLInputElement | null;
+      const precioElem = document.getElementById('offerPrice') as HTMLInputElement | null;
+      
+      if (!precioOriginalElem || !precioElem) return;
+      
+      const precioOriginal = precioOriginalElem.value;
+      const precio = precioElem.value;
+
+      if (!precioOriginal && !precio) {
+        alert('Debes ingresar al menos un precio');
+        return;
+      }
+
+      await applyOffers(selected);
+    };
+
+    async function applyOffers(productIds: number[]): Promise<void> {
+      const precioOriginalElem = document.getElementById('offerPriceOriginal') as HTMLInputElement | null;
+      const precioElem = document.getElementById('offerPrice') as HTMLInputElement | null;
+      
+      if (!precioOriginalElem || !precioElem) return;
+      
+      const precioOriginal = precioOriginalElem.value;
+      const precio = precioElem.value;
+
+      try {
+        const response = await fetch('/api/admin/productos/ofertas', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productIds,
+            precioOriginal: precioOriginal ? parseFloat(precioOriginal) : undefined,
+            precio: precio ? parseFloat(precio) : undefined
+          })
+        });
+
+        if (response.ok) {
+          alert('Ofertas aplicadas correctamente');
+          location.reload();
+        } else {
+          const error = await response.json() as Record<string, string>;
+          alert('Error: ' + (error.error || 'Error desconocido'));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    }
+
+    (window as any).clearAllOffers = async function(): Promise<void> {
+      if (!confirm('¿Estás seguro de que quieres limpiar todas las ofertas? Esto restaurará los precios originales.')) return;
+
+      const allProducts: number[] = [];
+      document.querySelectorAll('.product-checkbox').forEach((cb: Element) => {
+        if (cb instanceof HTMLInputElement && cb.value) {
+          allProducts.push(parseInt(cb.value));
+        }
+      });
+
+      try {
+        const response = await fetch('/api/admin/productos/ofertas', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productIds: allProducts,
+            precio: undefined
+          })
+        });
+
+        if (response.ok) {
+          alert('Ofertas eliminadas');
+          location.reload();
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    };
+
+    (window as any).editProduct = function(productJson: string | Record<string, any>): void {
+      const product = typeof productJson === 'string' ? JSON.parse(productJson) : productJson;
+      
+      const productIdElem = document.getElementById('productId') as HTMLInputElement | null;
+      const nombreElem = document.getElementById('nombre') as HTMLInputElement | null;
+      const descripcionElem = document.getElementById('descripcion') as HTMLInputElement | null;
+      const precioOriginalElem = document.getElementById('precio_original') as HTMLInputElement | null;
+      const precioElem = document.getElementById('precio') as HTMLInputElement | null;
+      const stockElem = document.getElementById('stock') as HTMLInputElement | null;
+      const categoriaElem = document.getElementById('categoria_id') as HTMLInputElement | null;
+      const urlsImagenesElem = document.getElementById('urls_imagenes') as HTMLInputElement | null;
+      const modalTitle = document.getElementById('modalTitle');
+      const productModal = document.getElementById('productModal');
+      
+      if (productIdElem) productIdElem.value = product.id;
+      if (nombreElem) nombreElem.value = product.nombre || '';
+      if (descripcionElem) descripcionElem.value = product.descripcion || '';
+      if (precioOriginalElem) precioOriginalElem.value = product.precio_original || '';
+      if (precioElem) precioElem.value = product.precio || '';
+      if (stockElem) stockElem.value = product.stock || '';
+      if (categoriaElem) categoriaElem.value = product.categoria_id || '';
+      if (urlsImagenesElem) urlsImagenesElem.value = (product.urls_imagenes || []).join(', ');
+      if (modalTitle) modalTitle.textContent = 'Editar Producto';
+      if (productModal) productModal.classList.add('show');
+    };
+
+    (window as any).handleSubmit = async function(e: Event): Promise<void> {
+      e.preventDefault();
+      const productIdElem = document.getElementById('productId') as HTMLInputElement | null;
+      const productFormElem = document.getElementById('productForm');
+      
+      if (!productIdElem || !productFormElem || !(productFormElem instanceof HTMLFormElement)) return;
+      
+      const id = productIdElem.value;
+      const formData = new FormData(productFormElem);
+
+      // Procesar URLs de imágenes
+      const urlsStr = String(formData.get('urls_imagenes') || '');
+      const urls = urlsStr
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+
+      // Crear objeto con los datos correctos
+      const body = {
+        nombre: formData.get('nombre'),
+        descripcion: formData.get('descripcion'),
+        precio_original: parseFloat(String(formData.get('precioOriginal'))),
+        precio: parseFloat(String(formData.get('precio'))),
+        stock: parseInt(String(formData.get('stock'))),
+        categoria_id: parseInt(String(formData.get('categoria'))),
+        urls_imagenes: urls
+      };
+
+      if (id) {
+        (body as any).id = parseInt(id);
+      }
+
+      try {
+        const url = id ? '/api/admin/productos/actualizar' : '/api/admin/productos/crear';
+        const method = id ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          const error = await response.json() as Record<string, string>;
+          alert('Error: ' + (error.error || 'Error desconocido'));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    };
+
+    (window as any).deleteProduct = async function(id: string | number): Promise<void> {
+      if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+
+      try {
+        const response = await fetch(`/api/admin/productos/eliminar?id=${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          const error = await response.json() as Record<string, string>;
+          alert('Error: ' + (error.error || 'Error desconocido'));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    };
+
+    // Cerrar modales al hacer click fuera
+    document.addEventListener('DOMContentLoaded', function() {
+      const productModal = document.getElementById('productModal');
+      if (productModal) {
+        productModal.addEventListener('click', function(e: Event) {
+          if (e.target === this) (window as any).closeModal();
+        });
+      }
+
+      const offersModal = document.getElementById('offersModal');
+      if (offersModal) {
+        offersModal.addEventListener('click', function(e: Event) {
+          if (e.target === this) (window as any).closeOffersModal();
+        });
+      }
+    });
+  </script>

@@ -1,0 +1,644 @@
+---
+// src/components/MisPedidos.astro
+// Listado de pedidos con opciones de cancelación y devolución
+
+import type { Order, SolicitudDevolucion } from '@/types';
+
+interface Props {
+  pedidos: Order[];
+  usuarioId: string;
+  devoluciones?: Map<string, SolicitudDevolucion>;
+}
+
+const { pedidos, usuarioId, devoluciones = new Map() } = Astro.props;
+
+// Estados y sus colores
+const ESTADOS_BADGES = {
+  PENDIENTE: { bg: '#fef3c7', color: '#92400e', texto: '⏳ Pendiente' },
+  PAGADO: { bg: '#dbeafe', color: '#0369a1', texto: '✅ Pagado' },
+  ENVIADO: { bg: '#e0e7ff', color: '#3730a3', texto: '📦 Enviado' },
+  ENTREGADO: { bg: '#dcfce7', color: '#166534', texto: '✅ Entregado' },
+  CANCELADO: { bg: '#fee2e2', color: '#991b1b', texto: '❌ Cancelado' }
+};
+
+function getBadgeEstado(estado: string) {
+  return ESTADOS_BADGES[estado as keyof typeof ESTADOS_BADGES] || 
+    { bg: '#f3f4f6', color: '#666', texto: estado };
+}
+
+function formatearFecha(fecha: string): string {
+  return new Date(fecha).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+function formatearPrecio(precio: number): string {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(precio);
+}
+
+// Determinar qué botones mostrar
+function puedeCancelar(orden: Order): boolean {
+  return orden.estado === 'PAGADO';
+}
+
+function puedeSolicitar Devolucion(orden: Order): boolean {
+  return orden.estado === 'ENTREGADO' && !devoluciones.has(orden.id);
+}
+---
+
+<div class="mis-pedidos-container">
+  <h2 style="margin: 0 0 24px 0; color: #1a1a1a;">Mis Pedidos</h2>
+
+  {pedidos.length === 0 ? (
+    <div class="vacio">
+      <p>No tienes pedidos aún</p>
+      <a href="/productos" class="btn btn-primary">Explorar Productos</a>
+    </div>
+  ) : (
+    <div class="pedidos-list">
+      {pedidos.map((pedido) => {
+        const estadoBadge = getBadgeEstado(pedido.estado);
+        const devolucion = devoluciones.get(pedido.id);
+        
+        return (
+          <div class="pedido-card">
+            <div class="pedido-header">
+              <div class="pedido-info">
+                <h3 style="margin: 0; color: #1a1a1a;">{pedido.numero_orden}</h3>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">
+                  {formatearFecha(pedido.fecha_creacion)}
+                </p>
+              </div>
+              <div class="pedido-badge" style={`background: ${estadoBadge.bg}; color: ${estadoBadge.color};`}>
+                {estadoBadge.texto}
+              </div>
+            </div>
+
+            <div class="pedido-body">
+              <p style="margin: 0; color: #666;">
+                <strong>Total:</strong> {formatearPrecio(pedido.total)}
+              </p>
+              {pedido.numero_seguimiento && (
+                <p style="margin: 8px 0 0 0; color: #666;">
+                  <strong>Seguimiento:</strong> {pedido.numero_seguimiento}
+                </p>
+              )}
+            </div>
+
+            <div class="pedido-actions">
+              <button
+                type="button"
+                class="btn-action btn-ver"
+                onclick="verDetalles('{pedido.id}')"
+              >
+                Ver Detalles
+              </button>
+
+              {puedeCancelar(pedido) && (
+                <button
+                  type="button"
+                  class="btn-action btn-danger"
+                  onclick="mostrarConfirmacionCancelar('{pedido.id}', '{pedido.numero_orden}')"
+                >
+                  Cancelar Pedido
+                </button>
+              )}
+
+              {puedeSolicitar Devolucion(pedido) && (
+                <button
+                  type="button"
+                  class="btn-action btn-warning"
+                  onclick="mostrarFormDevolucion('{pedido.id}', '{pedido.numero_orden}', {pedido.total})"
+                >
+                  Solicitar Devolución
+                </button>
+              )}
+
+              {devolucion && (
+                <div class="devolucion-estado">
+                  <span class="badge">Devolución solicitada</span>
+                  <small>Etiqueta: {devolucion.numero_etiqueta_devolucion}</small>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</div>
+
+<!-- MODAL DE CANCELACIÓN -->
+<div id="modalCancelar" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>¿Cancelar pedido?</h3>
+    <p id="textoCancelar"></p>
+    
+    <div class="warning-box">
+      <p>⚠️ <strong>Importante:</strong> Solo puedes cancelar pedidos en estado PAGADO. El stock se restaurará automáticamente.</p>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCancelar')">
+        No, Mantener Pedido
+      </button>
+      <button type="button" class="btn btn-danger" id="btnConfirmarCancelar">
+        Sí, Cancelar Pedido
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE DEVOLUCIÓN -->
+<div id="modalDevolucion" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>Solicitar Devolución</h3>
+
+    <form id="formDevolucion">
+      <div class="form-group">
+        <label for="motivoDevolucion">¿Por qué deseas devolver? *</label>
+        <select id="motivoDevolucion" name="motivo" required>
+          <option value="">Selecciona un motivo...</option>
+          <option value="defectuoso">Producto defectuoso</option>
+          <option value="no_como_esperaba">No es como esperaba</option>
+          <option value="cambio_opinion">Cambio de opinión</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="descripcionDevolucion">Descripción adicional (opcional)</label>
+        <textarea
+          id="descripcionDevolucion"
+          name="descripcion"
+          rows="3"
+          placeholder="Cuéntanos más detalles..."
+        ></textarea>
+      </div>
+
+      <input type="hidden" id="ordenIdDevolucion" />
+
+      <div id="errorDevolucion" style="display: none;" class="error-box"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalDevolucion')">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Solicitar Devolución
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CONFIRMACIÓN DE DEVOLUCIÓN EXITOSA -->
+<div id="modalDevolucioéxito" class="modal" style="display: none;">
+  <div class="modal-content" style="text-align: center;">
+    <h3>✅ Devolución Solicitada</h3>
+    
+    <div class="success-box">
+      <p><strong>📦 INSTRUCCIONES DE ENVÍO:</strong></p>
+      <p>Devuelve los artículos sin usar a:</p>
+      <p style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 16px 0;">
+        Calle de la Moda 123<br />
+        Polígono Industrial<br />
+        28001 Madrid, España
+      </p>
+
+      <p><strong>Número de Etiqueta:</strong></p>
+      <p id="numeroEtiquetaExito" style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 16px 0; font-family: monospace; font-weight: bold;"></p>
+
+      <hr style="margin: 20px 0;" />
+
+      <p><strong>💰 REEMBOLSO:</strong></p>
+      <p id="montoReembolsoExito"></p>
+
+      <p style="color: #666; font-size: 14px;">
+        Una vez recibido el paquete, procesaremos el reembolso en 5-7 días hábiles.
+      </p>
+
+      <button type="button" class="btn btn-primary" onclick="cerrarModal('modalDevolucioéxito')">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mis-pedidos-container {
+    padding: 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .vacio {
+    text-align: center;
+    padding: 40px;
+    background: #f9fafb;
+    border-radius: 8px;
+  }
+
+  .pedidos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pedido-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    transition: box-shadow 0.2s;
+  }
+
+  .pedido-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .pedido-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 16px;
+  }
+
+  .pedido-info h3 {
+    font-size: 16px;
+  }
+
+  .pedido-badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .pedido-body {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .pedido-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-action:hover {
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  .btn-danger {
+    border-color: #dc2626;
+    color: #dc2626;
+  }
+
+  .btn-danger:hover {
+    background: #fee2e2;
+  }
+
+  .btn-warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+
+  .btn-warning:hover {
+    background: #fef3c7;
+  }
+
+  .btn-ver {
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  .devolucion-estado {
+    padding: 8px 12px;
+    background: #efe6ff;
+    border-left: 4px solid #8b5cf6;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #6d28d9;
+  }
+
+  .devolucion-estado .badge {
+    font-weight: 600;
+  }
+
+  .devolucion-estado small {
+    display: block;
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+
+  /* MODALES */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal-content {
+    background: white;
+    padding: 32px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .modal-content h3 {
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  .warning-box {
+    padding: 12px;
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #92400e;
+  }
+
+  .error-box {
+    padding: 12px;
+    background: #fee2e2;
+    border-left: 4px solid #dc2626;
+    border-radius: 4px;
+    color: #991b1b;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .success-box {
+    padding: 16px;
+    background: #dcfce7;
+    border-left: 4px solid #16a34a;
+    border-radius: 4px;
+    color: #166534;
+    margin: 16px 0;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: #667eea;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #764ba2;
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #1a1a1a;
+  }
+
+  .btn-secondary:hover {
+    background: #d1d5db;
+  }
+
+  .btn-danger {
+    background: #dc2626;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: #b91c1c;
+  }
+
+  @media (max-width: 640px) {
+    .pedido-header {
+      flex-direction: column;
+    }
+
+    .pedido-actions {
+      flex-direction: column;
+    }
+
+    .btn-action {
+      width: 100%;
+    }
+
+    .modal-actions {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<script define:vars={{ usuarioId }}>
+  // ============================================================================
+  // FUNCIONES DE CONTROL DE MODALES
+  // ============================================================================
+
+  function abrirModal(id) {
+    document.getElementById(id).style.display = 'flex';
+  }
+
+  function cerrarModal(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  // ============================================================================
+  // CANCELACIÓN DE PEDIDO
+  // ============================================================================
+
+  let ordenACancelarId = null;
+
+  function mostrarConfirmacionCancelar(ordenId, numeroOrden) {
+    ordenACancelarId = ordenId;
+    document.getElementById('textoCancelar').textContent = 
+      `¿Está seguro de que quieres cancelar el pedido ${numeroOrden}? Se restaurará automáticamente el stock.`;
+    
+    abrirModal('modalCancelar');
+
+    // Event listener para el botón de confirmación
+    document.getElementById('btnConfirmarCancelar').onclick = cancelarPedido;
+  }
+
+  async function cancelarPedido() {
+    if (!ordenACancelarId) return;
+
+    const btnConfirmar = document.getElementById('btnConfirmarCancelar');
+    btnConfirmar.disabled = true;
+    btnConfirmar.textContent = 'Cancelando...';
+
+    try {
+      const response = await fetch('/api/pedidos/cancelar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orden_id: ordenACancelarId,
+          usuario_id: usuarioId
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert('Error: ' + (data.error || 'No se pudo cancelar'));
+        cerrarModal('modalCancelar');
+        btnConfirmar.disabled = false;
+        btnConfirmar.textContent = 'Sí, Cancelar Pedido';
+        return;
+      }
+
+      alert('✅ Pedido cancelado exitosamente. El reembolso se procesará en 5-7 días hábiles.');
+      cerrarModal('modalCancelar');
+      location.reload(); // Recargar para ver cambios
+
+    } catch (error) {
+      alert('Error: ' + error.message);
+      cerrarModal('modalCancelar');
+      btnConfirmar.disabled = false;
+      btnConfirmar.textContent = 'Sí, Cancelar Pedido';
+    }
+  }
+
+  // ============================================================================
+  // SOLICITUD DE DEVOLUCIÓN
+  // ============================================================================
+
+  function mostrarFormDevolucion(ordenId, numeroOrden, monto) {
+    document.getElementById('ordenIdDevolucion').value = ordenId;
+    abrirModal('modalDevolucion');
+  }
+
+  document.getElementById('formDevolucion')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const ordenId = document.getElementById('ordenIdDevolucion').value;
+    const motivo = document.getElementById('motivoDevolucion').value;
+    const descripcion = document.getElementById('descripcionDevolucion').value;
+    const errorDiv = document.getElementById('errorDevolucion');
+
+    errorDiv.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/pedidos/solicitar-devolucion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orden_id: ordenId,
+          usuario_id: usuarioId,
+          motivo,
+          descripcion
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al solicitar devolución');
+      }
+
+      // Mostrar modal de éxito
+      cerrarModal('modalDevolucion');
+      document.getElementById('numeroEtiquetaExito').textContent = 
+        data.devolucion.numero_etiqueta;
+      document.getElementById('montoReembolsoExito').textContent = 
+        `Se reembolsarán ${data.devolucion.monto_reembolso}€`;
+      
+      abrirModal('modalDevolucioéxito');
+
+      // Recargara después de cerrar
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+
+    } catch (error) {
+      errorDiv.textContent = error.message;
+      errorDiv.style.display = 'block';
+    }
+  });
+
+  // ============================================================================
+  // VER DETALLES (Implementar según necesidad)
+  // ============================================================================
+
+  function verDetalles(ordenId) {
+    window.location.href = `/pedidos/${ordenId}`;
+  }
+
+  // Cerrar modal al clickear fuera
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
+</script>

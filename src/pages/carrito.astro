@@ -3,6 +3,7 @@
 // Página del carrito
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
+import CartDisplay from "@/components/islands/CartDisplay";
 import Button from "@/components/ui/Button.astro";
 
 const title = "Tu Carrito";
@@ -22,19 +23,16 @@ const description = "Revisa y gestiona los artículos en tu carrito";
       <!-- Items -->
       <div class="lg:col-span-2">
         <div class="bg-white rounded-lg shadow-sm p-8">
-          <h1 class="text-2xl font-serif font-bold text-charcoal-900 mb-8">
-            {title}
-          </h1>
-
-          <div id="cart-items-container" class="divide-y divide-charcoal-100">
-            <!-- Los items se renderizarán aquí -->
-            <div class="text-center py-8 text-charcoal-500">
-              <p>Tu carrito está vacío</p>
-              <Button href="/productos" variant="primary" class="mt-4">
-                Continuar Comprando
-              </Button>
-            </div>
+          <div class="flex items-center justify-between mb-8">
+            <h1 class="text-2xl font-serif font-bold text-charcoal-900">
+              {title}
+            </h1>
+            <span id="item-count" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold text-sm">
+              0 productos
+            </span>
           </div>
+
+          <CartDisplay client:load />
         </div>
       </div>
 
@@ -79,8 +77,53 @@ const description = "Revisa y gestiona los artículos en tu carrito";
     </div>
   </div>
 
-  <script>
-    // Este script será completado en la próxima fase cuando integrados el carrito cliente con el servidor
-    console.log("Página de carrito lista");
+  <script is:inline>
+    // Función para actualizar el contador
+    function updateCartDisplay() {
+      if (typeof window === 'undefined') return;
+      
+      try {
+        const stored = sessionStorage.getItem('autopartsstore-cart');
+        const cartItems = stored ? JSON.parse(stored) : [];
+        
+        // Contar total de productos (suma de cantidades)
+        const itemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        const subtotal = cartItems.reduce((sum, item) => sum + ((item.precio || 0) * (item.quantity || 0)), 0);
+        
+        // Actualizar contador
+        const itemCountEl = document.getElementById('item-count');
+        if (itemCountEl) {
+          itemCountEl.textContent = `${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`;
+        }
+        
+        // Actualizar subtotal y total
+        const subtotalEl = document.getElementById('subtotal');
+        const totalEl = document.getElementById('total');
+        
+        const formattedPrice = subtotal.toLocaleString('es-ES', { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 2 
+        });
+        
+        if (subtotalEl) {
+          subtotalEl.textContent = formattedPrice + ' €';
+        }
+        
+        if (totalEl) {
+          totalEl.textContent = formattedPrice + ' €';
+        }
+      } catch (e) {
+        console.error('Error al actualizar carrito:', e);
+      }
+    }
+    
+    // Actualizar al cargar
+    updateCartDisplay();
+    
+    // Actualizar cada segundo para capturar cambios
+    setInterval(updateCartDisplay, 500);
+    
+    // Escuchar cambios en sessionStorage
+    window.addEventListener('storage', updateCartDisplay);
   </script>
 </PublicLayout>

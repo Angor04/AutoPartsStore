@@ -13,12 +13,15 @@ interface Props {
 const { product } = Astro.props;
 const mainImage = product.urls_imagenes?.[0] || "https://via.placeholder.com/400x500?text=No+Image";
 const priceDisplay = formatPrice(product.precio);
+const hasDiscount = product.precio_original && product.precio < product.precio_original;
+const originalPriceDisplay = hasDiscount ? formatPrice(product.precio_original) : null;
+// Nota: El stock dinámico se calcula en el componente de la isla
 const inStock = product.stock > 0;
 // Usar ID como identificador principal, slug como alternativa
 const productLink = `/productos/${product.id}`;
 ---
 
-<div class="group flex flex-col h-full bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-charcoal-100">
+<div class="group flex flex-col h-full bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-charcoal-100" data-product-id={product.id} data-original-stock={product.stock}>
   <!-- Image Container -->
   <div class="relative w-full aspect-square bg-gray-100 overflow-hidden">
     <img
@@ -32,9 +35,6 @@ const productLink = `/productos/${product.id}`;
         <span class="text-white font-bold text-xs">Agotado</span>
       </div>
     )}
-    <div class="absolute top-1 right-1 bg-red-600 text-white px-1.5 py-0.5 rounded text-xs font-bold">
-      ¡OFERTA!
-    </div>
   </div>
 
   <!-- Content -->
@@ -51,11 +51,11 @@ const productLink = `/productos/${product.id}`;
     <div class="mt-1.5 mb-2">
       <div class="flex items-baseline gap-1.5">
         <p class="text-sm font-bold text-red-600">{priceDisplay}</p>
-        {product.precio_original && (
-          <p class="text-xs text-charcoal-500 line-through text-opacity-60">{formatPrice(product.precio_original)}</p>
+        {originalPriceDisplay && (
+          <p class="text-xs text-charcoal-500 line-through opacity-70">{originalPriceDisplay}</p>
         )}
       </div>
-      <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70">
+      <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70 stock-display">
         {product.stock > 0 ? `${product.stock} disp.` : "Sin stock"}
       </p>
     </div>
@@ -68,3 +68,24 @@ const productLink = `/productos/${product.id}`;
     </a>
   </div>
 </div>
+
+<script>
+  // Listener para actualizar el stock en tiempo real
+  window.addEventListener('cartUpdated', () => {
+    const cards = document.querySelectorAll('[data-product-id]');
+    const stockReservedRaw = sessionStorage.getItem('stock-reserved') || '{}';
+    const stockReserved: Record<string, number> = JSON.parse(stockReservedRaw);
+    
+    cards.forEach(card => {
+      const productId = card.getAttribute('data-product-id') as string | null;
+      const originalStock = parseInt(card.getAttribute('data-original-stock') || '0');
+      const reserved = (productId && stockReserved[productId]) || 0;
+      const available = Math.max(0, originalStock - reserved);
+      
+      const stockDisplay = card.querySelector('.stock-display');
+      if (stockDisplay) {
+        stockDisplay.textContent = available > 0 ? `${available} disp.` : 'Sin stock';
+      }
+    });
+  });
+</script>

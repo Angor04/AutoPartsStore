@@ -1,7 +1,7 @@
 // src/lib/supabase.ts
 
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types';
+import type { Database, Product, Category, Order } from '@/types';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -40,7 +40,7 @@ export const getSupabaseAdmin = () => {
 };
 
 // Funciones de utilidad para operaciones comunes
-export async function getCategories() {
+export async function getCategories(): Promise<Category[]> {
   try {
     const { data, error } = await supabaseClient
       .from('categorias')
@@ -51,14 +51,14 @@ export async function getCategories() {
       return [];
     }
 
-    return data || [];
+    return (data as Category[]) || [];
   } catch (err) {
     console.error('Exception fetching categories:', err);
     return [];
   }
 }
 
-export async function getCategoryBySlug(slug: string) {
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
   const { data, error } = await supabaseClient
     .from('categorias')
     .select('*')
@@ -70,10 +70,10 @@ export async function getCategoryBySlug(slug: string) {
     return null;
   }
 
-  return data;
+  return (data as Category) || null;
 }
 
-export async function getProducts() {
+export async function getProducts(): Promise<Product[]> {
   try {
     const { data, error } = await supabaseClient
       .from('productos')
@@ -84,14 +84,14 @@ export async function getProducts() {
       return [];
     }
 
-    return data || [];
+    return (data as Product[]) || [];
   } catch (err) {
     console.error('Exception fetching products:', err);
     return [];
   }
 }
 
-export async function getProductBySlug(slug: string) {
+export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { data, error } = await supabaseClient
     .from('productos')
     .select('*')
@@ -103,10 +103,10 @@ export async function getProductBySlug(slug: string) {
     return null;
   }
 
-  return data;
+  return (data as Product) || null;
 }
 
-export async function getProductsByCategory(categoryId: string) {
+export async function getProductsByCategory(categoryId: number | string): Promise<Product[]> {
   try {
     const { data, error } = await supabaseClient
       .from('productos')
@@ -118,14 +118,14 @@ export async function getProductsByCategory(categoryId: string) {
       return [];
     }
 
-    return data || [];
+    return (data as Product[]) || [];
   } catch (err) {
     console.error('Exception fetching products by category:', err);
     return [];
   }
 }
 
-export async function getFeaturedProducts(limit = 6) {
+export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
   try {
     const { data, error } = await supabaseClient
       .from('productos')
@@ -138,7 +138,7 @@ export async function getFeaturedProducts(limit = 6) {
       return [];
     }
 
-    return data || [];
+    return (data as Product[]) || [];
   } catch (err) {
     console.error('Exception fetching featured products:', err);
     return [];
@@ -155,20 +155,21 @@ export async function checkAndUpdateStock(productId: string, quantity: number) {
     .eq('id', productId)
     .single();
 
-  if (fetchError || !product) {
+  const typedProduct = product as any;
+  if (fetchError || !typedProduct) {
     throw new Error('Product not found');
   }
 
-  if (product.stock < quantity) {
+  if (typedProduct.stock < quantity) {
     throw new Error('Insufficient stock');
   }
 
   // Actualizar el stock de forma atómica
-  const { error: updateError } = await admin
+  const { error: updateError } = await (admin as any)
     .from('productos')
-    .update({ stock: product.stock - quantity })
+    .update({ stock: typedProduct.stock - quantity })
     .eq('id', productId)
-    .eq('stock', product.stock); // Garantizar atomicidad
+    .eq('stock', typedProduct.stock); // Garantizar atomicidad
 
   if (updateError) {
     throw new Error('Failed to update stock');
@@ -188,13 +189,13 @@ export async function getSetting(key: string) {
     return null;
   }
 
-  return data?.valor;
+  return (data as any)?.valor;
 }
 
 export async function updateSetting(key: string, value: any) {
   const admin = getSupabaseAdmin();
 
-  const { error } = await admin
+  const { error } = await (admin as any)
     .from('configuracion')
     .upsert({
       clave: key,

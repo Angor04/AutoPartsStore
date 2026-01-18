@@ -1,114 +1,99 @@
 ---
 // src/pages/admin/index.astro
-// Dashboard de administración
+// Dashboard principal del admin
+
+export const prerender = false;
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import Button from "@/components/ui/Button.astro";
+import { getProducts } from "@/lib/supabase";
+import { formatNumber } from "@/lib/utils";
 
-// Aquí verificaremos que el usuario esté autenticado vía middleware
-const title = "Dashboard";
-const description = "Bienvenido al panel de administración";
+// Obtener productos para calcular estadísticas
+const productos = await getProducts();
+
+// Calcular estadísticas
+const totalProductos = productos.length;
+const stockTotal = productos.reduce((sum, p) => sum + (p.stock || 0), 0);
+const productosAgotados = productos.filter(p => p.stock === 0 || p.stock === null).length;
+
+// Valor inventario basado en precio original (valor real del stock)
+const valorInventario = productos.reduce((sum, p) => {
+  const precioBase = p.precio_original || p.precio; // Usar precio_original si existe
+  return sum + (precioBase * (p.stock || 0));
+}, 0);
+
+// Descuento total en el inventario
+const descuentoTotal = productos.reduce((sum, p) => {
+  if (p.precio_original && p.precio_original > p.precio) {
+    const descuento = (p.precio_original - p.precio) * (p.stock || 0);
+    return sum + descuento;
+  }
+  return sum;
+}, 0);
 ---
 
-<AdminLayout title={title} description={description}>
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <!-- Stats Cards -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-charcoal-600 text-sm font-medium">Productos</p>
-          <p class="text-3xl font-serif font-bold text-navy-500 mt-2">156</p>
-        </div>
-        <div class="w-12 h-12 bg-navy-100 rounded-lg flex items-center justify-center">
-          <svg class="w-6 h-6 text-navy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-        </div>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-charcoal-600 text-sm font-medium">Pedidos</p>
-          <p class="text-3xl font-serif font-bold text-gold-500 mt-2">42</p>
-        </div>
-        <div class="w-12 h-12 bg-gold-100 rounded-lg flex items-center justify-center">
-          <svg class="w-6 h-6 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-          </svg>
-        </div>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-charcoal-600 text-sm font-medium">Ingresos</p>
-          <p class="text-3xl font-serif font-bold text-green-600 mt-2">€6.200</p>
-        </div>
-        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-charcoal-600 text-sm font-medium">Clientes</p>
-          <p class="text-3xl font-serif font-bold text-purple-500 mt-2">234</p>
-        </div>
-        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-          <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM6 20h12a6 6 0 016-6H0a6 6 0 016 6z" />
-          </svg>
-        </div>
-      </div>
-    </div>
+<AdminLayout title="Dashboard" description="Resumen general del negocio">
+  <!-- Header -->
+  <div style="margin-bottom: 32px;">
+    <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a;">Bienvenido al Panel de Control</h2>
+    <p style="color: #666; margin-top: 8px;">Aquí tienes un resumen de tu negocio</p>
   </div>
 
-  <!-- Quick Actions -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <!-- Recent Orders -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <h3 class="text-lg font-serif font-bold text-charcoal-900 mb-4">
-        Pedidos Recientes
-      </h3>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between p-4 bg-charcoal-50 rounded-lg">
-          <div>
-            <p class="font-medium text-charcoal-900">Pedido #12345</p>
-            <p class="text-sm text-charcoal-600">2025-01-08</p>
-          </div>
-          <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-            Completado
-          </span>
+  <!-- Widgets Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 32px;">
+    <!-- Widget: Total Productos -->
+    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <p style="color: #888; font-size: 14px;">Total de Productos</p>
+          <h3 style="font-size: 32px; font-weight: bold; color: #1a1a1a; margin-top: 8px;">{totalProductos}</h3>
         </div>
       </div>
-      <a href="/admin/pedidos" class="text-navy-500 hover:text-navy-700 font-medium text-sm mt-4 inline-block">
-        Ver todos →
-      </a>
+      <p style="color: #0ea5e9; font-size: 12px; margin-top: 12px;">Productos activos en catálogo</p>
     </div>
 
-    <!-- Quick Links -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <h3 class="text-lg font-serif font-bold text-charcoal-900 mb-4">
-        Accesos Rápidos
-      </h3>
-      <div class="space-y-2">
-        <a href="/admin/productos/nuevo" class="block p-4 bg-charcoal-50 hover:bg-charcoal-100 rounded-lg transition-colors font-medium text-navy-500">
-          + Crear Nuevo Producto
-        </a>
-        <a href="/admin/productos" class="block p-4 bg-charcoal-50 hover:bg-charcoal-100 rounded-lg transition-colors font-medium text-navy-500">
-          Gestionar Productos
-        </a>
-        <a href="/admin/categorias" class="block p-4 bg-charcoal-50 hover:bg-charcoal-100 rounded-lg transition-colors font-medium text-navy-500">
-          Categorías
-        </a>
+    <!-- Widget: Stock Total -->
+    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <p style="color: #888; font-size: 14px;">Stock Total</p>
+          <h3 style="font-size: 32px; font-weight: bold; color: #1a1a1a; margin-top: 8px;">{stockTotal}</h3>
+        </div>
       </div>
+      <p style="color: #0ea5e9; font-size: 12px; margin-top: 12px;">Unidades en inventario</p>
+    </div>
+
+    <!-- Widget: Productos Agotados -->
+    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <p style="color: #888; font-size: 14px;">Productos Agotados</p>
+          <h3 style="font-size: 32px; font-weight: bold; color: #dc2626; margin-top: 8px;">{productosAgotados}</h3>
+        </div>
+      </div>
+      <p style="color: #dc2626; font-size: 12px; margin-top: 12px;">Requieren reabastecimiento</p>
+    </div>
+
+    <!-- Widget: Valor Inventario -->
+    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <p style="color: #888; font-size: 14px;">Valor Inventario (sin descuentos)</p>
+          <h3 style="font-size: 32px; font-weight: bold; color: #1a1a1a; margin-top: 8px;">${formatNumber(valorInventario)}</h3>
+        </div>
+      </div>
+      <p style="color: #0ea5e9; font-size: 12px; margin-top: 12px;">Valor total del stock</p>
+    </div>
+
+    <!-- Widget: Descuento Total -->
+    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <p style="color: #888; font-size: 14px;">Descuento en Inventario</p>
+          <h3 style="font-size: 32px; font-weight: bold; color: #dc2626; margin-top: 8px;">${formatNumber(descuentoTotal)}</h3>
+        </div>
+      </div>
+      <p style="color: #dc2626; font-size: 12px; margin-top: 12px;">Dinero en ofertas del stock</p>
     </div>
   </div>
 </AdminLayout>

@@ -1,0 +1,668 @@
+---
+// src/pages/admin/cupones.astro
+// Panel de administración de cupones y códigos de descuento
+
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { supabase } from '@/lib/supabase';
+
+// Simulación de fetch de cupones (en producción, traerías de la BD)
+const cupones = [
+  {
+    id: '1',
+    codigo: 'DESC10EUR',
+    tipo_descuento: 'cantidad_fija',
+    valor_descuento: 10,
+    uso_unico: false,
+    limite_usos: null,
+    cantidad_minima_compra: 30,
+    fecha_expiracion: '2026-12-31',
+    activo: true,
+    usos_totales: 45
+  },
+  {
+    id: '2',
+    codigo: 'BLACK2026',
+    tipo_descuento: 'porcentaje',
+    valor_descuento: 20,
+    uso_unico: false,
+    limite_usos: 100,
+    cantidad_minima_compra: 0,
+    fecha_expiracion: '2026-01-31',
+    activo: true,
+    usos_totales: 67
+  },
+  {
+    id: '3',
+    codigo: 'FIRSTTIME',
+    tipo_descuento: 'porcentaje',
+    valor_descuento: 15,
+    uso_unico: true,
+    limite_usos: 200,
+    cantidad_minima_compra: 0,
+    fecha_expiracion: '2026-06-30',
+    activo: false,
+    usos_totales: 156
+  }
+];
+
+function formatearFecha(fecha: string): string {
+  return new Date(fecha).toLocaleDateString('es-ES');
+}
+
+function describeTipoDescuento(tipo: string, valor: number): string {
+  if (tipo === 'porcentaje') {
+    return `${valor}% de descuento`;
+  } else {
+    return `€${valor.toFixed(2)} fijo`;
+  }
+}
+---
+
+<AdminLayout>
+  <div class="admin-cupones">
+    <!-- ENCABEZADO -->
+    <div class="admin-header">
+      <h1>Gestionar Cupones</h1>
+      <button type="button" class="btn btn-primary" onclick="abrirModalCrear()">
+        + Crear Nuevo Cupón
+      </button>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">Cupones Activos</p>
+        <p class="stat-value">{cupones.filter(c => c.activo).length}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Usos Totales</p>
+        <p class="stat-value">{cupones.reduce((sum, c) => sum + c.usos_totales, 0)}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Descuento Total Dado</p>
+        <p class="stat-value">€1,234.56</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Promedio de Uso</p>
+        <p class="stat-value">{Math.round(cupones.reduce((sum, c) => sum + c.usos_totales, 0) / cupones.length)}</p>
+      </div>
+    </div>
+
+    <!-- TABLA DE CUPONES -->
+    <div class="tabla-container">
+      <table class="tabla-cupones">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Tipo de Descuento</th>
+            <th>Mínimo de Compra</th>
+            <th>Válido Hasta</th>
+            <th>Usos</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cupones.map((cupon) => (
+            <tr class={!cupon.activo ? 'inactivo' : ''}>
+              <td>
+                <code class="codigo-cupon">{cupon.codigo}</code>
+              </td>
+              <td>
+                {describeTipoDescuento(cupon.tipo_descuento, cupon.valor_descuento)}
+              </td>
+              <td>
+                {cupon.cantidad_minima_compra > 0 ? `€${cupon.cantidad_minima_compra}` : 'Sin mínimo'}
+              </td>
+              <td>{formatearFecha(cupon.fecha_expiracion)}</td>
+              <td>
+                <span class="uso-badge">
+                  {cupon.usos_totales}
+                  {cupon.limite_usos && ` / ${cupon.limite_usos}`}
+                </span>
+              </td>
+              <td>
+                <span class={`status-badge status-${cupon.activo ? 'activo' : 'inactivo'}`}>
+                  {cupon.activo ? '✓ Activo' : '✕ Inactivo'}
+                </span>
+              </td>
+              <td>
+                <div class="acciones-btn">
+                  <button type="button" class="btn-accion btn-editar" 
+                    onclick="abrirModalEditar('{cupon.id}')">
+                    Editar
+                  </button>
+                  <button type="button" class="btn-accion btn-toggle"
+                    onclick="toggleCupon('{cupon.id}', {cupon.activo})">
+                    {cupon.activo ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button type="button" class="btn-accion btn-eliminar"
+                    onclick="eliminarCupon('{cupon.id}')">
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL CREAR/EDITAR CUPÓN -->
+  <div id="modalCupon" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h2 id="tituloModal">Crear Nuevo Cupón</h2>
+
+      <form id="formCupon">
+        <!-- ROW 1: CÓDIGO Y TIPO -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="codigoCupon">Código del Cupón *</label>
+            <input
+              type="text"
+              id="codigoCupon"
+              name="codigo"
+              placeholder="ej: DESC10EUR"
+              maxlength="20"
+              required
+            />
+            <small>El código debe ser único y en mayúsculas</small>
+          </div>
+
+          <div class="form-group">
+            <label for="tipoDescuento">Tipo de Descuento *</label>
+            <select id="tipoDescuento" name="tipo_descuento" required>
+              <option value="">Selecciona...</option>
+              <option value="porcentaje">Porcentaje (%)</option>
+              <option value="cantidad_fija">Cantidad Fija (€)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ROW 2: VALOR Y MÍNIMO -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="valorDescuento">Valor del Descuento *</label>
+            <input
+              type="number"
+              id="valorDescuento"
+              name="valor_descuento"
+              placeholder="ej: 10"
+              step="0.01"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="minimoCompra">Mínimo de Compra (€)</label>
+            <input
+              type="number"
+              id="minimoCompra"
+              name="cantidad_minima_compra"
+              placeholder="0 para sin mínimo"
+              value="0"
+              step="0.01"
+            />
+          </div>
+        </div>
+
+        <!-- ROW 3: LÍMITES -->
+        <div class="form-row">
+          <div class="form-group checkbox">
+            <input type="checkbox" id="usoUnico" name="uso_unico" />
+            <label for="usoUnico">Uso único por cliente</label>
+          </div>
+
+          <div class="form-group">
+            <label for="limiteUsos">Límite de Usos (dejar en blanco para ilimitado)</label>
+            <input
+              type="number"
+              id="limiteUsos"
+              name="limite_usos"
+              placeholder="ej: 100"
+              min="1"
+            />
+          </div>
+        </div>
+
+        <!-- ROW 4: FECHA DE EXPIRACIÓN -->
+        <div class="form-group">
+          <label for="fechaExpiracion">Fecha de Expiración *</label>
+          <input
+            type="date"
+            id="fechaExpiracion"
+            name="fecha_expiracion"
+            required
+          />
+        </div>
+
+        <!-- ERRORES -->
+        <div id="errorForm" class="error-box" style="display: none;"></div>
+
+        <!-- BOTONES -->
+        <div class="form-acciones">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCupon')">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Guardar Cupón
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .admin-cupones {
+      padding: 24px;
+      max-width: 1200px;
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      gap: 16px;
+    }
+
+    .admin-header h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #1a1a1a;
+    }
+
+    /* ESTADÍSTICAS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-label {
+      margin: 0;
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      margin: 8px 0 0 0;
+      font-size: 32px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    /* TABLA */
+    .tabla-container {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .tabla-cupones {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .tabla-cupones thead {
+      background: #f9fafb;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .tabla-cupones th {
+      padding: 16px;
+      text-align: left;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .tabla-cupones td {
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .tabla-cupones tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .tabla-cupones tr.inactivo {
+      opacity: 0.6;
+    }
+
+    .codigo-cupon {
+      background: #f0f9ff;
+      color: #0369a1;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .uso-badge {
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .status-activo {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-inactivo {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .acciones-btn {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-accion {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-editar {
+      color: #0369a1;
+      border-color: #0369a1;
+    }
+
+    .btn-editar:hover {
+      background: #f0f9ff;
+    }
+
+    .btn-toggle {
+      color: #f59e0b;
+      border-color: #f59e0b;
+    }
+
+    .btn-toggle:hover {
+      background: #fef3c7;
+    }
+
+    .btn-eliminar {
+      color: #dc2626;
+      border-color: #dc2626;
+    }
+
+    .btn-eliminar:hover {
+      background: #fee2e2;
+    }
+
+    /* MODAL */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 32px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-content h2 {
+      margin: 0 0 24px 0;
+      font-size: 20px;
+      color: #1a1a1a;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group small {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .form-group.checkbox {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group.checkbox input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+
+    .form-group.checkbox label {
+      margin: 0;
+      font-weight: 500;
+    }
+
+    .error-box {
+      padding: 12px;
+      background: #fee2e2;
+      border-left: 4px solid #dc2626;
+      border-radius: 4px;
+      color: #991b1b;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .form-acciones {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #764ba2;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #1a1a1a;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+
+    @media (max-width: 768px) {
+      .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .tabla-cupones {
+        font-size: 12px;
+      }
+
+      .tabla-cupones th,
+      .tabla-cupones td {
+        padding: 12px;
+      }
+
+      .acciones-btn {
+        flex-direction: column;
+      }
+    }
+  </style>
+
+  <script>
+    // ============================================================================
+    // FUNCIONES MODALES
+    // ============================================================================
+
+    function abrirModalCrear() {
+      document.getElementById('tituloModal').textContent = 'Crear Nuevo Cupón';
+      document.getElementById('formCupon').reset();
+      document.getElementById('formCupon').dataset.id = '';
+      document.getElementById('errorForm').style.display = 'none';
+      document.getElementById('modalCupon').style.display = 'flex';
+    }
+
+    function abrirModalEditar(id) {
+      document.getElementById('tituloModal').textContent = 'Editar Cupón';
+      document.getElementById('formCupon').dataset.id = id;
+      // Aquí va la lógica para cargar los datos del cupón
+      document.getElementById('modalCupon').style.display = 'flex';
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    // ============================================================================
+    // GESTIÓN DE CUPONES
+    // ============================================================================
+
+    document.getElementById('formCupon').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const codigo = document.getElementById('codigoCupon').value.toUpperCase();
+      const tipoDescuento = document.getElementById('tipoDescuento').value;
+      const valorDescuento = parseFloat(document.getElementById('valorDescuento').value);
+      const minimoCompra = parseFloat(document.getElementById('minimoCompra').value);
+      const usoUnico = document.getElementById('usoUnico').checked;
+      const limiteUsos = document.getElementById('limiteUsos').value ? 
+        parseInt(document.getElementById('limiteUsos').value) : null;
+      const fechaExpiracion = document.getElementById('fechaExpiracion').value;
+
+      const errorDiv = document.getElementById('errorForm');
+
+      try {
+        // Validaciones básicas
+        if (!codigo || !tipoDescuento || !valorDescuento || !fechaExpiracion) {
+          throw new Error('Por favor completa todos los campos requeridos');
+        }
+
+        // Aquí iría la llamada a la API para guardar el cupón
+        // Por ahora, solo mostramos un mensaje de éxito
+        alert(`✅ Cupón ${codigo} guardado correctamente`);
+        cerrarModal('modalCupon');
+        
+        // Recargar página para ver cambios
+        setTimeout(() => location.reload(), 500);
+
+      } catch (error) {
+        errorDiv.textContent = '❌ ' + error.message;
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    function toggleCupon(id, activo) {
+      const accion = activo ? 'desactivar' : 'activar';
+      if (confirm(`¿Seguro que quieres ${accion} este cupón?`)) {
+        alert(`Cupón ${accion} correctamente`);
+        location.reload();
+      }
+    }
+
+    function eliminarCupon(id) {
+      if (confirm('¿Seguro que quieres eliminar este cupón? Esta acción no se puede deshacer.')) {
+        alert('Cupón eliminado correctamente');
+        location.reload();
+      }
+    }
+
+    // Cerrar modal al clickear fuera
+    document.getElementById('modalCupon')?.addEventListener('click', (e) => {
+      if (e.target.id === 'modalCupon') {
+        cerrarModal('modalCupon');
+      }
+    });
+  </script>
+</AdminLayout>

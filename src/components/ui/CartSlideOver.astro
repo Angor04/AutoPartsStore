@@ -2,6 +2,8 @@
 // src/components/ui/CartSlideOver.astro
 // Panel deslizante del carrito
 
+import CartDisplay from '@/components/islands/CartDisplay';
+
 interface Props {
   class?: string;
 }
@@ -21,21 +23,12 @@ const { class: className = "" } = Astro.props;
   </div>
 
   <!-- Items -->
-  <div id="cart-items" class="flex-1 overflow-y-auto p-6">
-    <!-- Los items se renderizarán aquí vía JavaScript -->
-    <div class="text-center text-charcoal-500 py-8">
-      <p>El carrito está vacío</p>
-    </div>
+  <div class="flex-1 overflow-y-auto p-6">
+    <CartDisplay client:load />
   </div>
 
   <!-- Footer -->
   <div class="border-t border-charcoal-100 p-6 bg-ivory-50">
-    <div class="mb-4 pb-4 border-b border-charcoal-100">
-      <div class="flex justify-between text-lg font-serif font-bold mb-2">
-        <span>Total:</span>
-        <span id="cart-total" class="text-navy-500">0,00 €</span>
-      </div>
-    </div>
     <a href="/carrito" class="block w-full bg-navy-500 text-white text-center py-3 rounded-lg font-medium hover:bg-navy-600 transition-colors mb-2">
       Ver Carrito Completo
     </a>
@@ -63,5 +56,5 @@ const { class: className = "" } = Astro.props;
   cartOverlay?.addEventListener('click', toggleCart);
 
   // Exponer función global para abrir carrito
-  window.openCart = toggleCart;
+  (window as any).openCart = toggleCart;
 </script>

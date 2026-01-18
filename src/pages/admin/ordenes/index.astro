@@ -1,0 +1,151 @@
+---
+// src/pages/admin/ordenes/index.astro
+// Gestión de órdenes
+
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { getSupabaseAdmin } from "@/lib/supabase";
+import { formatPrice } from "@/lib/utils";
+import type { Order } from "@/types";
+
+const supabaseAdmin = getSupabaseAdmin();
+
+// Obtener todas las órdenes
+const { data: ordenesData } = await supabaseAdmin
+  .from('ordenes')
+  .select('*')
+  .order('created_at', { ascending: false });
+
+const ordenes = (ordenesData as Order[] | null) || [];
+
+// Estadísticas
+const totalOrdenes = ordenes?.length || 0;
+const ordenesCompletas = ordenes?.filter((o: Order) => o.estado === 'completada').length || 0;
+const ordenesPendientes = ordenes?.filter((o: Order) => o.estado === 'pendiente').length || 0;
+const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada').length || 0;
+---
+
+<AdminLayout title="Gestión de Órdenes" description="Visualiza y administra todas las órdenes">
+  <style>
+    .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid #667eea; }
+    .stat-number { font-size: 32px; font-weight: bold; color: #1a1a1a; }
+    .stat-label { color: #666; font-size: 14px; margin-top: 5px; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f9fafb; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { font-weight: 600; color: #1a1a1a; }
+    tbody tr:hover { background: #f3f4f6; }
+    
+    .badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-pendiente { background: #fef3c7; color: #92400e; }
+    .badge-completada { background: #dcfce7; color: #166534; }
+    .badge-cancelada { background: #fee2e2; color: #991b1b; }
+    
+    .select-estado { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; }
+  </style>
+
+  <div style="margin-bottom: 32px;">
+    <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin-bottom: 24px;">Órdenes</h2>
+
+    <!-- Estadísticas -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+      <div class="stat-card">
+        <div class="stat-number">{totalOrdenes}</div>
+        <div class="stat-label">Total de órdenes</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #fbbf24;">
+        <div class="stat-number">{ordenesPendientes}</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #34d399;">
+        <div class="stat-number">{ordenesCompletas}</div>
+        <div class="stat-label">Completadas</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #f87171;">
+        <div class="stat-number">{ordenesCanceladas}</div>
+        <div class="stat-label">Canceladas</div>
+      </div>
+    </div>
+
+    <!-- Tabla de órdenes -->
+    <div style="background: white; border-radius: 8px; overflow: hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Email</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {!ordenes || ordenes.length === 0 ? (
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                No hay órdenes registradas
+              </td>
+            </tr>
+          ) : (
+            ordenes.map(orden => {
+              const estado = orden.estado || 'pendiente';
+              const badgeClass = estado === 'completada' ? 'badge-completada' : 
+                                estado === 'cancelada' ? 'badge-cancelada' : 'badge-pendiente';
+              return (
+                <tr>
+                  <td style="font-weight: 600; color: #1a1a1a;">#{orden.id?.toString().slice(0, 8)}</td>
+                  <td>{orden.customer_name || 'N/A'}</td>
+                  <td style="color: #0369a1;">{orden.customer_email || 'N/A'}</td>
+                  <td style="font-weight: 600;">{formatPrice(orden.total || 0)}</td>
+                  <td>
+                    <span class={`badge ${badgeClass}`}>
+                      {estado.charAt(0).toUpperCase() + estado.slice(1)}
+                    </span>
+                  </td>
+                  <td style="font-size: 13px; color: #999;">
+                    {new Date(orden.created_at).toLocaleDateString('es-ES')}
+                  </td>
+                  <td>
+                    <select class="select-estado" onchange="cambiarEstado('{orden.id}', this.value)">
+                      <option value="pendiente" selected={estado === 'pendiente'}>Pendiente</option>
+                      <option value="completada" selected={estado === 'completada'}>Completada</option>
+                      <option value="cancelada" selected={estado === 'cancelada'}>Cancelada</option>
+                    </select>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function cambiarEstado(ordenId: string, nuevoEstado: string): Promise<void> {
+      try {
+        const formData = new FormData();
+        formData.append('id', ordenId);
+        formData.append('estado', nuevoEstado);
+
+        const response = await fetch('/api/admin/ordenes/actualizar-estado', {
+          method: 'PUT',
+          body: formData
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          const error = await response.json() as Record<string, string>;
+          alert('Error: ' + (error.error || 'Error desconocido'));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    }
+  </script>

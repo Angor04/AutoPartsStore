@@ -1,17 +1,64 @@
 // src/pages/api/admin/productos/crear.ts
-// Endpoint para crear nuevo producto (próxima fase)
+// Endpoint para crear nuevo producto
 
+import { getSupabaseAdmin } from '@/lib/supabase';
 import type { APIRoute } from 'astro';
 
-export const POST: APIRoute = async ({ request }) => {
-  // TODO: Verificar autenticación
-  // TODO: Obtener datos del formulario
-  // TODO: Validar datos
-  // TODO: Subir imágenes a Supabase Storage
-  // TODO: Insertar producto en BD
-  // TODO: Redirigir a /admin/productos
+export const prerender = false;
 
-  return new Response(JSON.stringify({ error: 'Not implemented yet' }), {
-    status: 501,
-  });
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const body = await request.json();
+    const { nombre, descripcion, precio_original, precio, stock, categoria_id, urls_imagenes } = body;
+
+    // Validaciones
+    if (!nombre || !precio || !stock) {
+      return new Response(
+        JSON.stringify({ error: 'Nombre, precio y stock son requeridos' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Generar slug a partir del nombre
+    const slug = nombre
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]/g, '')
+      .substring(0, 100);
+
+    const { data, error } = await (supabaseAdmin as any)
+      .from('productos')
+      .insert({
+        nombre,
+        descripcion: descripcion || null,
+        precio: parseFloat(precio),
+        precio_original: precio_original ? parseFloat(precio_original) : null,
+        stock: parseInt(stock),
+        categoria_id: categoria_id ? parseInt(categoria_id) : null,
+        slug,
+        urls_imagenes: urls_imagenes && urls_imagenes.length > 0 ? urls_imagenes : null,
+      })
+      .select();
+
+    if (error) {
+      console.error('Error inserting producto:', error);
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, data }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error creating producto:', error);
+    return new Response(
+      JSON.stringify({ error: 'Error al crear producto' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 };

@@ -8,16 +8,17 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
 import ProductCard from "@/components/product/ProductCard.astro";
 import CartSlideOver from "@/components/ui/CartSlideOver.astro";
 import { getCategories, getProductsByCategory, getProducts } from "@/lib/supabase";
+import type { Category, Product } from "@/types/index";
 
 const slug = Astro.params.slug;
-const categorias = await getCategories();
+const categorias: Category[] = await getCategories();
 const categoria = categorias.find((c) => c.slug === slug);
 
 if (!categoria) {
   return new Response("Categoría no encontrada", { status: 404 });
 }
 
-const productos = await getProductsByCategory(categoria.id);
+const productos: Product[] = await getProductsByCategory(categoria.id);
 
 const title = categoria.nombre;
 const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCase()}`;
@@ -40,11 +41,10 @@ const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCa
       <!-- Sidebar Filters -->
       <aside class="lg:col-span-1">
         <div class="bg-white rounded-lg p-6 shadow-sm sticky top-24 border border-charcoal-200">
-          <h3 class="text-lg font-bold text-charcoal-900 mb-6">Filtros</h3>
+          <h3 class="text-lg font-bold text-charcoal-900 mb-6">Categorías</h3>
 
           <!-- Categories Filter -->
           <div class="mb-8">
-            <h4 class="font-semibold text-charcoal-900 mb-4 text-sm">CATEGORÍAS</h4>
             <ul class="space-y-2">
               <li>
                 <a href="/productos" class="text-charcoal-600 hover:text-red-600 transition-colors text-sm">
@@ -62,16 +62,6 @@ const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCa
                 </li>
               ))}
             </ul>
-          </div>
-
-          <!-- Price Filter -->
-          <div>
-            <h4 class="font-semibold text-charcoal-900 mb-4">Precio</h4>
-            <input type="range" min="0" max="5000" class="w-full" />
-            <div class="flex justify-between text-sm text-charcoal-600 mt-2">
-              <span>0 €</span>
-              <span>5000 €</span>
-            </div>
           </div>
         </div>
       </aside>

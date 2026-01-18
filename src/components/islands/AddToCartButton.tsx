@@ -7,7 +7,7 @@ import { cartStore } from '@/stores/cart';
 import type { CartItem } from '@/types';
 
 interface AddToCartButtonProps {
-  productId: string;
+  productId: string | number;
   productName: string;
   price: number;
   imageUrl: string;
@@ -44,16 +44,28 @@ export default function AddToCartButton({
     }
 
     const cartItem: CartItem = {
-      product_id: productId,
+      product_id: String(productId),
       quantity,
       precio: price,
       nombre: productName,
       urls_imagenes: [imageUrl],
+      stock, // Guardar el stock disponible
     };
 
+    console.log("Agregando al carrito:", cartItem);
     addToCart(cartItem);
     setIsAdded(true);
     setMessage(`${quantity} ${quantity === 1 ? 'artículo' : 'artículos'} añadido al carrito`);
+
+    // Disparar evento para actualizar el carrito en todos lados
+    if (typeof window !== 'undefined') {
+      console.log("Disparando evento cartUpdated");
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+      
+      // Log del sessionStorage
+      const stored = sessionStorage.getItem('autopartsstore-cart');
+      console.log("Contenido del sessionStorage:", stored);
+    }
 
     setTimeout(() => {
       setIsAdded(false);
@@ -65,6 +77,9 @@ export default function AddToCartButton({
   const handleIncrement = () => {
     if (quantity < maxAddable) {
       setQuantity(quantity + 1);
+    } else {
+      setMessage(`No puedes añadir más de ${maxAddable} unidades`);
+      setTimeout(() => setMessage(''), 2000);
     }
   };
 
@@ -131,8 +146,7 @@ export default function AddToCartButton({
       {/* Stock Info */}
       {isInStock && (
         <p className="text-xs text-charcoal-500">
-          {maxAddable} {maxAddable === 1 ? 'unidad' : 'unidades'} disponible
-          {maxAddable > 1 ? 's' : ''}
+          Disponible: {maxAddable} {maxAddable === 1 ? 'unidad' : 'unidades'}
         </p>
       )}
 

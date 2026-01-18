@@ -1,0 +1,538 @@
+---
+// src/components/checkout/CarritoCheckout.astro
+// Carrito con aplicación de cupones y cálculo de descuentos
+
+import type { CartItem } from '@/types';
+
+interface Props {
+  items: CartItem[];
+  usuarioId: string;
+  subtotal: number;
+  impuestos: number;
+  costoEnvio: number;
+}
+
+const { items, usuarioId, subtotal, impuestos, costoEnvio } = Astro.props;
+
+function formatearPrecio(precio: number): string {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(precio);
+}
+---
+
+<div class="carrito-checkout">
+  <!-- ITEMS DEL CARRITO -->
+  <div class="carrito-items">
+    <h3>Resumen del Pedido</h3>
+
+    {items.length === 0 ? (
+      <p class="carrito-vacio">Tu carrito está vacío</p>
+    ) : (
+      <div class="items-list">
+        {items.map((item) => (
+          <div class="item-row">
+            <div class="item-info">
+              <p class="item-name">{item.nombre}</p>
+              <p class="item-meta">{item.cantidad} x {formatearPrecio(item.precio)}</p>
+            </div>
+            <p class="item-total">{formatearPrecio(item.cantidad * item.precio)}</p>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <!-- SECCIÓN DE CUPONES -->
+  <div class="cupon-section">
+    <h4>Aplicar Código de Descuento</h4>
+    <div class="cupon-input-group">
+      <input
+        type="text"
+        id="codigoCupon"
+        placeholder="Ingresa tu código..."
+        maxlength="20"
+      />
+      <button type="button" id="btnAplicarCupon" class="btn-aplicar">
+        Aplicar
+      </button>
+    </div>
+
+    <div id="cuponError" class="error-message" style="display: none;"></div>
+    <div id="cuponSuccess" class="success-message" style="display: none;"></div>
+
+    <div id="cuponAplicado" class="cupon-aplicado" style="display: none;">
+      <div class="cupon-info">
+        <span id="cuponCodigo"></span>
+        <button type="button" id="btnEliminarCupon" class="btn-eliminar-cupon">
+          ✕
+        </button>
+      </div>
+      <p id="cuponDescuentoTexto" class="descuento-aplicado"></p>
+    </div>
+  </div>
+
+  <!-- DESGLOSE DE PRECIOS -->
+  <div class="precio-desglose">
+    <div class="desglose-row">
+      <span>Subtotal</span>
+      <span id="precioSubtotal">{formatearPrecio(subtotal)}</span>
+    </div>
+
+    <div class="desglose-row" id="rowDescuento" style="display: none;">
+      <span id="labelDescuento">Descuento</span>
+      <span id="precioDescuento" class="descuento-texto">-€0.00</span>
+    </div>
+
+    <div class="desglose-row">
+      <span>Impuestos (IVA 21%)</span>
+      <span id="precioImpuestos">{formatearPrecio(impuestos)}</span>
+    </div>
+
+    <div class="desglose-row">
+      <span>Costo de Envío</span>
+      <span id="precioCostoEnvio">{formatearPrecio(costoEnvio)}</span>
+    </div>
+
+    <div class="desglose-total">
+      <span>Total a Pagar</span>
+      <span id="precioTotal">{formatearPrecio(subtotal + impuestos + costoEnvio)}</span>
+    </div>
+  </div>
+
+  <!-- BOTÓN DE COMPRA -->
+  <button
+    type="button"
+    id="btnComprar"
+    class="btn-comprar"
+    disabled={items.length === 0}
+  >
+    Proceder al Pago
+  </button>
+
+  <p class="info-texto">
+    🔒 Tus datos están protegidos. Puedes cancelar tu pedido si aún no ha sido enviado.
+  </p>
+</div>
+
+<style>
+  .carrito-checkout {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 400px;
+  }
+
+  .carrito-items {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .carrito-items h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: #1a1a1a;
+  }
+
+  .carrito-vacio {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 6px;
+  }
+
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+  }
+
+  .item-info {
+    flex: 1;
+  }
+
+  .item-name {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .item-meta {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: #666;
+  }
+
+  .item-total {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  /* SECCIÓN DE CUPONES */
+  .cupon-section {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #f0f9ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+  }
+
+  .cupon-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #0369a1;
+  }
+
+  .cupon-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .cupon-input-group input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #93c5fd;
+    border-radius: 6px;
+    font-size: 14px;
+    text-transform: uppercase;
+  }
+
+  .cupon-input-group input:focus {
+    outline: none;
+    border-color: #0369a1;
+    box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1);
+  }
+
+  .btn-aplicar {
+    padding: 10px 16px;
+    background: #0369a1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-aplicar:hover {
+    background: #0284c7;
+  }
+
+  .btn-aplicar:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+  }
+
+  .error-message {
+    padding: 8px 12px;
+    background: #fee2e2;
+    border-left: 4px solid #dc2626;
+    border-radius: 4px;
+    color: #991b1b;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .success-message {
+    padding: 8px 12px;
+    background: #dcfce7;
+    border-left: 4px solid #16a34a;
+    border-radius: 4px;
+    color: #166534;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .cupon-aplicado {
+    padding: 12px;
+    background: #efe6ff;
+    border: 1px solid #d8b4fe;
+    border-radius: 6px;
+    margin-top: 8px;
+  }
+
+  .cupon-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  #cuponCodigo {
+    font-weight: 600;
+    color: #6d28d9;
+    font-family: monospace;
+  }
+
+  .btn-eliminar-cupon {
+    background: none;
+    border: none;
+    color: #6d28d9;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .btn-eliminar-cupon:hover {
+    color: #9333ea;
+  }
+
+  .descuento-aplicado {
+    margin: 0;
+    font-size: 13px;
+    color: #6d28d9;
+  }
+
+  .descuento-texto {
+    color: #16a34a;
+    font-weight: 600;
+  }
+
+  /* DESGLOSE DE PRECIOS */
+  .precio-desglose {
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+
+  .desglose-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #666;
+  }
+
+  .desglose-row span:last-child {
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .desglose-total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 2px solid #e5e7eb;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+
+  .desglose-total span:last-child {
+    color: #16a34a;
+  }
+
+  /* BOTÓN DE COMPRA */
+  .btn-comprar {
+    width: 100%;
+    padding: 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 12px;
+  }
+
+  .btn-comprar:hover:not(:disabled) {
+    background: #764ba2;
+  }
+
+  .btn-comprar:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+  }
+
+  .info-texto {
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .carrito-checkout {
+      max-width: 100%;
+    }
+
+    .cupon-input-group {
+      flex-direction: column;
+    }
+
+    .btn-aplicar {
+      width: 100%;
+    }
+  }
+</style>
+
+<script define:vars={{ usuarioId, subtotal }}>
+  // ============================================================================
+  // VALIDACIÓN Y APLICACIÓN DE CUPONES
+  // ============================================================================
+
+  let cuponActual = null;
+  let descuentoActual = 0;
+
+  const btnAplicarCupon = document.getElementById('btnAplicarCupon');
+  const codigoCupon = document.getElementById('codigoCupon');
+  const errorDiv = document.getElementById('cuponError');
+  const successDiv = document.getElementById('cuponSuccess');
+  const cuponAplicadoDiv = document.getElementById('cuponAplicado');
+  const rowDescuento = document.getElementById('rowDescuento');
+
+  btnAplicarCupon.addEventListener('click', aplicarCupon);
+
+  async function aplicarCupon() {
+    const codigo = codigoCupon.value.trim().toUpperCase();
+
+    if (!codigo) {
+      mostrarError('Por favor ingresa un código');
+      return;
+    }
+
+    btnAplicarCupon.disabled = true;
+    btnAplicarCupon.textContent = 'Validando...';
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/cupones/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigo_cupon: codigo,
+          usuario_id: usuarioId,
+          subtotal: subtotal
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.valido) {
+        throw new Error(data.error || 'Código inválido o expirado');
+      }
+
+      // Éxito: aplicar el cupón
+      cuponActual = codigo;
+      descuentoActual = data.descuento;
+
+      codigoCupon.value = '';
+      codigoCupon.disabled = true;
+      btnAplicarCupon.style.display = 'none';
+
+      // Mostrar cupón aplicado
+      document.getElementById('cuponCodigo').textContent = codigo;
+      document.getElementById('cuponDescuentoTexto').textContent = 
+        `Descuento aplicado: -${formatearPrecio(descuentoActual)}`;
+      cuponAplicadoDiv.style.display = 'block';
+
+      // Mostrar éxito
+      successDiv.textContent = '✅ Cupón aplicado correctamente';
+      successDiv.style.display = 'block';
+
+      // Actualizar totales
+      actualizarTotales();
+
+    } catch (error) {
+      mostrarError(error.message);
+    } finally {
+      btnAplicarCupon.disabled = false;
+      btnAplicarCupon.textContent = 'Aplicar';
+    }
+  }
+
+  function mostrarError(mensaje) {
+    errorDiv.textContent = '❌ ' + mensaje;
+    errorDiv.style.display = 'block';
+  }
+
+  // ============================================================================
+  // ELIMINAR CUPÓN
+  // ============================================================================
+
+  document.getElementById('btnEliminarCupon')?.addEventListener('click', () => {
+    cuponActual = null;
+    descuentoActual = 0;
+
+    codigoCupon.value = '';
+    codigoCupon.disabled = false;
+    btnAplicarCupon.style.display = 'inline-block';
+    cuponAplicadoDiv.style.display = 'none';
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+
+    actualizarTotales();
+  });
+
+  // ============================================================================
+  // CÁLCULO DE TOTALES
+  // ============================================================================
+
+  function actualizarTotales() {
+    const precioImpuestos = Math.round(subtotal * 0.21 * 100) / 100;
+    const precioCostoEnvio = subtotal > 50 ? 0 : 5.99;
+    let precioTotal = subtotal + precioImpuestos + precioCostoEnvio;
+
+    // Aplicar descuento si hay cupón
+    if (descuentoActual > 0) {
+      precioTotal -= descuentoActual;
+      rowDescuento.style.display = 'flex';
+      document.getElementById('precioDescuento').textContent = 
+        `-${formatearPrecio(descuentoActual)}`;
+      document.getElementById('labelDescuento').textContent = 
+        `Descuento (${cuponActual})`;
+    } else {
+      rowDescuento.style.display = 'none';
+    }
+
+    // Actualizar DOM
+    document.getElementById('precioSubtotal').textContent = formatearPrecio(subtotal);
+    document.getElementById('precioImpuestos').textContent = formatearPrecio(precioImpuestos);
+    document.getElementById('precioCostoEnvio').textContent = formatearPrecio(precioCostoEnvio);
+    document.getElementById('precioTotal').textContent = formatearPrecio(Math.max(0, precioTotal));
+  }
+
+  function formatearPrecio(precio) {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(precio);
+  }
+
+  // ============================================================================
+  // BOTÓN DE COMPRA
+  // ============================================================================
+
+  document.getElementById('btnComprar')?.addEventListener('click', async () => {
+    // Aquí va la lógica para crear la orden
+    // Por ahora, solo mostramos un mensaje
+    const totalConDescuento = subtotal - descuentoActual;
+    
+    alert(`
+      Procedera al pago de ${formatearPrecio(totalConDescuento)}
+      ${cuponActual ? `\nCódigo aplicado: ${cuponActual}` : ''}
+    `);
+  });
+</script>

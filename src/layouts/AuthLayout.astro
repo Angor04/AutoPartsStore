@@ -1,0 +1,27 @@
+---
+// src/layouts/AuthLayout.astro
+// Layout para páginas de autenticación (sin header/footer)
+
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title?: string;
+}
+
+const { title } = Astro.props;
+---
+
+<BaseLayout title={title || 'Autenticación'}>
+  <main class="auth-main">
+    <slot />
+  </main>
+</BaseLayout>
+
+<style>
+  .auth-main {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>

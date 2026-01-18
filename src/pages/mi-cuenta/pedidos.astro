@@ -1,0 +1,80 @@
+---
+// src/pages/mi-cuenta/pedidos.astro
+// Página de historial de pedidos
+
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import Button from "@/components/ui/Button.astro";
+
+const title = "Mis Pedidos";
+const description = "Ver el historial de tus pedidos";
+---
+
+<PublicLayout title={title} description={description}>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-8">
+      <a href="/" class="hover:text-navy-500">Inicio</a>
+      <span>/</span>
+      <span>Mi Cuenta</span>
+      <span>/</span>
+      <span>Mis Pedidos</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <!-- Sidebar -->
+      <aside class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h2 class="text-lg font-serif font-bold text-charcoal-900 mb-6">Mi Cuenta</h2>
+          <nav class="space-y-3">
+            <a href="/mi-cuenta/perfil" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
+              Perfil
+            </a>
+            <a href="/mi-cuenta/pedidos" class="block text-red-600 font-medium text-sm border-l-2 border-red-600 pl-3">
+              Mis Pedidos
+            </a>
+            <a href="/mi-cuenta/direcciones" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
+              Direcciones
+            </a>
+            <button id="logout-btn" class="block w-full text-left text-charcoal-600 hover:text-red-600 transition-colors text-sm">
+              Cerrar Sesión
+            </button>
+          </nav>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-8">
+            Mis Pedidos
+          </h1>
+
+          <!-- Empty State -->
+          <div class="text-center py-12">
+            <svg class="w-16 h-16 mx-auto text-charcoal-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            <p class="text-charcoal-600 text-lg mb-4">No tienes pedidos aún</p>
+            <Button href="/productos" variant="primary">
+              Ir a Productos
+            </Button>
+          </div>
+
+          <!-- Orders List (para cuando haya pedidos) -->
+          <div id="orders-list" class="space-y-6">
+            <!-- Los pedidos se renderizarán aquí -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+      // Aquí iría la lógica de logout con Supabase
+      localStorage.removeItem('autopartsstore-user');
+      sessionStorage.removeItem('autopartsstore-cart');
+      window.location.href = '/';
+    });
+  </script>
+</PublicLayout>

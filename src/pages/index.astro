@@ -7,9 +7,12 @@ import ProductCard from "@/components/product/ProductCard.astro";
 import Button from "@/components/ui/Button.astro";
 import CartSlideOver from "@/components/ui/CartSlideOver.astro";
 import { getFeaturedProducts, getCategories } from "@/lib/supabase";
+import type { Product, Category } from "@/types/index";
 
-const featuredProducts = await getFeaturedProducts(6);
-const categories = await getCategories();
+export const prerender = false;
+
+const featuredProducts: Product[] = await getFeaturedProducts(6);
+const categories: Category[] = await getCategories();
 
 const title = "Home";
 const description = "Descubre nuestro amplio catálogo de recambios y piezas para coches. Aceite, bujías, neumáticos, filtros y más.";

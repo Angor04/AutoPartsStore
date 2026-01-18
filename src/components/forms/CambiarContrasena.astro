@@ -1,0 +1,215 @@
+---
+// src/components/forms/CambiarContraseña.astro
+// Formulario para cambiar contraseña del usuario
+// Este es un componente Astro (SSR)
+
+import type { AuthSession } from '@supabase/supabase-js';
+
+interface Props {
+  usuario?: AuthSession['user'];
+}
+
+const { usuario } = Astro.props;
+---
+
+<div class="cambiar-contrasena-container">
+  <form id="formCambiarContrasena">
+    <div class="form-group">
+      <label for="contraseniaActual">Contraseña Actual *</label>
+      <input
+        type="password"
+        id="contraseniaActual"
+        name="contraseniaActual"
+        required
+        minlength="6"
+        placeholder="Ingresa tu contraseña actual"
+      />
+      <small>Por tu seguridad, necesitamos tu contraseña actual</small>
+    </div>
+
+    <div class="form-group">
+      <label for="contraseniaNueva">Nueva Contraseña *</label>
+      <input
+        type="password"
+        id="contraseniaNueva"
+        name="contraseniaNueva"
+        required
+        minlength="6"
+        placeholder="Crea una contraseña fuerte"
+      />
+      <small>Mínimo 6 caracteres, incluye mayúsculas y números</small>
+    </div>
+
+    <div class="form-group">
+      <label for="confirmacion">Confirmar Nueva Contraseña *</label>
+      <input
+        type="password"
+        id="confirmacion"
+        name="confirmacion"
+        required
+        minlength="6"
+        placeholder="Repite la nueva contraseña"
+      />
+    </div>
+
+    <div id="mensajeError" class="error-message" style="display: none;"></div>
+    <div id="mensajeExito" class="success-message" style="display: none;"></div>
+
+    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+  </form>
+</div>
+
+<style>
+  .cambiar-contrasena-container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 8px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .form-group small {
+    display: block;
+    margin-top: 4px;
+    color: #666;
+    font-size: 12px;
+  }
+
+  .error-message {
+    padding: 12px;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    border-left: 4px solid #dc2626;
+  }
+
+  .success-message {
+    padding: 12px;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    border-left: 4px solid #16a34a;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .btn:hover {
+    background: #764ba2;
+  }
+
+  .btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+</style>
+
+<script define:vars={{ usuario }}>
+  const form = document.getElementById('formCambiarContrasena');
+  const errorDiv = document.getElementById('mensajeError');
+  const exitoDiv = document.getElementById('mensajeExito');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const contraseniaActual = document.getElementById('contraseniaActual').value;
+    const contraseniaNueva = document.getElementById('contraseniaNueva').value;
+    const confirmacion = document.getElementById('confirmacion').value;
+
+    // Limpiar mensajes previos
+    errorDiv.style.display = 'none';
+    exitoDiv.style.display = 'none';
+
+    // Validar que las contraseñas nuevas coincidan
+    if (contraseniaNueva !== confirmacion) {
+      errorDiv.textContent = 'Las nuevas contraseñas no coinciden';
+      errorDiv.style.display = 'block';
+      return;
+    }
+
+    // Validar longitud mínima
+    if (contraseniaNueva.length < 6) {
+      errorDiv.textContent = 'La contraseña debe tener al menos 6 caracteres';
+      errorDiv.style.display = 'block';
+      return;
+    }
+
+    try {
+      // Obtener token del usuario
+      // Esto se hace en el frontend si tienes Supabase Client
+      // O puedes pasar el token en el header desde el server
+      
+      const response = await fetch('/api/cambiar-contrasena', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('sb-token') || ''}`
+        },
+        body: JSON.stringify({
+          contraseniaActual,
+          contraseniaNueva,
+          confirmacion
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cambiar contraseña');
+      }
+
+      // Éxito
+      exitoDiv.textContent = '✅ Contraseña cambiada exitosamente';
+      exitoDiv.style.display = 'block';
+      
+      // Limpiar formulario
+      form.reset();
+
+      // Esperar y redirigir (opcional)
+      setTimeout(() => {
+        // window.location.href = '/perfil'; // Redirigir si quieres
+      }, 1500);
+
+    } catch (error) {
+      errorDiv.textContent = error.message || 'Error al cambiar contraseña';
+      errorDiv.style.display = 'block';
+    }
+  });
+</script>

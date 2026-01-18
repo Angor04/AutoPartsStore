@@ -1,0 +1,155 @@
+---
+// src/pages/admin/categorias/index.astro
+// Gestión de categorías
+
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { getCategories } from "@/lib/supabase";
+import type { Category } from "@/types";
+
+const categories = await getCategories();
+---
+
+<AdminLayout>
+  <style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 8px; padding: 30px; width: 90%; max-width: 400px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
+    .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #764ba2; }
+    .btn-secondary { background: #e5e7eb; color: #1a1a1a; }
+    .btn-danger { background: #ef4444; color: white; padding: 6px 12px; font-size: 13px; }
+    .btn-danger:hover { background: #dc2626; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .card { background: white; border-radius: 8px; padding: 20px; border: 1px solid #e5e7eb; }
+    .card-title { font-size: 18px; font-weight: bold; color: #1a1a1a; margin-bottom: 10px; }
+    .card-text { color: #666; font-size: 14px; margin-bottom: 15px; }
+    .card-actions { display: flex; gap: 8px; }
+  </style>
+
+  <div style="margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0;">Categorías</h2>
+        <p style="color: #666; margin: 5px 0 0 0;">Total: {categories.length} categorías</p>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Nueva Categoría</button>
+    </div>
+
+    <!-- Modal -->
+    <div id="categoryModal" class="modal">
+      <div class="modal-content">
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #1a1a1a;">Nueva Categoría</div>
+        <form id="categoryForm" onsubmit="handleSubmit(event)">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" id="nombre" name="nombre" required>
+          </div>
+
+          <div class="form-group">
+            <label>Slug (URL) *</label>
+            <input type="text" id="slug" name="slug" placeholder="ej: ropa-hombre" required>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button type="submit" class="btn btn-primary">Crear</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Grid de categorías -->
+    {categories.length === 0 ? (
+      <div style="background: white; padding: 60px 24px; border-radius: 8px; text-align: center;">
+        <p style="color: #999; margin: 0;">No hay categorías. <button onclick="openModal()" style="color: #667eea; text-decoration: underline; background: none; border: none; cursor: pointer;">Crear la primera</button></p>
+      </div>
+    ) : (
+      <div class="grid">
+        {categories.map(cat => (
+          <div class="card">
+            <div class="card-title">{cat.nombre}</div>
+            <div class="card-text">
+              <small style="color: #999;">Slug: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{cat.slug}</code></small>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-danger" onclick="deleteCategory('{cat.id}')">Eliminar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <script>
+    function openModal(): void {
+      const modal = document.getElementById('categoryModal');
+      const form = document.getElementById('categoryForm');
+      if (modal) modal.classList.add('show');
+      if (form && form instanceof HTMLFormElement) form.reset();
+    }
+
+    function closeModal(): void {
+      const modal = document.getElementById('categoryModal');
+      if (modal) modal.classList.remove('show');
+    }
+
+    async function handleSubmit(e: Event): Promise<void> {
+      e.preventDefault();
+      const formElement = document.getElementById('categoryForm');
+      if (!formElement || !(formElement instanceof HTMLFormElement)) return;
+      
+      const formData = new FormData(formElement);
+
+      try {
+        const response = await fetch('/api/admin/categorias/crear', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          const error = await response.json() as Record<string, string>;
+          alert('Error: ' + (error.error || 'Error desconocido'));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    }
+
+    async function deleteCategory(id: string): Promise<void> {
+      if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
+
+      try {
+        const response = await fetch(`/api/admin/categorias/eliminar?id=${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          const error = await response.json() as Record<string, string>;
+          alert('Error: ' + (error.error || 'Error desconocido'));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert('Error: ' + errorMessage);
+      }
+    }
+
+    const categoryModal = document.getElementById('categoryModal');
+    if (categoryModal) {
+      categoryModal.addEventListener('click', function(e: Event) {
+        if (e.target === this) closeModal();
+      });
+    }
+  </script>
+</AdminLayout>

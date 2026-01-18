@@ -1,11 +1,15 @@
 // src/pages/api/auth/logout.ts
-// Endpoint de logout (próxima fase)
+// Endpoint para cerrar sesión
 
 import type { APIRoute } from 'astro';
 
-export const POST: APIRoute = async ({ redirect }) => {
-  // TODO: Invalidar sesión
-  // TODO: Limpiar cookies
+export const prerender = false;
 
+export const GET: APIRoute = async ({ redirect, cookies }) => {
+  // Eliminar cookies de sesión
+  cookies.delete('sb-access-token', { path: '/' });
+  cookies.delete('sb-refresh-token', { path: '/' });
+
+  // Redirigir a página principal
   return redirect('/');
 };
