@@ -16,6 +16,7 @@
     "@astrojs/node": "^9.5.2",
     "@astrojs/react": "^3.5.0",
     "@astrojs/tailwind": "^5.1.0",
+    "@astrojs/vercel": "^9.0.4",
     "@nanostores/react": "^1.0.0",
     "@supabase/supabase-js": "^2.42.0",
     "astro": "^5.0.0",
