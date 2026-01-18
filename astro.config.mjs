@@ -3,6 +3,7 @@ import react from '@astrojs/react';
 import tailwind from '@astrojs/tailwind';
 import vercel from '@astrojs/vercel/serverless';
 
+// Configurado para Vercel
 export default defineConfig({
   output: 'hybrid',
   adapter: vercel(),
