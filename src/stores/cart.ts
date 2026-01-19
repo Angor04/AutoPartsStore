@@ -24,14 +24,18 @@ function saveCartToSessionStorage(items: CartItem[]) {
   try {
     const jsonStr = JSON.stringify(items);
     console.log("saveCart - JSON stringificado:", jsonStr);
-    sessionStorage.setItem('autopartsstore-cart', jsonStr);
-    console.log("saveCart - Guardado en sessionStorage exitosamente");
-    
-    // Verificar que se guardó
-    const verificar = sessionStorage.getItem('autopartsstore-cart');
-    console.log("saveCart - Verificación:", verificar);
+    // Usar localStorage para que sea más consistente
+    if (items.length === 0) {
+      // Si el carrito está vacío, borrarlo
+      localStorage.removeItem('autopartsstore-cart');
+      sessionStorage.removeItem('autopartsstore-cart');
+      console.log("saveCart - Carrito vacío, eliminado de storage");
+    } else {
+      localStorage.setItem('autopartsstore-cart', jsonStr);
+      console.log("saveCart - Guardado en localStorage exitosamente");
+    }
   } catch (e) {
-    console.error('Error al guardar carrito en sessionStorage:', e);
+    console.error('Error al guardar carrito:', e);
   }
 }
 
@@ -180,7 +184,7 @@ export async function clearCartOnLogout() {
 }
 
 /**
- * Carga el carrito desde BD o sessionStorage según el usuario
+ * Carga el carrito desde BD o localStorage según el usuario
  */
 export async function loadCart() {
   console.log("loadCart - Cargando carrito");
@@ -192,6 +196,7 @@ export async function loadCart() {
 
   try {
     const isAuthenticated = await isUserAuthenticated();
+    console.log("loadCart - ¿Autenticado?:", isAuthenticated);
     
     if (isAuthenticated) {
       console.log("loadCart - Usuario autenticado, cargando de BD");
@@ -199,26 +204,27 @@ export async function loadCart() {
       if (cartFromDB && Array.isArray(cartFromDB) && cartFromDB.length > 0) {
         console.log("loadCart - Carrito cargado de BD:", cartFromDB);
         cartStore.set(cartFromDB);
-        // Limpiar sessionStorage para evitar contaminación
-        sessionStorage.removeItem('autopartsstore-cart');
+        // Limpiar localStorage para evitar confusión
+        localStorage.removeItem('autopartsstore-cart');
         return;
       } else {
         console.log("loadCart - Carrito vacío en BD, asignando carrito vacío");
         cartStore.set([]);
-        sessionStorage.removeItem('autopartsstore-cart');
+        localStorage.removeItem('autopartsstore-cart');
         return;
       }
     }
     
     // Solo para usuarios NO autenticados (invitados)
-    console.log("loadCart - Usuario NO autenticado, cargando de sessionStorage");
-    const stored = sessionStorage.getItem('autopartsstore-cart');
+    console.log("loadCart - Usuario NO autenticado, cargando de localStorage");
+    const stored = localStorage.getItem('autopartsstore-cart');
     const cartItems = stored ? JSON.parse(stored) : [];
+    console.log("loadCart - Carrito de invitado:", cartItems);
     cartStore.set(cartItems);
   } catch (e) {
     console.error('Error en loadCart:', e);
-    // Fallback a sessionStorage solo si hay error
-    const stored = sessionStorage.getItem('autopartsstore-cart');
+    // Fallback a localStorage
+    const stored = localStorage.getItem('autopartsstore-cart');
     const cartItems = stored ? JSON.parse(stored) : [];
     cartStore.set(cartItems);
   }
