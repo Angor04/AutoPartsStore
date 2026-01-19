@@ -171,11 +171,14 @@ export type SettingUpdate = Partial<SettingInsert>;
 
 // Cart
 export interface CartItem {
-  product_id: string;
-  quantity: number;
+  product_id?: string;
+  id?: string;
+  quantity?: number;
+  cantidad?: number;
   precio: number;
   nombre: string;
-  urls_imagenes: string[];
+  urls_imagenes?: string[];
+  imagen?: string;
   stock?: number; // Stock disponible del producto
 }
 

@@ -1,12 +1,69 @@
 ---
 // src/pages/mi-cuenta/perfil.astro
-// Página de perfil
+// Página de perfil de usuario - VERSIÓN PRODUCCIÓN
+// Gestión de datos personales, dirección de envío y preferencias
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
-import Button from "@/components/ui/Button.astro";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+export const prerender = false;
 
 const title = "Mi Perfil";
-const description = "Edita tu información de perfil";
+const description = "Gestiona tu información personal";
+
+// Tipos para los datos
+interface Perfil {
+  usuario_id: string;
+  nombre: string;
+  apellidos: string;
+  telefono: string | null;
+  recibir_ofertas: boolean;
+  notificaciones_pedidos: boolean;
+}
+
+interface Direccion {
+  id: string;
+  usuario_id: string;
+  direccion: string;
+  ciudad: string;
+  provincia: string;
+  codigo_postal: string;
+  pais: string;
+  es_principal: boolean;
+}
+
+// Verificar autenticación
+const userId = Astro.cookies.get('user-id')?.value;
+
+if (!userId) {
+  return Astro.redirect('/auth/login?redirect=/mi-cuenta/perfil');
+}
+
+// Cargar datos del usuario
+const supabaseAdmin = getSupabaseAdmin();
+
+// Obtener perfil
+const { data: perfilData } = await supabaseAdmin
+  .from('perfiles_usuario')
+  .select('*')
+  .eq('usuario_id', userId)
+  .single();
+
+const perfil = perfilData as Perfil | null;
+
+// Obtener dirección principal
+const { data: direccionData } = await supabaseAdmin
+  .from('direcciones_envio')
+  .select('*')
+  .eq('usuario_id', userId)
+  .eq('es_principal', true)
+  .single();
+
+const direccion = direccionData as Direccion | null;
+
+// Obtener email del usuario desde auth
+const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+const userEmail = userData?.user?.email || '';
 ---
 
 <PublicLayout title={title} description={description}>
@@ -17,154 +74,362 @@ const description = "Edita tu información de perfil";
       <span>/</span>
       <span>Mi Cuenta</span>
       <span>/</span>
-      <span>Perfil</span>
+      <span class="text-charcoal-900">Perfil</span>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar -->
       <aside class="lg:col-span-1">
-        <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
           <h2 class="text-lg font-serif font-bold text-charcoal-900 mb-6">Mi Cuenta</h2>
           <nav class="space-y-3">
-            <a href="/mi-cuenta/perfil" class="block text-red-600 font-medium text-sm border-l-2 border-red-600 pl-3">
-              Perfil
+            <a href="/mi-cuenta/perfil" class="block text-red-600 font-medium text-sm border-l-2 border-red-600 bg-red-50 py-2 -ml-6 pl-6 rounded-r">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                Perfil
+              </span>
             </a>
-            <a href="/mi-cuenta/pedidos" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              Mis Pedidos
+            <a href="/mi-cuenta/pedidos" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm pl-6">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                </svg>
+                Mis Pedidos
+              </span>
             </a>
-            <a href="/mi-cuenta/direcciones" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              Direcciones
-            </a>
-            <button id="logout-btn" class="block w-full text-left text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              Cerrar Sesión
+            <button id="logout-btn" class="block w-full text-left text-charcoal-600 hover:text-red-600 transition-colors text-sm pl-3">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Cerrar Sesión
+              </span>
             </button>
           </nav>
         </div>
       </aside>
 
       <!-- Main Content -->
-      <div class="lg:col-span-3">
-        <div class="bg-white rounded-lg shadow-sm p-8">
-          <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-8">
-            Mi Perfil
-          </h1>
+      <div class="lg:col-span-3 space-y-8">
+        
+        <!-- Mensaje de éxito/error global -->
+        <div id="global-message" class="hidden rounded-lg px-4 py-3 text-sm"></div>
 
-          <!-- Profile Form -->
-          <form id="profile-form" class="space-y-6">
-            <!-- Full Name -->
+        <!-- Sección: Datos Personales -->
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
             <div>
-              <label for="fullname" class="block text-sm font-medium text-charcoal-900 mb-2">
-                Nombre Completo
+              <h2 class="text-xl font-serif font-bold text-charcoal-900">Datos Personales</h2>
+              <p class="text-sm text-charcoal-500">Información básica de tu cuenta</p>
+            </div>
+          </div>
+
+          <form id="profile-form" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="nombre" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Nombre <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="nombre"
+                  name="nombre"
+                  required
+                  value={perfil?.nombre || ''}
+                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Tu nombre"
+                />
+              </div>
+              <div>
+                <label for="apellidos" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Apellidos
+                </label>
+                <input
+                  type="text"
+                  id="apellidos"
+                  name="apellidos"
+                  value={perfil?.apellidos || ''}
+                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Tus apellidos"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="email" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Correo Electrónico
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={userEmail}
+                  disabled
+                  class="w-full px-4 py-3 border border-charcoal-200 rounded-lg bg-charcoal-50 text-charcoal-600 cursor-not-allowed"
+                />
+                <p class="text-xs text-charcoal-500 mt-1">El email no se puede cambiar</p>
+              </div>
+              <div>
+                <label for="telefono" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  id="telefono"
+                  name="telefono"
+                  value={perfil?.telefono || ''}
+                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="+34 612 345 678"
+                />
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" id="save-profile-btn" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Guardar Datos Personales
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Sección: Dirección de Envío -->
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-xl font-serif font-bold text-charcoal-900">Dirección de Envío</h2>
+              <p class="text-sm text-charcoal-500">Dirección predeterminada para tus pedidos</p>
+            </div>
+          </div>
+
+          <form id="address-form" class="space-y-6">
+            <div>
+              <label for="direccion" class="block text-sm font-medium text-charcoal-900 mb-2">
+                Dirección Completa <span class="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                id="fullname"
-                name="fullname"
-                class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Tu nombre"
+                id="direccion"
+                name="direccion"
+                required
+                value={direccion?.direccion || ''}
+                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                placeholder="Calle, número, piso..."
               />
             </div>
 
-            <!-- Email -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label for="ciudad" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Ciudad <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="ciudad"
+                  name="ciudad"
+                  required
+                  value={direccion?.ciudad || ''}
+                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Madrid"
+                />
+              </div>
+              <div>
+                <label for="provincia" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Provincia
+                </label>
+                <input
+                  type="text"
+                  id="provincia"
+                  name="provincia"
+                  value={direccion?.provincia || ''}
+                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Madrid"
+                />
+              </div>
+              <div>
+                <label for="codigo_postal" class="block text-sm font-medium text-charcoal-900 mb-2">
+                  Código Postal <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="codigo_postal"
+                  name="codigo_postal"
+                  required
+                  pattern="[0-9]{5}"
+                  value={direccion?.codigo_postal || ''}
+                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="28001"
+                />
+              </div>
+            </div>
+
             <div>
-              <label for="email" class="block text-sm font-medium text-charcoal-900 mb-2">
-                Correo Electrónico
+              <label for="pais" class="block text-sm font-medium text-charcoal-900 mb-2">
+                País
               </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="tu@email.com"
-              />
+              <select
+                id="pais"
+                name="pais"
+                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="España" selected={direccion?.pais === 'España' || !direccion?.pais}>España</option>
+                <option value="Portugal" selected={direccion?.pais === 'Portugal'}>Portugal</option>
+                <option value="Francia" selected={direccion?.pais === 'Francia'}>Francia</option>
+                <option value="Andorra" selected={direccion?.pais === 'Andorra'}>Andorra</option>
+              </select>
             </div>
 
-            <!-- Phone -->
-            <div>
-              <label for="phone" class="block text-sm font-medium text-charcoal-900 mb-2">
-                Teléfono
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="+34 123 456 789"
-              />
-            </div>
-
-            <!-- Success Message -->
-            <div id="success-message" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-              Perfil actualizado correctamente
-            </div>
-
-            <!-- Submit Button -->
-            <div class="flex gap-4">
-              <button type="submit" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors">
-                Guardar Cambios
+            <div class="flex justify-end">
+              <button type="submit" id="save-address-btn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Guardar Dirección
               </button>
-              <a href="/mi-cuenta/perfil" class="px-6 py-2 bg-charcoal-100 hover:bg-charcoal-200 text-charcoal-900 rounded-lg font-medium transition-colors">
-                Cancelar
-              </a>
             </div>
           </form>
-
-          <!-- Change Password Section -->
-          <div class="mt-12 pt-12 border-t border-charcoal-200">
-            <h2 class="text-2xl font-serif font-bold text-charcoal-900 mb-6">
-              Cambiar Contraseña
-            </h2>
-
-            <form id="password-form" class="space-y-6 max-w-md">
-              <!-- Current Password -->
-              <div>
-                <label for="current-password" class="block text-sm font-medium text-charcoal-900 mb-2">
-                  Contraseña Actual
-                </label>
-                <input
-                  type="password"
-                  id="current-password"
-                  name="current-password"
-                  class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-
-              <!-- New Password -->
-              <div>
-                <label for="new-password" class="block text-sm font-medium text-charcoal-900 mb-2">
-                  Nueva Contraseña
-                </label>
-                <input
-                  type="password"
-                  id="new-password"
-                  name="new-password"
-                  class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-
-              <!-- Confirm New Password -->
-              <div>
-                <label for="confirm-new-password" class="block text-sm font-medium text-charcoal-900 mb-2">
-                  Confirmar Contraseña
-                </label>
-                <input
-                  type="password"
-                  id="confirm-new-password"
-                  name="confirm-new-password"
-                  class="w-full px-4 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-
-              <!-- Error Message -->
-              <div id="password-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"></div>
-
-              <!-- Submit Button -->
-              <button type="submit" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors">
-                Cambiar Contraseña
-              </button>
-            </form>
-          </div>
         </div>
+
+        <!-- Sección: Cambiar Contraseña -->
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-xl font-serif font-bold text-charcoal-900">Cambiar Contraseña</h2>
+              <p class="text-sm text-charcoal-500">Actualiza tu contraseña de acceso</p>
+            </div>
+          </div>
+
+          <form id="password-form" class="space-y-6 max-w-md">
+            <div>
+              <label for="current_password" class="block text-sm font-medium text-charcoal-900 mb-2">
+                Contraseña Actual <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                id="current_password"
+                name="current_password"
+                required
+                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label for="new_password" class="block text-sm font-medium text-charcoal-900 mb-2">
+                Nueva Contraseña <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                id="new_password"
+                name="new_password"
+                required
+                minlength="6"
+                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+              <p class="text-xs text-charcoal-500 mt-1">Mínimo 6 caracteres</p>
+            </div>
+
+            <div>
+              <label for="confirm_password" class="block text-sm font-medium text-charcoal-900 mb-2">
+                Confirmar Nueva Contraseña <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                id="confirm_password"
+                name="confirm_password"
+                required
+                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+
+            <div id="password-message" class="hidden rounded-lg px-4 py-3 text-sm"></div>
+
+            <button type="submit" id="save-password-btn" class="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              Cambiar Contraseña
+            </button>
+          </form>
+        </div>
+
+        <!-- Sección: Preferencias -->
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-xl font-serif font-bold text-charcoal-900">Preferencias</h2>
+              <p class="text-sm text-charcoal-500">Configura tus preferencias de comunicación</p>
+            </div>
+          </div>
+
+          <form id="preferences-form" class="space-y-6">
+            <div class="space-y-4">
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="newsletter"
+                  name="newsletter"
+                  checked={perfil?.recibir_ofertas !== false}
+                  class="mt-1 w-5 h-5 text-red-600 border-charcoal-300 rounded focus:ring-red-500"
+                />
+                <div>
+                  <span class="font-medium text-charcoal-900">Ofertas y promociones</span>
+                  <p class="text-sm text-charcoal-500">Recibe ofertas exclusivas y promociones especiales por email</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="order_updates"
+                  name="order_updates"
+                  checked={perfil?.notificaciones_pedidos !== false}
+                  class="mt-1 w-5 h-5 text-red-600 border-charcoal-300 rounded focus:ring-red-500"
+                />
+                <div>
+                  <span class="font-medium text-charcoal-900">Actualizaciones de pedidos</span>
+                  <p class="text-sm text-charcoal-500">Notificaciones sobre el estado de tus pedidos</p>
+                </div>
+              </label>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" id="save-preferences-btn" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Guardar Preferencias
+              </button>
+            </div>
+          </form>
+        </div>
+
       </div>
     </div>
   </div>
@@ -172,43 +437,187 @@ const description = "Edita tu información de perfil";
   <script>
     import { clearCartOnLogout } from '@/stores/cart';
 
-    // Profile form
-    document.getElementById('profile-form')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const successEl = document.getElementById('success-message');
-      if (successEl) {
-        successEl.classList.remove('hidden');
+    // Función auxiliar para mostrar mensajes
+    function showMessage(elementId: string, message: string, isSuccess: boolean) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.textContent = message;
+        el.className = `rounded-lg px-4 py-3 text-sm ${isSuccess ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`;
+        el.classList.remove('hidden');
+        
         setTimeout(() => {
-          successEl.classList.add('hidden');
-        }, 3000);
+          el.classList.add('hidden');
+        }, 5000);
+      }
+    }
+
+    // Función auxiliar para deshabilitar/habilitar botón
+    function setButtonLoading(buttonId: string, loading: boolean) {
+      const btn = document.getElementById(buttonId) as HTMLButtonElement;
+      if (btn) {
+        btn.disabled = loading;
+        if (loading) {
+          btn.innerHTML = '<svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Guardando...';
+        }
+      }
+    }
+
+    // Formulario de perfil
+    document.getElementById('profile-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setButtonLoading('save-profile-btn', true);
+
+      const formData = new FormData(e.target as HTMLFormElement);
+      
+      try {
+        const response = await fetch('/api/perfil/actualizar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: formData.get('nombre'),
+            apellidos: formData.get('apellidos'),
+            telefono: formData.get('telefono')
+          })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          showMessage('global-message', '✓ Datos personales actualizados correctamente', true);
+        } else {
+          showMessage('global-message', result.error || 'Error al guardar', false);
+        }
+      } catch (error) {
+        showMessage('global-message', 'Error de conexión', false);
+      } finally {
+        setButtonLoading('save-profile-btn', false);
+        location.reload(); // Recargar para actualizar el botón
       }
     });
 
-    // Password form
-    document.getElementById('password-form')?.addEventListener('submit', (e) => {
+    // Formulario de dirección
+    document.getElementById('address-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const errorEl = document.getElementById('password-error');
-      const newPassword = (document.getElementById('new-password') as HTMLInputElement).value;
-      const confirmPassword = (document.getElementById('confirm-new-password') as HTMLInputElement).value;
+      setButtonLoading('save-address-btn', true);
+
+      const formData = new FormData(e.target as HTMLFormElement);
+      
+      try {
+        const response = await fetch('/api/perfil/direccion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            direccion: formData.get('direccion'),
+            ciudad: formData.get('ciudad'),
+            provincia: formData.get('provincia'),
+            codigo_postal: formData.get('codigo_postal'),
+            pais: formData.get('pais')
+          })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          showMessage('global-message', '✓ Dirección de envío actualizada correctamente', true);
+        } else {
+          showMessage('global-message', result.error || 'Error al guardar dirección', false);
+        }
+      } catch (error) {
+        showMessage('global-message', 'Error de conexión', false);
+      } finally {
+        setButtonLoading('save-address-btn', false);
+        location.reload();
+      }
+    });
+
+    // Formulario de contraseña
+    document.getElementById('password-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const newPassword = (document.getElementById('new_password') as HTMLInputElement).value;
+      const confirmPassword = (document.getElementById('confirm_password') as HTMLInputElement).value;
 
       if (newPassword !== confirmPassword) {
-        if (errorEl) {
-          errorEl.textContent = 'Las contraseñas no coinciden';
-          errorEl.classList.remove('hidden');
-        }
+        showMessage('password-message', 'Las contraseñas no coinciden', false);
         return;
       }
 
-      if (errorEl) {
-        errorEl.textContent = 'Contraseña actualizada correctamente';
-        errorEl.classList.add('bg-green-50', 'border-green-200', 'text-green-700');
-        errorEl.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'text-red-700');
+      if (newPassword.length < 6) {
+        showMessage('password-message', 'La contraseña debe tener al menos 6 caracteres', false);
+        return;
+      }
+
+      setButtonLoading('save-password-btn', true);
+
+      const formData = new FormData(e.target as HTMLFormElement);
+      
+      try {
+        const response = await fetch('/api/cambiar-contrasena', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentPassword: formData.get('current_password'),
+            newPassword: formData.get('new_password')
+          })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          showMessage('password-message', '✓ Contraseña actualizada correctamente', true);
+          (e.target as HTMLFormElement).reset();
+        } else {
+          showMessage('password-message', result.error || 'Error al cambiar contraseña', false);
+        }
+      } catch (error) {
+        showMessage('password-message', 'Error de conexión', false);
+      } finally {
+        setButtonLoading('save-password-btn', false);
+        location.reload();
+      }
+    });
+
+    // Formulario de preferencias
+    document.getElementById('preferences-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setButtonLoading('save-preferences-btn', true);
+
+      const newsletter = (document.getElementById('newsletter') as HTMLInputElement).checked;
+      const orderUpdates = (document.getElementById('order_updates') as HTMLInputElement).checked;
+      
+      try {
+        const response = await fetch('/api/perfil/preferencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recibir_ofertas: newsletter,
+            notificaciones_pedidos: orderUpdates
+          })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          showMessage('global-message', '✓ Preferencias actualizadas correctamente', true);
+        } else {
+          showMessage('global-message', result.error || 'Error al guardar preferencias', false);
+        }
+      } catch (error) {
+        showMessage('global-message', 'Error de conexión', false);
+      } finally {
+        setButtonLoading('save-preferences-btn', false);
+        location.reload();
       }
     });
 
     // Logout
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
-      await clearCartOnLogout();
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        await clearCartOnLogout();
+      } catch (error) {
+        console.error('Error during logout:', error);
+      }
       window.location.href = '/';
     });
   </script>

@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           usuario_id: userId,
           items: items || [],
           actualizado_en: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: 'usuario_id' }
       );
 

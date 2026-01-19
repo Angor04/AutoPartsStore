@@ -25,7 +25,7 @@ export const GET: APIRoute = async ({ cookies }) => {
       .from('carrito_temporal')
       .select('items')
       .eq('usuario_id', userId)
-      .single();
+      .single() as { data: { items: any[] } | null, error: any };
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
       console.error('Error cargando carrito:', error);

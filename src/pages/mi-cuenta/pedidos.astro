@@ -1,42 +1,126 @@
 ---
 // src/pages/mi-cuenta/pedidos.astro
-// Página de historial de pedidos
+// Página de historial de pedidos - VERSIÓN PRODUCCIÓN
+// Muestra pedidos con estados, acciones según estado, badges visuales
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
-import Button from "@/components/ui/Button.astro";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 const title = "Mis Pedidos";
 const description = "Ver el historial de tus pedidos";
+
+// Obtener usuario de cookies
+const userId = Astro.cookies.get('user-id')?.value;
+
+if (!userId) {
+  return Astro.redirect('/auth/login?redirect=/mi-cuenta/pedidos');
+}
+
+// Cargar pedidos del usuario
+const supabaseAdmin = getSupabaseAdmin();
+const { data: ordenes, error } = await supabaseAdmin
+  .from('ordenes')
+  .select(`
+    id,
+    numero_orden,
+    estado,
+    estado_pago,
+    total,
+    subtotal,
+    descuento_aplicado,
+    costo_envio,
+    creada_en,
+    fecha_cancelacion,
+    numero_seguimiento,
+    direccion_envio,
+    ordenes_items(
+      id,
+      cantidad,
+      precio_unitario,
+      nombre_producto,
+      producto_id
+    )
+  `)
+  .eq('usuario_id', userId)
+  .order('creada_en', { ascending: false });
+
+const pedidos = ordenes || [];
+
+// Configuración de estados con colores y acciones
+const estadosConfig: Record<string, { color: string; bgColor: string; texto: string; icono: string }> = {
+  'PENDIENTE': { color: 'text-yellow-700', bgColor: 'bg-yellow-100', texto: 'Pendiente', icono: '⏳' },
+  'pendiente': { color: 'text-yellow-700', bgColor: 'bg-yellow-100', texto: 'Pendiente', icono: '⏳' },
+  'PAGADO': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Pagado', icono: '💳' },
+  'pagado': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Pagado', icono: '💳' },
+  'procesando': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Procesando', icono: '📦' },
+  'ENVIADO': { color: 'text-purple-700', bgColor: 'bg-purple-100', texto: 'Enviado', icono: '🚚' },
+  'enviado': { color: 'text-purple-700', bgColor: 'bg-purple-100', texto: 'Enviado', icono: '🚚' },
+  'ENTREGADO': { color: 'text-green-700', bgColor: 'bg-green-100', texto: 'Entregado', icono: '✅' },
+  'entregado': { color: 'text-green-700', bgColor: 'bg-green-100', texto: 'Entregado', icono: '✅' },
+  'CANCELADO': { color: 'text-red-700', bgColor: 'bg-red-100', texto: 'Cancelado', icono: '❌' },
+  'cancelado': { color: 'text-red-700', bgColor: 'bg-red-100', texto: 'Cancelado', icono: '❌' },
+};
+
+function getEstadoConfig(estado: string) {
+  return estadosConfig[estado] || { color: 'text-gray-700', bgColor: 'bg-gray-100', texto: estado, icono: '📋' };
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatPrice(price: number) {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(price);
+}
+
+// Determinar qué acciones están disponibles según el estado
+function getAcciones(estado: string) {
+  const estadoUpper = estado.toUpperCase();
+  return {
+    puedeCancelar: estadoUpper === 'PAGADO',
+    puedeDevolver: estadoUpper === 'ENTREGADO',
+    puedeSeguimiento: estadoUpper === 'ENVIADO' || estadoUpper === 'ENTREGADO',
+  };
+}
 ---
 
 <PublicLayout title={title} description={description}>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <!-- Breadcrumb -->
     <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-8">
-      <a href="/" class="hover:text-navy-500">Inicio</a>
+      <a href="/" class="hover:text-red-600">Inicio</a>
       <span>/</span>
-      <span>Mi Cuenta</span>
+      <a href="/mi-cuenta/perfil" class="hover:text-red-600">Mi Cuenta</a>
       <span>/</span>
-      <span>Mis Pedidos</span>
+      <span class="text-charcoal-900">Mis Pedidos</span>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar -->
       <aside class="lg:col-span-1">
-        <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
           <h2 class="text-lg font-serif font-bold text-charcoal-900 mb-6">Mi Cuenta</h2>
           <nav class="space-y-3">
             <a href="/mi-cuenta/perfil" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              Perfil
+              👤 Perfil
             </a>
             <a href="/mi-cuenta/pedidos" class="block text-red-600 font-medium text-sm border-l-2 border-red-600 pl-3">
-              Mis Pedidos
+              📦 Mis Pedidos
             </a>
             <a href="/mi-cuenta/direcciones" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              Direcciones
+              📍 Direcciones
             </a>
             <button id="logout-btn" class="block w-full text-left text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              Cerrar Sesión
+              🚪 Cerrar Sesión
             </button>
           </nav>
         </div>
@@ -45,36 +129,559 @@ const description = "Ver el historial de tus pedidos";
       <!-- Main Content -->
       <div class="lg:col-span-3">
         <div class="bg-white rounded-lg shadow-sm p-8">
-          <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-8">
+          <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-2">
             Mis Pedidos
           </h1>
+          <p class="text-charcoal-600 mb-8">
+            Consulta el estado de tus pedidos y gestiona devoluciones
+          </p>
 
-          <!-- Empty State -->
-          <div class="text-center py-12">
-            <svg class="w-16 h-16 mx-auto text-charcoal-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            <p class="text-charcoal-600 text-lg mb-4">No tienes pedidos aún</p>
-            <Button href="/productos" variant="primary">
-              Ir a Productos
-            </Button>
-          </div>
-
-          <!-- Orders List (para cuando haya pedidos) -->
-          <div id="orders-list" class="space-y-6">
-            <!-- Los pedidos se renderizarán aquí -->
-          </div>
+          {pedidos.length === 0 ? (
+            <!-- Empty State -->
+            <div class="text-center py-16">
+              <div class="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 class="text-xl font-medium text-charcoal-900 mb-2">No tienes pedidos aún</h3>
+              <p class="text-charcoal-600 mb-6">Cuando realices tu primera compra, aparecerá aquí</p>
+              <a href="/productos" class="inline-flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium">
+                Ver Productos
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </a>
+            </div>
+          ) : (
+            <!-- Orders List -->
+            <div class="space-y-6">
+              {pedidos.map((pedido: any) => {
+                const config = getEstadoConfig(pedido.estado);
+                const acciones = getAcciones(pedido.estado);
+                const items = pedido.ordenes_items || [];
+                
+                return (
+                  <div class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                    <!-- Order Header -->
+                    <div class="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                      <div class="flex items-center gap-6">
+                        <div>
+                          <p class="text-sm text-gray-500">Pedido</p>
+                          <p class="font-mono font-bold text-charcoal-900">{pedido.numero_orden}</p>
+                        </div>
+                        <div>
+                          <p class="text-sm text-gray-500">Fecha</p>
+                          <p class="text-sm text-charcoal-900">{formatDate(pedido.creada_en)}</p>
+                        </div>
+                        <div>
+                          <p class="text-sm text-gray-500">Total</p>
+                          <p class="font-bold text-charcoal-900">{formatPrice(pedido.total)}</p>
+                        </div>
+                      </div>
+                      
+                      <!-- Estado Badge -->
+                      <div class={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${config.bgColor} ${config.color} font-medium`}>
+                        <span>{config.icono}</span>
+                        <span>{config.texto}</span>
+                      </div>
+                    </div>
+                    
+                    <!-- Order Items -->
+                    <div class="px-6 py-4">
+                      <div class="divide-y divide-gray-100">
+                        {items.slice(0, 3).map((item: any) => (
+                          <div class="flex items-center gap-4 py-3">
+                            <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <span class="text-2xl">🔧</span>
+                            </div>
+                            <div class="flex-1">
+                              <p class="font-medium text-charcoal-900">{item.nombre_producto}</p>
+                              <p class="text-sm text-gray-500">
+                                Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}
+                              </p>
+                            </div>
+                            <p class="font-medium">{formatPrice(item.cantidad * item.precio_unitario)}</p>
+                          </div>
+                        ))}
+                        {items.length > 3 && (
+                          <p class="text-sm text-gray-500 py-2">
+                            + {items.length - 3} productos más
+                          </p>
+                        )}
+                      </div>
+                      
+                      <!-- Descuento si aplica -->
+                      {pedido.descuento_aplicado > 0 && (
+                        <div class="mt-4 p-3 bg-green-50 rounded-lg flex items-center justify-between">
+                          <span class="text-green-700 text-sm">🎁 Descuento aplicado</span>
+                          <span class="text-green-700 font-medium">-{formatPrice(pedido.descuento_aplicado)}</span>
+                        </div>
+                      )}
+                      
+                      <!-- Número de seguimiento -->
+                      {pedido.numero_seguimiento && acciones.puedeSeguimiento && (
+                        <div class="mt-4 p-3 bg-purple-50 rounded-lg">
+                          <p class="text-sm text-purple-700">
+                            <span class="font-medium">Nº Seguimiento:</span> {pedido.numero_seguimiento}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <!-- Order Actions -->
+                    <div class="px-6 py-4 bg-gray-50 flex flex-wrap items-center justify-between gap-4 border-t">
+                      <a 
+                        href={`/mi-cuenta/pedido/${pedido.id}`}
+                        class="text-sm text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Ver detalles →
+                      </a>
+                      
+                      <div class="flex items-center gap-3">
+                        {/* Botón Cancelar - Solo para PAGADO */}
+                        {acciones.puedeCancelar && (
+                          <button
+                            data-action="cancelar"
+                            data-orden-id={pedido.id}
+                            data-orden-numero={pedido.numero_orden}
+                            class="btn-cancelar px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                          >
+                            ❌ Cancelar Pedido
+                          </button>
+                        )}
+                        
+                        {/* Botón Devolución - Solo para ENTREGADO */}
+                        {acciones.puedeDevolver && (
+                          <button
+                            data-action="devolver"
+                            data-orden-id={pedido.id}
+                            data-orden-numero={pedido.numero_orden}
+                            data-orden-total={pedido.total}
+                            class="btn-devolver px-4 py-2 text-sm font-medium text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors"
+                          >
+                            ↩️ Solicitar Devolución
+                          </button>
+                        )}
+                        
+                        {/* Botón Seguimiento - Para ENVIADO */}
+                        {acciones.puedeSeguimiento && pedido.numero_seguimiento && (
+                          <a
+                            href={`https://www.correos.es/es/es/herramientas/localizador/envios?tracking=${pedido.numero_seguimiento}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="px-4 py-2 text-sm font-medium text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                          >
+                            🚚 Seguir Envío
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    document.getElementById('logout-btn')?.addEventListener('click', () => {
-      // Aquí iría la lógica de logout con Supabase
-      localStorage.removeItem('autopartsstore-user');
-      sessionStorage.removeItem('autopartsstore-cart');
-      window.location.href = '/';
+  <!-- Modal de Cancelación -->
+  <div id="modal-cancelar" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close">&times;</button>
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+          <span class="text-3xl">⚠️</span>
+        </div>
+        <h3 class="text-xl font-bold text-charcoal-900">¿Cancelar pedido?</h3>
+        <p class="text-gray-600 mt-2">Pedido: <span id="cancel-orden-numero" class="font-mono font-bold"></span></p>
+      </div>
+      
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <p class="text-yellow-800 text-sm">
+          <strong>⚠️ Esta acción no se puede deshacer.</strong><br>
+          Al cancelar el pedido:
+        </p>
+        <ul class="text-yellow-700 text-sm mt-2 space-y-1">
+          <li>• El stock de los productos será restaurado automáticamente</li>
+          <li>• Se iniciará el proceso de reembolso</li>
+          <li>• Recibirás un email de confirmación</li>
+        </ul>
+      </div>
+      
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <p class="text-blue-800 text-sm">
+          <strong>💰 Reembolso:</strong> El importe será devuelto a tu método de pago original en un plazo de <strong>5-7 días hábiles</strong>.
+        </p>
+      </div>
+      
+      <div class="flex gap-4">
+        <button id="btn-cancelar-no" class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+          No, mantener pedido
+        </button>
+        <button id="btn-cancelar-si" class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
+          Sí, cancelar pedido
+        </button>
+      </div>
+      
+      <div id="cancel-loading" class="hidden text-center py-4">
+        <div class="inline-block w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-gray-600 mt-2">Procesando cancelación...</p>
+      </div>
+      
+      <div id="cancel-error" class="hidden mt-4 p-4 bg-red-50 text-red-700 rounded-lg"></div>
+    </div>
+  </div>
+
+  <!-- Modal de Devolución -->
+  <div id="modal-devolver" class="modal-overlay hidden">
+    <div class="modal-content modal-lg">
+      <button class="modal-close">&times;</button>
+      
+      <!-- Paso 1: Formulario -->
+      <div id="devolucion-paso1">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+            <span class="text-3xl">↩️</span>
+          </div>
+          <h3 class="text-xl font-bold text-charcoal-900">Solicitar Devolución</h3>
+          <p class="text-gray-600 mt-2">Pedido: <span id="return-orden-numero" class="font-mono font-bold"></span></p>
+        </div>
+        
+        <form id="form-devolucion" class="space-y-4">
+          <input type="hidden" id="return-orden-id" value="">
+          
+          <div>
+            <label for="motivo" class="block text-sm font-medium text-gray-700 mb-1">Motivo de la devolución *</label>
+            <select id="motivo" name="motivo" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+              <option value="">Selecciona un motivo</option>
+              <option value="defectuoso">Producto defectuoso</option>
+              <option value="equivocado">Producto equivocado</option>
+              <option value="no_esperado">No es lo que esperaba</option>
+              <option value="danado">Producto dañado en transporte</option>
+              <option value="otro">Otro motivo</option>
+            </select>
+          </div>
+          
+          <div>
+            <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción adicional (opcional)</label>
+            <textarea id="descripcion" name="descripcion" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Explica brevemente el problema..."></textarea>
+          </div>
+          
+          <div class="flex gap-4 pt-4">
+            <button type="button" id="btn-devolver-cancelar" class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+              Cancelar
+            </button>
+            <button type="submit" class="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium">
+              Continuar
+            </button>
+          </div>
+        </form>
+        
+        <div id="return-loading" class="hidden text-center py-8">
+          <div class="inline-block w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-gray-600 mt-2">Procesando solicitud...</p>
+        </div>
+      </div>
+      
+      <!-- Paso 2: Instrucciones -->
+      <div id="devolucion-paso2" class="hidden">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+            <span class="text-3xl">✅</span>
+          </div>
+          <h3 class="text-xl font-bold text-charcoal-900">Solicitud Recibida</h3>
+        </div>
+        
+        <!-- Instrucciones de envío -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+          <h4 class="font-bold text-charcoal-900 mb-3 flex items-center gap-2">
+            <span>📦</span> Instrucciones de Envío
+          </h4>
+          <p class="text-gray-700 mb-4">
+            Por favor, envía los artículos <strong>sin usar</strong> y en su <strong>embalaje original</strong> a:
+          </p>
+          <div class="bg-white border border-gray-300 rounded-lg p-4 font-mono text-sm">
+            <p class="font-bold">AutoParts Store - Devoluciones</p>
+            <p>Calle de la Industria 123</p>
+            <p>Polígono Industrial Cobo Calleja</p>
+            <p>28947 Fuenlabrada, Madrid</p>
+            <p>España</p>
+          </div>
+          <p class="text-sm text-gray-500 mt-3">
+            Número de etiqueta: <span id="etiqueta-numero" class="font-mono font-bold text-orange-600"></span>
+          </p>
+        </div>
+        
+        <!-- Confirmación email -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <p class="text-blue-800 text-sm flex items-start gap-2">
+            <span class="text-xl">📧</span>
+            <span>
+              <strong>Hemos enviado un correo</strong> a tu email asociado con la etiqueta de devolución imprimible y las instrucciones detalladas.
+            </span>
+          </p>
+        </div>
+        
+        <!-- Disclaimer financiero -->
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <p class="text-green-800 text-sm flex items-start gap-2">
+            <span class="text-xl">💰</span>
+            <span>
+              Una vez recibido y validado el paquete, el reembolso de <strong id="return-total"></strong> se procesará en tu método de pago original en un plazo de <strong>5 a 7 días hábiles</strong>.
+            </span>
+          </p>
+        </div>
+        
+        <button id="btn-devolver-cerrar" class="w-full px-4 py-3 bg-charcoal-900 text-white rounded-lg hover:bg-charcoal-800 font-medium">
+          Entendido
+        </button>
+      </div>
+      
+      <div id="return-error" class="hidden mt-4 p-4 bg-red-50 text-red-700 rounded-lg"></div>
+    </div>
+  </div>
+
+  <style>
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    
+    .modal-overlay.hidden {
+      display: none;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease;
+    }
+    
+    .modal-content.modal-lg {
+      max-width: 560px;
+    }
+    
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: #f3f4f6;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+      background: #e5e7eb;
+      color: #1a1a1a;
+    }
+  </style>
+
+  <script define:vars={{ userId }}>
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      try {
+        await fetch('/api/auth/logout');
+        window.location.href = '/';
+      } catch (e) {
+        console.error('Error en logout:', e);
+        window.location.href = '/';
+      }
+    });
+
+    // === MODAL CANCELAR ===
+    const modalCancelar = document.getElementById('modal-cancelar');
+    const cancelOrdenNumero = document.getElementById('cancel-orden-numero');
+    let currentCancelOrdenId = null;
+
+    document.querySelectorAll('.btn-cancelar').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentCancelOrdenId = btn.dataset.ordenId;
+        cancelOrdenNumero.textContent = btn.dataset.ordenNumero;
+        modalCancelar?.classList.remove('hidden');
+      });
+    });
+
+    document.getElementById('btn-cancelar-no')?.addEventListener('click', () => {
+      modalCancelar?.classList.add('hidden');
+    });
+
+    document.querySelector('#modal-cancelar .modal-close')?.addEventListener('click', () => {
+      modalCancelar?.classList.add('hidden');
+    });
+
+    document.getElementById('btn-cancelar-si')?.addEventListener('click', async () => {
+      if (!currentCancelOrdenId) return;
+      
+      const btnSi = document.getElementById('btn-cancelar-si');
+      const btnNo = document.getElementById('btn-cancelar-no');
+      const loading = document.getElementById('cancel-loading');
+      const errorDiv = document.getElementById('cancel-error');
+      
+      btnSi.classList.add('hidden');
+      btnNo.classList.add('hidden');
+      loading?.classList.remove('hidden');
+      errorDiv?.classList.add('hidden');
+      
+      try {
+        const response = await fetch('/api/pedidos/cancelar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orden_id: currentCancelOrdenId,
+            usuario_id: userId
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok || result.error) {
+          throw new Error(result.error || 'Error al cancelar');
+        }
+        
+        // Éxito - recargar página
+        window.location.reload();
+        
+      } catch (error) {
+        loading?.classList.add('hidden');
+        btnSi?.classList.remove('hidden');
+        btnNo?.classList.remove('hidden');
+        if (errorDiv) {
+          errorDiv.textContent = error.message;
+          errorDiv.classList.remove('hidden');
+        }
+      }
+    });
+
+    // === MODAL DEVOLVER ===
+    const modalDevolver = document.getElementById('modal-devolver');
+    const returnOrdenNumero = document.getElementById('return-orden-numero');
+    const returnOrdenId = document.getElementById('return-orden-id');
+    const returnTotal = document.getElementById('return-total');
+    let currentReturnOrdenTotal = 0;
+
+    document.querySelectorAll('.btn-devolver').forEach(btn => {
+      btn.addEventListener('click', () => {
+        returnOrdenId.value = btn.dataset.ordenId;
+        returnOrdenNumero.textContent = btn.dataset.ordenNumero;
+        currentReturnOrdenTotal = parseFloat(btn.dataset.ordenTotal);
+        returnTotal.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(currentReturnOrdenTotal);
+        
+        // Reset modal state
+        document.getElementById('devolucion-paso1')?.classList.remove('hidden');
+        document.getElementById('devolucion-paso2')?.classList.add('hidden');
+        document.getElementById('return-error')?.classList.add('hidden');
+        document.getElementById('form-devolucion')?.reset();
+        
+        modalDevolver?.classList.remove('hidden');
+      });
+    });
+
+    document.getElementById('btn-devolver-cancelar')?.addEventListener('click', () => {
+      modalDevolver?.classList.add('hidden');
+    });
+
+    document.getElementById('btn-devolver-cerrar')?.addEventListener('click', () => {
+      modalDevolver?.classList.add('hidden');
+      window.location.reload();
+    });
+
+    document.querySelector('#modal-devolver .modal-close')?.addEventListener('click', () => {
+      modalDevolver?.classList.add('hidden');
+    });
+
+    document.getElementById('form-devolucion')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const form = e.target;
+      const loading = document.getElementById('return-loading');
+      const errorDiv = document.getElementById('return-error');
+      const paso1 = document.getElementById('devolucion-paso1');
+      
+      form.classList.add('hidden');
+      loading?.classList.remove('hidden');
+      errorDiv?.classList.add('hidden');
+      
+      try {
+        const response = await fetch('/api/pedidos/solicitar-devolucion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orden_id: returnOrdenId.value,
+            usuario_id: userId,
+            motivo: form.motivo.value,
+            descripcion: form.descripcion.value
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok || result.error) {
+          throw new Error(result.error || 'Error al procesar solicitud');
+        }
+        
+        // Mostrar paso 2 con instrucciones
+        loading?.classList.add('hidden');
+        paso1?.classList.add('hidden');
+        document.getElementById('devolucion-paso2')?.classList.remove('hidden');
+        document.getElementById('etiqueta-numero').textContent = result.numero_etiqueta || 'DEV-XXXXX';
+        
+      } catch (error) {
+        loading?.classList.add('hidden');
+        form.classList.remove('hidden');
+        if (errorDiv) {
+          errorDiv.textContent = error.message;
+          errorDiv.classList.remove('hidden');
+        }
+      }
+    });
+
+    // Cerrar modales con Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        modalCancelar?.classList.add('hidden');
+        modalDevolver?.classList.add('hidden');
+      }
+    });
+
+    // Cerrar modales al hacer clic fuera
+    [modalCancelar, modalDevolver].forEach(modal => {
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.add('hidden');
+        }
+      });
     });
   </script>
 </PublicLayout>

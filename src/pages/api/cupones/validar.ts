@@ -6,18 +6,24 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const body = await request.json();
-    const { codigo_cupon, usuario_id, subtotal } = body;
+    // Aceptar tanto "codigo_cupon" como "codigo"
+    const codigoCupon = body.codigo_cupon || body.codigo;
+    const subtotal = body.subtotal || 0;
+    
+    // Usuario puede venir del body o de cookies
+    const usuarioId = body.usuario_id || cookies.get('user-id')?.value;
 
     // ==========================================
     // 1. VALIDACIONES
     // ==========================================
-    if (!codigo_cupon || !usuario_id || !subtotal) {
+    if (!codigoCupon) {
       return new Response(
         JSON.stringify({ 
-          error: 'Código de cupón, usuario y subtotal son requeridos' 
+          valido: false,
+          error: 'Código de cupón es requerido' 
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -33,8 +39,8 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { data: resultado, error: funcError } = await supabaseAdmin
       .rpc('validar_cupon', {
-        p_codigo_cupon: codigo_cupon.toUpperCase(),
-        p_usuario_id: usuario_id,
+        p_codigo: codigoCupon.toUpperCase(),
+        p_usuario_id: usuarioId || null,
         p_subtotal: subtotal
       });
 
@@ -52,16 +58,18 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // 3. ANALIZAR RESULTADO
     // ==========================================
-    const { cupon_id, es_valido, valor_descuento, mensaje } = resultado[0] || {};
-
-    if (!es_valido) {
+    // El resultado puede ser un objeto o un array
+    const data = Array.isArray(resultado) ? resultado[0] : resultado;
+    
+    if (!data || !data.valido) {
       return new Response(
         JSON.stringify({
           valido: false,
-          error: mensaje || 'Cupón inválido',
+          error: data?.mensaje || 'Cupón inválido',
+          mensaje: data?.mensaje || 'Cupón inválido',
           descuento: 0
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -72,11 +80,13 @@ export const POST: APIRoute = async ({ request }) => {
       JSON.stringify({
         success: true,
         valido: true,
-        cupon_id,
-        codigo: codigo_cupon.toUpperCase(),
-        descuento: valor_descuento,
-        mensaje,
-        total_con_descuento: subtotal - valor_descuento
+        cupon_id: data.cupon_id,
+        codigo: codigoCupon.toUpperCase(),
+        descripcion: data.descripcion || 'Descuento aplicado',
+        descuento: data.descuento_calculado || 0,
+        descuento_calculado: data.descuento_calculado || 0,
+        mensaje: data.mensaje,
+        total_con_descuento: subtotal - (data.descuento_calculado || 0)
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

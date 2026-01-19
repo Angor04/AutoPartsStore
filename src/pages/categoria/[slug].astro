@@ -6,7 +6,6 @@ export const prerender = false;
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import ProductCard from "@/components/product/ProductCard.astro";
-import CartSlideOver from "@/components/ui/CartSlideOver.astro";
 import { getCategories, getProductsByCategory, getProducts } from "@/lib/supabase";
 import type { Category, Product } from "@/types/index";
 
@@ -25,8 +24,6 @@ const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCa
 ---
 
 <PublicLayout title={title} description={description}>
-  <CartSlideOver />
-
   <!-- Header -->
   <div class="bg-red-600 text-ivory-50 py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

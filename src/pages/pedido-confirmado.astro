@@ -1,0 +1,213 @@
+---
+// src/pages/pedido-confirmado.astro
+// Página de confirmación de pedido exitoso
+
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+const title = "¡Pedido Confirmado!";
+const description = "Tu pedido ha sido procesado correctamente";
+
+interface Orden {
+  id: string;
+  numero_orden: string;
+  created_at: string;
+  creada_en: string;
+  estado: string;
+  subtotal: number;
+  descuento: number;
+  gastos_envio: number;
+  total: number;
+  direccion_envio: any;
+}
+
+interface OrdenItem {
+  id: string;
+  producto_id: string;
+  cantidad: number;
+  precio_unitario: number;
+  nombre_producto: string;
+  productos?: { nombre: string; urls_imagenes: string[] };
+}
+
+// Obtener orden de la URL
+const url = new URL(Astro.request.url);
+const ordenId = url.searchParams.get('orden');
+
+let orden: Orden | null = null;
+let items: OrdenItem[] = [];
+
+if (ordenId) {
+  const supabaseAdmin = getSupabaseAdmin();
+  
+  // Cargar orden
+  const { data: ordenData } = await supabaseAdmin
+    .from('ordenes')
+    .select('*')
+    .or(`id.eq.${ordenId},numero_orden.eq.${ordenId}`)
+    .single();
+  
+  orden = ordenData as Orden | null;
+  
+  // Cargar items de la orden
+  if (orden) {
+    const { data: itemsData } = await supabaseAdmin
+      .from('ordenes_items')
+      .select(`
+        *,
+        productos:producto_id (nombre, urls_imagenes)
+      `)
+      .eq('orden_id', orden.id);
+    
+    items = (itemsData || []) as OrdenItem[];
+  }
+}
+
+function formatPrice(precio: number): string {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(precio);
+}
+---
+
+<PublicLayout title={title} description={description}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    
+    {orden ? (
+      <div class="text-center mb-12">
+        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        
+        <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-2">
+          ¡Gracias por tu compra!
+        </h1>
+        <p class="text-lg text-charcoal-600">
+          Tu pedido ha sido confirmado y está siendo procesado
+        </p>
+      </div>
+
+      <!-- Info de la orden -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <p class="text-sm text-charcoal-500 mb-1">Número de pedido</p>
+            <p class="font-bold text-navy-600">{orden.numero_orden || `ORD-${orden.id?.slice(0,8)}`}</p>
+          </div>
+          <div>
+            <p class="text-sm text-charcoal-500 mb-1">Fecha</p>
+            <p class="font-semibold">{new Date(orden.creada_en || orden.created_at).toLocaleDateString('es-ES')}</p>
+          </div>
+          <div>
+            <p class="text-sm text-charcoal-500 mb-1">Estado</p>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              {orden.estado}
+            </span>
+          </div>
+          <div>
+            <p class="text-sm text-charcoal-500 mb-1">Total</p>
+            <p class="font-bold text-lg text-red-600">{formatPrice(orden.total)}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Productos comprados -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4">Productos Comprados</h2>
+        
+        <div class="divide-y divide-charcoal-100">
+          {items.map((item: any) => (
+            <div class="py-4 flex items-center gap-4">
+              <img 
+                src={item.productos?.urls_imagenes?.[0] || '/images/placeholder.jpg'} 
+                alt={item.productos?.nombre || 'Producto'}
+                class="w-16 h-16 object-cover rounded-lg"
+              />
+              <div class="flex-1">
+                <p class="font-medium text-charcoal-900">{item.productos?.nombre || 'Producto'}</p>
+                <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad}</p>
+              </div>
+              <p class="font-semibold text-charcoal-900">{formatPrice(item.subtotal)}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="border-t border-charcoal-200 pt-4 mt-4 space-y-2">
+          <div class="flex justify-between text-charcoal-600">
+            <span>Subtotal</span>
+            <span>{formatPrice(orden.subtotal)}</span>
+          </div>
+          {orden.descuento > 0 && (
+            <div class="flex justify-between text-green-600">
+              <span>Descuento</span>
+              <span>-{formatPrice(orden.descuento)}</span>
+            </div>
+          )}
+          <div class="flex justify-between text-charcoal-600">
+            <span>Envío</span>
+            <span>{orden.gastos_envio === 0 ? 'Gratis' : formatPrice(orden.gastos_envio)}</span>
+          </div>
+          <div class="flex justify-between font-bold text-lg pt-2 border-t border-charcoal-100">
+            <span>Total</span>
+            <span>{formatPrice(orden.total)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Próximos pasos -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+        <h3 class="font-semibold text-blue-900 mb-3">📦 ¿Qué sigue ahora?</h3>
+        <ul class="space-y-2 text-blue-800 text-sm">
+          <li class="flex items-start gap-2">
+            <span class="mt-1">✓</span>
+            <span>Recibirás un email de confirmación con los detalles de tu pedido</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="mt-1">✓</span>
+            <span>Te notificaremos cuando tu pedido sea enviado con el número de seguimiento</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="mt-1">✓</span>
+            <span>Puedes seguir el estado de tu pedido desde "Mi Cuenta"</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Botones -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a 
+          href="/mi-cuenta/pedidos" 
+          class="px-8 py-3 bg-navy-500 text-white font-semibold rounded-lg hover:bg-navy-600 transition-colors text-center"
+        >
+          Ver Mis Pedidos
+        </a>
+        <a 
+          href="/productos" 
+          class="px-8 py-3 bg-white border border-charcoal-300 text-charcoal-700 font-semibold rounded-lg hover:bg-charcoal-50 transition-colors text-center"
+        >
+          Seguir Comprando
+        </a>
+      </div>
+    ) : (
+      <!-- Sin orden -->
+      <div class="text-center py-16">
+        <div class="w-20 h-20 bg-charcoal-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg class="w-10 h-10 text-charcoal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-serif font-bold text-charcoal-900 mb-2">No se encontró el pedido</h2>
+        <p class="text-charcoal-600 mb-6">No pudimos encontrar la información del pedido.</p>
+        <a 
+          href="/productos" 
+          class="inline-block px-8 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Ver Productos
+        </a>
+      </div>
+    )}
+  </div>
+</PublicLayout>

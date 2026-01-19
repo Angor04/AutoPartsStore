@@ -5,7 +5,6 @@
 export const prerender = false;
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
-import CartSlideOver from "@/components/ui/CartSlideOver.astro";
 import AddToCartButton from "@/components/islands/AddToCartButton.tsx";
 import ProductCard from "@/components/product/ProductCard.astro";
 import { getProducts } from "@/lib/supabase";
@@ -48,8 +47,6 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
 ---
 
 <PublicLayout title={title} description={description}>
-  <CartSlideOver />
-
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <!-- Breadcrumb -->
     <nav class="flex gap-2 mb-8 text-sm text-charcoal-600">
