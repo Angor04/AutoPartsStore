@@ -48,6 +48,7 @@ async function saveCart(items: CartItem[]) {
 
   try {
     const isAuthenticated = await isUserAuthenticated();
+    console.log("saveCart - ¿Autenticado?:", isAuthenticated);
     
     if (isAuthenticated) {
       console.log("saveCart - Usuario autenticado, guardando en BD");

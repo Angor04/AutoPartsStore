@@ -12,7 +12,12 @@ export async function isUserAuthenticated(): Promise<boolean> {
     // Intentar obtener el usuario actual
     const { data: { user } } = await supabaseClient.auth.getUser();
     const isAuth = !!user;
-    console.log('isUserAuthenticated - Resultado:', isAuth, 'User:', user?.id);
+    console.log('isUserAuthenticated - Resultado:', isAuth, 'User ID:', user?.id);
+    
+    // Debug: revisar si hay sesión
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    console.log('isUserAuthenticated - Session:', session?.user?.id);
+    
     return isAuth;
   } catch (e) {
     console.error('Error verificando autenticación:', e);
