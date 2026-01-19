@@ -161,6 +161,13 @@ export async function clearCartOnLogout() {
   console.log("clearCartOnLogout - Limpiando carrito");
   clearCart();
   
+  // Limpiar también sessionStorage completamente
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('autopartsstore-cart');
+    localStorage.removeItem('autopartsstore-cart');
+    console.log("clearCartOnLogout - sessionStorage y localStorage limpiados");
+  }
+  
   if (typeof window !== 'undefined') {
     // También intentar limpiar de BD
     try {
@@ -188,20 +195,28 @@ export async function loadCart() {
     if (isAuthenticated) {
       console.log("loadCart - Usuario autenticado, cargando de BD");
       const cartFromDB = await loadCartFromDB();
-      if (cartFromDB) {
+      if (cartFromDB && Array.isArray(cartFromDB) && cartFromDB.length > 0) {
+        console.log("loadCart - Carrito cargado de BD:", cartFromDB);
         cartStore.set(cartFromDB);
+        // Limpiar sessionStorage para evitar contaminación
+        sessionStorage.removeItem('autopartsstore-cart');
+        return;
+      } else {
+        console.log("loadCart - Carrito vacío en BD, asignando carrito vacío");
+        cartStore.set([]);
+        sessionStorage.removeItem('autopartsstore-cart');
         return;
       }
     }
     
-    // Fallback a sessionStorage
-    console.log("loadCart - Cargando de sessionStorage");
+    // Solo para usuarios NO autenticados (invitados)
+    console.log("loadCart - Usuario NO autenticado, cargando de sessionStorage");
     const stored = sessionStorage.getItem('autopartsstore-cart');
     const cartItems = stored ? JSON.parse(stored) : [];
     cartStore.set(cartItems);
   } catch (e) {
     console.error('Error en loadCart:', e);
-    // Fallback a sessionStorage
+    // Fallback a sessionStorage solo si hay error
     const stored = sessionStorage.getItem('autopartsstore-cart');
     const cartItems = stored ? JSON.parse(stored) : [];
     cartStore.set(cartItems);
