@@ -5,22 +5,31 @@ import { supabaseClient } from './supabase';
 import type { CartItem } from '@/types';
 
 /**
- * Verifica si el usuario está autenticado
+ * Verifica si el usuario está autenticado revisando las cookies
  */
 export async function isUserAuthenticated(): Promise<boolean> {
   try {
-    // Intentar obtener el usuario actual
+    // En el navegador, revisar si hay tokens en cookies
+    if (typeof window !== 'undefined') {
+      const hasAccessToken = document.cookie.includes('sb-access-token');
+      const hasSessionToken = document.cookie.includes('sb-') && document.cookie.includes('token');
+      console.log('isUserAuthenticated - Verificando cookies...');
+      console.log('  - sb-access-token:', hasAccessToken);
+      console.log('  - Otras cookies de sesión:', hasSessionToken);
+      
+      if (hasAccessToken || hasSessionToken) {
+        console.log('isUserAuthenticated - ✅ Token encontrado en cookies, usuario AUTENTICADO');
+        return true;
+      }
+    }
+
+    // Fallback: intentar obtener el usuario actual
     const { data: { user } } = await supabaseClient.auth.getUser();
     const isAuth = !!user;
-    console.log('isUserAuthenticated - Resultado:', isAuth, 'User ID:', user?.id);
-    
-    // Debug: revisar si hay sesión
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    console.log('isUserAuthenticated - Session:', session?.user?.id);
-    
+    console.log('isUserAuthenticated - getUser():', isAuth, 'User ID:', user?.id);
     return isAuth;
   } catch (e) {
-    console.error('Error verificando autenticación:', e);
+    console.error('isUserAuthenticated - Error:', e);
     return false;
   }
 }
