@@ -18,6 +18,7 @@ export const GET: APIRoute = async ({ redirect, cookies }) => {
   // Eliminar cookies de sesión
   cookies.delete('sb-access-token', { path: '/' });
   cookies.delete('sb-refresh-token', { path: '/' });
+  cookies.delete('user-id', { path: '/' }); // Cookie del carrito
 
   // Redirigir a página principal
   return redirect('/');

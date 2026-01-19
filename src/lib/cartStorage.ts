@@ -5,46 +5,36 @@ import { supabaseClient } from './supabase';
 import type { CartItem } from '@/types';
 
 /**
- * Verifica si el usuario está autenticado revisando las cookies
+ * Obtiene el ID del usuario desde la cookie (si está autenticado)
+ */
+function getUserIdFromCookie(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'user-id' && value) {
+      console.log('getUserIdFromCookie - Usuario encontrado:', value);
+      return value;
+    }
+  }
+  console.log('getUserIdFromCookie - No hay usuario logueado (invitado)');
+  return null;
+}
+
+/**
+ * Verifica si el usuario está autenticado
  */
 export async function isUserAuthenticated(): Promise<boolean> {
-  try {
-    // En el navegador, revisar si hay tokens en cookies
-    if (typeof window !== 'undefined') {
-      const hasAccessToken = document.cookie.includes('sb-access-token');
-      const hasSessionToken = document.cookie.includes('sb-') && document.cookie.includes('token');
-      console.log('isUserAuthenticated - Verificando cookies...');
-      console.log('  - sb-access-token:', hasAccessToken);
-      console.log('  - Otras cookies de sesión:', hasSessionToken);
-      
-      if (hasAccessToken || hasSessionToken) {
-        console.log('isUserAuthenticated - ✅ Token encontrado en cookies, usuario AUTENTICADO');
-        return true;
-      }
-    }
-
-    // Fallback: intentar obtener el usuario actual
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const isAuth = !!user;
-    console.log('isUserAuthenticated - getUser():', isAuth, 'User ID:', user?.id);
-    return isAuth;
-  } catch (e) {
-    console.error('isUserAuthenticated - Error:', e);
-    return false;
-  }
+  const userId = getUserIdFromCookie();
+  return userId !== null;
 }
 
 /**
  * Obtiene el ID del usuario actual
  */
 export async function getCurrentUserId(): Promise<string | null> {
-  try {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    return user?.id || null;
-  } catch (e) {
-    console.error('Error obteniendo usuario:', e);
-    return null;
-  }
+  return getUserIdFromCookie();
 }
 
 /**

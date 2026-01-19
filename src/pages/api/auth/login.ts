@@ -57,6 +57,14 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
         maxAge: 7 * 24 * 60 * 60, // 7 días
       });
 
+      // Cookie legible por JavaScript para el carrito (NO httpOnly)
+      cookies.set('user-id', data.session.user.id, {
+        secure: true,
+        httpOnly: false, // JavaScript puede leerla
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60, // 7 días
+      });
+
       return redirect('/');
     }
 
