@@ -9,8 +9,11 @@ import type { CartItem } from '@/types';
  */
 export async function isUserAuthenticated(): Promise<boolean> {
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    return !!session;
+    // Intentar obtener el usuario actual
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const isAuth = !!user;
+    console.log('isUserAuthenticated - Resultado:', isAuth, 'User:', user?.id);
+    return isAuth;
   } catch (e) {
     console.error('Error verificando autenticación:', e);
     return false;
