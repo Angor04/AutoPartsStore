@@ -3,7 +3,7 @@
 nixpacks.node.version = "22"
 
 # Install dependencies
-install.commands = ["npm ci"]
+install.commands = ["npm i --prefer-offline --no-audit"]
 
 # Build the Astro project
 build.commands = ["npm run build"]
