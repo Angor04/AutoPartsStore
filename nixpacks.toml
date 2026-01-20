@@ -1,0 +1,34 @@
+[build]
+# Node.js version
+nixpacks.node.version = "22"
+
+# Install dependencies
+install.commands = ["npm ci"]
+
+# Build the Astro project
+build.commands = ["npm run build"]
+
+[start]
+# Start command for Astro with Node.js adapter
+cmd = "node ./dist/server/entry.mjs"
+
+[variables]
+# Environment variables for build and runtime
+CI = "true"
+NODE_ENV = "production"
+NPM_CONFIG_PRODUCTION = "false"
+
+# Astro needs these at build time for public variables
+PUBLIC_STRIPE_PUBLISHABLE_KEY = ""
+PUBLIC_SUPABASE_ANON_KEY = ""
+PUBLIC_SUPABASE_URL = ""
+
+# Keep empty, Coolify will inject them
+SUPABASE_URL = ""
+SUPABASE_ANON_KEY = ""
+SUPABASE_SERVICE_ROLE_KEY = ""
+STRIPE_SECRET_KEY = ""
+CLOUDINARY_CLOUD_NAME = ""
+CLOUDINARY_API_KEY = ""
+CLOUDINARY_API_SECRET = ""
+RESEND_API_KEY = ""
