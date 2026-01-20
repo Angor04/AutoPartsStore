@@ -10,5 +10,15 @@ echo "   Host: $HOST"
 echo "   Port: $PORT"
 echo "   Env: $NODE_ENV"
 
-# Iniciar Astro Node server
-exec node ./dist/server/entry.mjs
+# Verificar que dist/server/entry.mjs existe
+if [ ! -f "./dist/server/entry.mjs" ]; then
+  echo "❌ ERROR: dist/server/entry.mjs no encontrado!"
+  ls -la ./dist/ || echo "dist/ no existe"
+  exit 1
+fi
+
+echo "✅ Iniciando servidor Node.js..."
+echo ""
+
+# Iniciar Astro sin capturar output para ver los errores
+node ./dist/server/entry.mjs
