@@ -2,8 +2,8 @@
 # Node.js version
 nixpacks.node.version = "22"
 
-# Install dependencies
-install.commands = ["npm i --prefer-offline --no-audit"]
+# Install dependencies - agresivo con timeouts y caché
+install.commands = ["npm install --legacy-peer-deps --prefer-offline --no-audit --fetch-timeout=120000 --fetch-retry-mintimeout=20000"]
 
 # Build the Astro project
 build.commands = ["npm run build"]
