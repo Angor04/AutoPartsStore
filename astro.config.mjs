@@ -6,8 +6,14 @@ import node from '@astrojs/node';
 // Configurado para Node.js (Coolify, Docker, VPS)
 export default defineConfig({
   output: 'server',
-  adapter: node({ mode: 'middleware' }),
-  site: process.env.SITE_URL || 'http://localhost:4322',
+  adapter: node({ 
+    mode: 'middleware',
+  }),
+  server: {
+    host: '0.0.0.0',
+    port: parseInt(process.env.PORT || '4321'),
+  },
+  site: process.env.SITE_URL || 'http://localhost:4321',
   integrations: [
     react(),
     tailwind({

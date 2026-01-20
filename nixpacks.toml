@@ -9,8 +9,8 @@ install.commands = ["npm install --legacy-peer-deps --prefer-offline --no-audit 
 build.commands = ["npm run build"]
 
 [start]
-# Start command - ejecuta directamente Node.js sin intermediarios
-cmd = "node ./dist/server/entry.mjs"
+# Start command - ejecuta directamente Node.js con logs de debug
+cmd = "node --trace-warnings ./dist/server/entry.mjs"
 
 [variables]
 # Environment variables for build and runtime
