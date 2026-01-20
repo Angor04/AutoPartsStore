@@ -10,7 +10,8 @@ build.commands = ["npm run build"]
 
 [start]
 # Start command for Astro with Node.js adapter
-cmd = "node ./dist/server/entry.mjs"
+# Uses a custom start script for debugging and proper configuration
+cmd = "bash ./start.sh"
 
 [variables]
 # Environment variables for build and runtime
