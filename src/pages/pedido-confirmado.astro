@@ -1,6 +1,6 @@
 ---
 // src/pages/pedido-confirmado.astro
-// Página de confirmación de pedido exitoso
+// Página de confirmación de pedido - Compatible con Stripe y checkout tradicional
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import { getSupabaseAdmin } from "@/lib/supabase";
@@ -15,10 +15,12 @@ interface Orden {
   creada_en: string;
   estado: string;
   subtotal: number;
-  descuento: number;
-  gastos_envio: number;
+  descuento_aplicado: number;
+  costo_envio: number;
   total: number;
   direccion_envio: any;
+  email_cliente: string;
+  fecha_pago: string;
 }
 
 interface OrdenItem {
@@ -27,20 +29,57 @@ interface OrdenItem {
   cantidad: number;
   precio_unitario: number;
   nombre_producto: string;
+  subtotal: number;
   productos?: { nombre: string; urls_imagenes: string[] };
 }
 
-// Obtener orden de la URL
+// Obtener orden - puede venir de Stripe (session_id) o directamente (orden)
 const url = new URL(Astro.request.url);
+const sessionId = url.searchParams.get('session_id');
 const ordenId = url.searchParams.get('orden');
 
 let orden: Orden | null = null;
 let items: OrdenItem[] = [];
+let error = null;
 
-if (ordenId) {
-  const supabaseAdmin = getSupabaseAdmin();
-  
-  // Cargar orden
+const supabaseAdmin = getSupabaseAdmin();
+
+// Si viene de Stripe
+if (sessionId) {
+  try {
+    console.log('📦 Procesando sesión de Stripe:', sessionId);
+    
+    // Llamar al endpoint que procesa Stripe
+    const response = await fetch(`${import.meta.env.SITE}/api/pagos/procesar-stripe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+
+    const resultado = await response.json();
+
+    if (resultado.success && resultado.orden_id) {
+      console.log('✅ Orden creada desde Stripe:', resultado.numero_orden);
+      
+      // Cargar la orden que acabamos de crear
+      const { data: ordenData } = await supabaseAdmin
+        .from('ordenes')
+        .select('*')
+        .eq('id', resultado.orden_id)
+        .single();
+      
+      orden = ordenData as Orden | null;
+    } else {
+      error = resultado.error || 'Error procesando el pago';
+      console.error('❌ Error en Stripe:', error);
+    }
+  } catch (e) {
+    console.error('❌ Error en procesamiento de Stripe:', e);
+    error = 'Error al procesar el pago';
+  }
+}
+// Si viene de checkout tradicional
+else if (ordenId) {
   const { data: ordenData } = await supabaseAdmin
     .from('ordenes')
     .select('*')
@@ -48,18 +87,20 @@ if (ordenId) {
     .single();
   
   orden = ordenData as Orden | null;
-  
-  // Cargar items de la orden
-  if (orden) {
-    const { data: itemsData } = await supabaseAdmin
-      .from('ordenes_items')
-      .select(`
-        *,
-        productos:producto_id (nombre, urls_imagenes)
-      `)
-      .eq('orden_id', orden.id);
-    
-    items = (itemsData || []) as OrdenItem[];
+}
+
+// Cargar items si tenemos orden
+if (orden) {
+  // Los items están en el JSON 'productos' de la orden
+  if (orden.productos && Array.isArray(orden.productos)) {
+    items = orden.productos.map((prod: any) => ({
+      id: `${prod.producto_id || '0'}`,
+      producto_id: `${prod.producto_id || '0'}`,
+      cantidad: prod.cantidad || 0,
+      precio_unitario: prod.precio_unitario || prod.precio || 0,
+      nombre_producto: prod.nombre || 'Producto desconocido',
+      subtotal: prod.subtotal || 0
+    })) as OrdenItem[];
   }
 }
 
@@ -68,6 +109,14 @@ function formatPrice(precio: number): string {
     style: 'currency',
     currency: 'EUR'
   }).format(precio);
+}
+
+function formatDate(fecha: string): string {
+  return new Date(fecha).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 }
 ---
 
@@ -119,20 +168,21 @@ function formatPrice(precio: number): string {
         <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4">Productos Comprados</h2>
         
         <div class="divide-y divide-charcoal-100">
-          {items.map((item: any) => (
-            <div class="py-4 flex items-center gap-4">
-              <img 
-                src={item.productos?.urls_imagenes?.[0] || '/images/placeholder.jpg'} 
-                alt={item.productos?.nombre || 'Producto'}
-                class="w-16 h-16 object-cover rounded-lg"
-              />
-              <div class="flex-1">
-                <p class="font-medium text-charcoal-900">{item.productos?.nombre || 'Producto'}</p>
-                <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad}</p>
+          {items.length > 0 ? (
+            items.map((item: any) => (
+              <div class="py-4 flex items-center gap-4">
+                <div class="flex-1">
+                  <p class="font-medium text-charcoal-900">{item.nombre_producto || 'Producto desconocido'}</p>
+                  <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad}</p>
+                </div>
+                <p class="font-semibold text-charcoal-900">{formatPrice(item.subtotal)}</p>
               </div>
-              <p class="font-semibold text-charcoal-900">{formatPrice(item.subtotal)}</p>
+            ))
+          ) : (
+            <div class="py-4 text-center text-charcoal-500">
+              <p>No hay productos en este pedido</p>
             </div>
-          ))}
+          )}
         </div>
 
         <div class="border-t border-charcoal-200 pt-4 mt-4 space-y-2">
@@ -140,15 +190,15 @@ function formatPrice(precio: number): string {
             <span>Subtotal</span>
             <span>{formatPrice(orden.subtotal)}</span>
           </div>
-          {orden.descuento > 0 && (
+          {orden.subtotal - orden.total > 0 && (
             <div class="flex justify-between text-green-600">
               <span>Descuento</span>
-              <span>-{formatPrice(orden.descuento)}</span>
+              <span>-{formatPrice(orden.subtotal - orden.total)}</span>
             </div>
           )}
           <div class="flex justify-between text-charcoal-600">
             <span>Envío</span>
-            <span>{orden.gastos_envio === 0 ? 'Gratis' : formatPrice(orden.gastos_envio)}</span>
+            <span>{orden.costo_envio === 0 ? 'Gratis' : formatPrice(orden.costo_envio)}</span>
           </div>
           <div class="flex justify-between font-bold text-lg pt-2 border-t border-charcoal-100">
             <span>Total</span>
@@ -211,3 +261,25 @@ function formatPrice(precio: number): string {
     )}
   </div>
 </PublicLayout>
+
+<script client:load>
+  // Limpiar carrito después del pago exitoso
+  if (window.location.search.includes('session_id')) {
+    // Limpiar sessionStorage
+    try {
+      const sessionId = new URLSearchParams(window.location.search).get('session_id');
+      const carritoKey = `cart-${sessionId}`;
+      sessionStorage.removeItem(carritoKey);
+      sessionStorage.removeItem('autopartsstore-cart');
+      console.log('🗑️ Carrito limpiado del navegador');
+      
+      // También limpiar del nanostores si está disponible
+      if (window.cartStore) {
+        window.cartStore.set([]);
+        console.log('🗑️ Carrito limpiado de nanostores');
+      }
+    } catch (error) {
+      console.error('⚠️ Error limpiando carrito:', error);
+    }
+  }
+</script>

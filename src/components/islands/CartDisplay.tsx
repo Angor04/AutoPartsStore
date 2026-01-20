@@ -6,6 +6,33 @@ import { cartStore, removeFromCart, updateCartItem, loadCart } from '@/stores/ca
 import { formatPrice } from '@/lib/utils';
 import type { CartItem } from '@/types';
 
+// Función para actualizar el resumen en el DOM
+function updateSummaryDOM(cartItems: CartItem[]) {
+  if (typeof window === 'undefined') return;
+  
+  const itemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + ((item.precio || 0) * (item.quantity || 0)), 0);
+  
+  // Actualizar contador
+  const itemCountEl = document.getElementById('item-count');
+  if (itemCountEl) {
+    itemCountEl.textContent = `${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`;
+  }
+  
+  // Formatear precio
+  const formattedPrice = subtotal.toLocaleString('es-ES', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  }) + ' €';
+  
+  // Actualizar subtotal y total
+  const subtotalEl = document.getElementById('subtotal');
+  const totalEl = document.getElementById('total');
+  
+  if (subtotalEl) subtotalEl.textContent = formattedPrice;
+  if (totalEl) totalEl.textContent = formattedPrice;
+}
+
 export default function CartDisplay() {
   const items = useStore(cartStore);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -28,8 +55,11 @@ export default function CartDisplay() {
   }, []);
 
   useEffect(() => {
-    // Cuando cambian los items en el store, actualizar el state local
-    setCartItems(Array.isArray(items) ? items : []);
+    // Cuando cambian los items en el store, actualizar el state local y el DOM
+    const currentItems = Array.isArray(items) ? items : [];
+    setCartItems(currentItems);
+    // Actualizar el resumen del carrito en el DOM
+    updateSummaryDOM(currentItems);
   }, [items]);
 
   if (!mounted) {

@@ -14,6 +14,7 @@ const userId = Astro.cookies.get('user-id')?.value;
 const userEmail = Astro.cookies.get('user-email')?.value;
 
 if (!userId) {
+  // Redirigir a login pero guardar la intención de ir a checkout
   return Astro.redirect('/auth/login?redirect=/checkout');
 }
 
@@ -290,17 +291,10 @@ const perfil = perfilData as PerfilUsuario | null;
             <button 
               type="submit" 
               id="btnPagar"
-              class="w-full mt-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors disabled:bg-charcoal-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="w-full mt-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors disabled:bg-charcoal-300 disabled:cursor-not-allowed"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-              </svg>
-              <span>Confirmar Pedido</span>
+              Confirmar Pedido
             </button>
-
-            <p class="text-xs text-charcoal-500 text-center mt-3">
-              🔒 Pago 100% seguro
-            </p>
 
             <!-- Mensaje de estado -->
             <div id="estadoMensaje" class="hidden mt-4 p-3 rounded-lg text-center"></div>
@@ -319,26 +313,97 @@ const perfil = perfilData as PerfilUsuario | null;
   let subtotal = 0;
   let descuento = 0;
   let codigoCuponAplicado = null;
-  const ENVIO_GRATIS_DESDE = 50;
-  const COSTO_ENVIO = 4.99;
+  const ENVIO_GRATIS_DESDE = 0;
+  const COSTO_ENVIO = 0;
+
+  // ==================================================
+  // FUNCIÓN PARA FORMATEAR PRECIOS
+  // ==================================================
+  function formatearPrecio(precio) {
+    return precio.toLocaleString('es-ES', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    }) + ' €';
+  }
+
+  // ==================================================
+  // OBTENER ITEMS DEL CARRITO
+  // ==================================================
+  function getCartItems() {
+    // Intentar obtener de sessionStorage con guest-session-id
+    const sessionId = sessionStorage.getItem('guest-session-id');
+    if (sessionId) {
+      const cartKey = `cart-${sessionId}`;
+      const stored = sessionStorage.getItem(cartKey);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {}
+      }
+    }
+    
+    // Buscar cualquier clave que empiece con 'cart-'
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('cart-')) {
+        const stored = sessionStorage.getItem(key);
+        if (stored) {
+          try {
+            return JSON.parse(stored);
+          } catch (e) {}
+        }
+      }
+    }
+    
+    return [];
+  }
 
   // ==================================================
   // CARGAR CARRITO
   // ==================================================
-  function cargarCarrito() {
+  async function cargarCarrito() {
     try {
-      const stored = sessionStorage.getItem('autopartsstore-cart');
-      cartItems = stored ? JSON.parse(stored) : [];
+      console.log('cargarCarrito() - Iniciando carga...');
       
-      if (cartItems.length === 0) {
-        window.location.href = '/carrito';
+      // Primero intentar obtener del API (usuarios logueados)
+      try {
+        console.log('cargarCarrito() - Intentando obtener de BD...');
+        const response = await fetch('/api/carrito/obtener');
+        const data = await response.json();
+        
+        console.log('cargarCarrito() - Respuesta API:', data);
+        
+        cartItems = data.items || [];
+        console.log('cargarCarrito() - Items de BD:', cartItems.length);
+        
+        if (cartItems && cartItems.length > 0) {
+          console.log('cargarCarrito() - ✅ Carrito cargado de BD');
+          renderizarProductos();
+          calcularTotales();
+          return;
+        }
+      } catch (e) {
+        console.log('cargarCarrito() - Error en BD, intentando sessionStorage:', e);
+      }
+      
+      // Si no hay en BD, intentar sessionStorage (usuarios no logueados o carrito local)
+      console.log('cargarCarrito() - Buscando en sessionStorage...');
+      cartItems = getCartItems();
+      console.log('cargarCarrito() - Items de sessionStorage:', cartItems.length);
+      
+      if (!cartItems || cartItems.length === 0) {
+        console.warn('cargarCarrito() - ⚠️ Carrito vacío, redirigiendo a /carrito');
+        setTimeout(() => {
+          window.location.href = '/carrito';
+        }, 500);
         return;
       }
       
+      console.log('cargarCarrito() - ✅ Carrito cargado de sessionStorage');
       renderizarProductos();
       calcularTotales();
     } catch (e) {
-      console.error('Error cargando carrito:', e);
+      console.error('cargarCarrito() - Error:', e);
     }
   }
 
@@ -348,27 +413,38 @@ const perfil = perfilData as PerfilUsuario | null;
   function renderizarProductos() {
     const container = document.getElementById('productosLista');
     
-    if (cartItems.length === 0) {
+    if (!cartItems || cartItems.length === 0) {
       container.innerHTML = '<p class="text-charcoal-500">Carrito vacío</p>';
       return;
     }
     
-    container.innerHTML = cartItems.map(item => `
-      <div class="flex items-center gap-3 pb-3 border-b border-charcoal-50">
-        <img 
-          src="${item.imagen || '/images/placeholder.jpg'}" 
-          alt="${item.nombre}"
-          class="w-12 h-12 object-cover rounded"
-        />
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-charcoal-900 truncate">${item.nombre}</p>
-          <p class="text-xs text-charcoal-500">Cant: ${item.quantity}</p>
+    container.innerHTML = cartItems.map(item => {
+      const imagenUrl = Array.isArray(item.urls_imagenes) && item.urls_imagenes.length > 0 
+        ? item.urls_imagenes[0] 
+        : (item.imagen || '/images/placeholder.jpg');
+      const nombreProducto = item.nombre || 'Producto sin nombre';
+      const precioProducto = parseFloat(item.precio) || 0;
+      const cantidad = parseInt(item.quantity) || 1;
+      const precioTotal = precioProducto * cantidad;
+      
+      return `
+        <div class="flex items-center gap-3 pb-3 border-b border-charcoal-50">
+          <img 
+            src="${imagenUrl}" 
+            alt="${nombreProducto}"
+            class="w-12 h-12 object-cover rounded"
+            onerror="this.src='/images/placeholder.jpg'"
+          />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-charcoal-900 truncate">${nombreProducto}</p>
+            <p class="text-xs text-charcoal-500">Cant: ${cantidad}</p>
+          </div>
+          <span class="text-sm font-semibold text-charcoal-700">
+            ${formatearPrecio(precioTotal)}
+          </span>
         </div>
-        <span class="text-sm font-semibold text-charcoal-700">
-          €${(item.precio * item.quantity).toFixed(2)}
-        </span>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   // ==================================================
@@ -379,15 +455,15 @@ const perfil = perfilData as PerfilUsuario | null;
     const envio = subtotal >= ENVIO_GRATIS_DESDE ? 0 : COSTO_ENVIO;
     const total = subtotal - descuento + envio;
     
-    document.getElementById('subtotalDisplay').textContent = `€${subtotal.toFixed(2)}`;
-    document.getElementById('envioDisplay').textContent = envio === 0 ? 'Gratis 🎉' : `€${envio.toFixed(2)}`;
-    document.getElementById('totalDisplay').textContent = `€${total.toFixed(2)}`;
+    document.getElementById('subtotalDisplay').textContent = formatearPrecio(subtotal);
+    document.getElementById('envioDisplay').textContent = envio === 0 ? 'Gratis' : formatearPrecio(envio);
+    document.getElementById('totalDisplay').textContent = formatearPrecio(total);
     
     // Mostrar/ocultar descuento
     const descuentoRow = document.getElementById('descuentoRow');
     if (descuento > 0) {
       descuentoRow.style.display = 'flex';
-      document.getElementById('descuentoDisplay').textContent = `-€${descuento.toFixed(2)}`;
+      document.getElementById('descuentoDisplay').textContent = `-${formatearPrecio(descuento)}`;
     } else {
       descuentoRow.style.display = 'none';
     }
@@ -403,6 +479,8 @@ const perfil = perfilData as PerfilUsuario | null;
     
     if (!codigo) return;
     
+    console.log('🎟️ Validando cupón:', codigo, 'Subtotal:', subtotal);
+    
     mensaje.className = 'mt-3 p-2 rounded text-sm bg-blue-50 text-blue-700';
     mensaje.textContent = 'Validando cupón...';
     mensaje.classList.remove('hidden');
@@ -411,7 +489,11 @@ const perfil = perfilData as PerfilUsuario | null;
       const response = await fetch('/api/cupones/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo, subtotal })
+        body: JSON.stringify({ 
+          codigo_cupon: codigo, 
+          subtotal: subtotal,
+          codigo: codigo  // También enviar como alternativa
+        })
       });
       
       const data = await response.json();
@@ -432,12 +514,14 @@ const perfil = perfilData as PerfilUsuario | null;
         
         calcularTotales();
       } else {
+        console.error('❌ Cupón inválido:', data);
         mensaje.className = 'mt-3 p-2 rounded text-sm bg-red-50 text-red-700';
-        mensaje.textContent = data.mensaje || 'Cupón no válido';
+        mensaje.textContent = data.mensaje || data.error || 'Cupón no válido';
       }
     } catch (error) {
+      console.error('❌ Error al validar cupón:', error);
       mensaje.className = 'mt-3 p-2 rounded text-sm bg-red-50 text-red-700';
-      mensaje.textContent = 'Error al validar cupón';
+      mensaje.textContent = 'Error al validar cupón: ' + (error instanceof Error ? error.message : 'Error desconocido');
     }
   }
 
@@ -473,77 +557,51 @@ const perfil = perfilData as PerfilUsuario | null;
     }
     
     btnPagar.disabled = true;
-    btnPagar.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Procesando...';
+    btnPagar.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Preparando pago...';
     
     estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-blue-50 text-blue-700';
-    estadoMensaje.textContent = 'Verificando stock y procesando pedido...';
+    estadoMensaje.textContent = 'Redirigiendo a Stripe para procesar el pago...';
     estadoMensaje.classList.remove('hidden');
     
     try {
       const formData = new FormData(form);
       
-      const items = cartItems.map(item => ({
-        producto_id: item.id,
-        cantidad: item.quantity,
-        precio_unitario: item.precio,
-        nombre: item.nombre
-      }));
-      
-      const response = await fetch('/api/checkout', {
+      // Crear sesión de Stripe
+      const stripeResponse = await fetch('/api/pagos/crear-sesion-stripe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items,
-          direccion_envio: {
-            nombre: formData.get('nombre'),
-            apellidos: formData.get('apellidos'),
-            direccion: formData.get('direccion'),
-            ciudad: formData.get('ciudad'),
-            codigo_postal: formData.get('codigo_postal'),
-            provincia: formData.get('provincia'),
-            telefono: formData.get('telefono')
-          },
+          items: cartItems,
+          email: formData.get('email'),
+          nombre: formData.get('nombre'),
+          apellidos: formData.get('apellidos'),
+          subtotal: subtotal,
+          descuento: descuento,
+          total: subtotal - descuento,
           codigo_cupon: codigoCuponAplicado,
-          metodo_pago: 'tarjeta',
-          notas: formData.get('notas') || null
+          codigoPostal: formData.get('codigo_postal')
         })
       });
       
-      const data = await response.json();
+      const stripeData = await stripeResponse.json();
       
-      if (data.success) {
-        // Limpiar carrito
-        sessionStorage.removeItem('autopartsstore-cart');
+      if (stripeData.success && stripeData.url) {
+        console.log('✅ Sesión de Stripe creada:', stripeData.session_id);
+        console.log('Redirigiendo a:', stripeData.url);
         
-        // Mostrar éxito y redirigir
-        estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-green-50 text-green-700';
-        estadoMensaje.innerHTML = `
-          <p class="font-bold">✅ ¡Pedido realizado con éxito!</p>
-          <p class="text-sm mt-1">Número de orden: ${data.numero_orden}</p>
-          <p class="text-sm">Redirigiendo...</p>
-        `;
-        
-        setTimeout(() => {
-          window.location.href = `/pedido-confirmado?orden=${data.orden_id}`;
-        }, 2000);
-        
+        // Redirigir a Stripe Checkout
+        window.location.href = stripeData.url;
       } else {
-        // Mostrar errores de stock
-        if (data.detalles && data.detalles.length > 0) {
-          const stockAlert = document.getElementById('stockAlert');
-          const stockErrores = document.getElementById('stockErrores');
-          stockErrores.innerHTML = data.detalles.map(e => `<li>• ${e}</li>`).join('');
-          stockAlert.classList.remove('hidden');
-        }
+        console.error('❌ Error en Stripe:', stripeData);
         
         estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-red-50 text-red-700';
-        estadoMensaje.textContent = data.error || 'Error al procesar el pedido';
+        estadoMensaje.textContent = stripeData.error || 'Error al procesar el pago. Intenta de nuevo.';
         
         btnPagar.disabled = false;
         btnPagar.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Confirmar Pedido</span>';
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Error:', error);
       estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-red-50 text-red-700';
       estadoMensaje.textContent = 'Error de conexión. Inténtalo de nuevo.';
       
@@ -555,8 +613,8 @@ const perfil = perfilData as PerfilUsuario | null;
   // ==================================================
   // INICIALIZAR
   // ==================================================
-  document.addEventListener('DOMContentLoaded', () => {
-    cargarCarrito();
+  document.addEventListener('DOMContentLoaded', async () => {
+    await cargarCarrito();
     
     document.getElementById('btnAplicarCupon').addEventListener('click', validarCupon);
     document.getElementById('btnQuitarCupon')?.addEventListener('click', quitarCupon);

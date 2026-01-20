@@ -4,6 +4,18 @@
 import type { CartItem } from '@/types';
 
 /**
+ * Normaliza el precio: si es > 1000, probablemente esté en céntimos sin decimales
+ * por ejemplo 7299 = 72,99 €
+ */
+function normalizarPrecio(precio: any): number {
+  const num = parseFloat(precio);
+  if (num > 1000) {
+    return num / 100;
+  }
+  return num;
+}
+
+/**
  * Obtiene el ID del usuario desde la cookie (si está autenticado)
  */
 function getUserIdFromCookie(): string | null {
@@ -86,8 +98,18 @@ export async function loadCartFromDB(): Promise<CartItem[] | null> {
       return null;
     }
 
-    console.log('loadCartFromDB - ✅ Carrito cargado:', result.items?.length, 'items');
-    return result.items || [];
+    let items = result.items || [];
+    
+    // Normalizar precios en los items
+    if (items && Array.isArray(items)) {
+      items = items.map((item: CartItem) => ({
+        ...item,
+        precio: normalizarPrecio(item.precio)
+      }));
+    }
+
+    console.log('loadCartFromDB - ✅ Carrito cargado:', items?.length, 'items');
+    return items;
   } catch (e) {
     console.error('loadCartFromDB - Error:', e);
     return null;

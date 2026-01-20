@@ -1,10 +1,10 @@
 ---
 // src/pages/carrito.astro
-// Página del carrito
+// Página del carrito - Usa componentes React para sincronización
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import CartDisplay from "@/components/islands/CartDisplay";
-import Button from "@/components/ui/Button.astro";
+import CartSummary, { CartItemCount } from "@/components/islands/CartSummary";
 
 const title = "Tu Carrito";
 const description = "Revisa y gestiona los artículos en tu carrito";
@@ -27,103 +27,17 @@ const description = "Revisa y gestiona los artículos en tu carrito";
             <h1 class="text-2xl font-serif font-bold text-charcoal-900">
               {title}
             </h1>
-            <span id="item-count" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold text-sm">
-              0 productos
-            </span>
+            <CartItemCount client:load />
           </div>
 
           <CartDisplay client:load />
         </div>
       </div>
 
-      <!-- Summary -->
+      <!-- Summary - Componente React -->
       <div class="lg:col-span-1">
-        <div class="bg-white rounded-lg shadow-sm p-8 h-fit sticky top-24">
-          <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-6">
-            Resumen
-          </h2>
-
-          <div class="space-y-4 mb-6">
-            <div class="flex justify-between text-charcoal-700">
-              <span>Subtotal:</span>
-              <span id="subtotal" class="font-semibold">0,00 €</span>
-            </div>
-            <div class="flex justify-between text-charcoal-700">
-              <span>Envío:</span>
-              <span id="shipping" class="font-semibold">Gratis</span>
-            </div>
-            <div class="flex justify-between text-charcoal-700">
-              <span>Impuestos:</span>
-              <span id="taxes" class="font-semibold">0,00 €</span>
-            </div>
-          </div>
-
-          <div class="border-t border-charcoal-100 pt-4 mb-6">
-            <div class="flex justify-between text-lg">
-              <span class="font-serif font-bold text-charcoal-900">Total:</span>
-              <span id="total" class="font-serif font-bold text-navy-500">0,00 €</span>
-            </div>
-          </div>
-
-          <Button href="/checkout" variant="primary" size="lg" class="w-full mb-3">
-            Proceder al Pago
-          </Button>
-
-          <Button href="/productos" variant="ghost" size="lg" class="w-full">
-            Continuar Comprando
-          </Button>
-        </div>
+        <CartSummary client:load />
       </div>
     </div>
   </div>
-
-  <script is:inline>
-    // Función para actualizar el contador
-    function updateCartDisplay() {
-      if (typeof window === 'undefined') return;
-      
-      try {
-        const stored = sessionStorage.getItem('autopartsstore-cart');
-        const cartItems = stored ? JSON.parse(stored) : [];
-        
-        // Contar total de productos (suma de cantidades)
-        const itemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        const subtotal = cartItems.reduce((sum, item) => sum + ((item.precio || 0) * (item.quantity || 0)), 0);
-        
-        // Actualizar contador
-        const itemCountEl = document.getElementById('item-count');
-        if (itemCountEl) {
-          itemCountEl.textContent = `${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`;
-        }
-        
-        // Actualizar subtotal y total
-        const subtotalEl = document.getElementById('subtotal');
-        const totalEl = document.getElementById('total');
-        
-        const formattedPrice = subtotal.toLocaleString('es-ES', { 
-          minimumFractionDigits: 2, 
-          maximumFractionDigits: 2 
-        });
-        
-        if (subtotalEl) {
-          subtotalEl.textContent = formattedPrice + ' €';
-        }
-        
-        if (totalEl) {
-          totalEl.textContent = formattedPrice + ' €';
-        }
-      } catch (e) {
-        console.error('Error al actualizar carrito:', e);
-      }
-    }
-    
-    // Actualizar al cargar
-    updateCartDisplay();
-    
-    // Actualizar cada segundo para capturar cambios
-    setInterval(updateCartDisplay, 500);
-    
-    // Escuchar cambios en sessionStorage
-    window.addEventListener('storage', updateCartDisplay);
-  </script>
 </PublicLayout>
