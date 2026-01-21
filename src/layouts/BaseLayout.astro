@@ -28,7 +28,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <!-- Prefetch Supabase -->
     <link rel="preconnect" href="https://your-project.supabase.co" />
     
-    <!-- Limpiar sessionStorage y localStorage de carritos viejos en nueva sesión -->
+    <!-- Limpiar sessionStorage, localStorage y cookies de usuario para invitados -->
     <script>
       (function() {
         if (typeof window === 'undefined') return;
@@ -36,7 +36,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         try {
           console.log('🧹 Iniciando limpieza de carrito invitado...');
           
-          // Limpiar TODO localStorage relacionado con carrito
+          // ⚠️ PASO 1: Limpiar TODAS las cookies de usuario/sesión
+          const cookies = document.cookie.split(';');
+          cookies.forEach(cookie => {
+            const cookieName = cookie.split('=')[0].trim();
+            if (cookieName.includes('user') || cookieName.includes('sb-') || cookieName.includes('session')) {
+              console.log('🧹 Eliminando cookie:', cookieName);
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            }
+          });
+          
+          // PASO 2: Limpiar TODO localStorage relacionado con carrito
           const localKeys = Object.keys(localStorage);
           localKeys.forEach(key => {
             if (key.includes('cart') || key.includes('autopartsstore')) {
@@ -45,7 +55,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
             }
           });
           
-          // Limpiar sessionStorage de carritos antiguos
+          // PASO 3: Limpiar sessionStorage de carritos antiguos
           const sessionKeys = Object.keys(sessionStorage);
           sessionKeys.forEach(key => {
             if (key.startsWith('cart-')) {
