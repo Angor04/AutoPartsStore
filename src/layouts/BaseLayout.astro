@@ -29,7 +29,39 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <link rel="preconnect" href="https://your-project.supabase.co" />
     
     <!-- Limpiar sessionStorage de carritos viejos en nueva sesión -->
-    <script src="/scripts/cleanSessionStorage.js"></script>
+    <script>
+      (function() {
+        if (typeof window === 'undefined') return;
+        
+        try {
+          const sessionKey = '__appmod_session_init__';
+          const hasInitialized = sessionStorage.getItem(sessionKey);
+          
+          if (!hasInitialized) {
+            const keys = Object.keys(sessionStorage);
+            keys.forEach(key => {
+              if (key.startsWith('cart-')) {
+                console.log('🧹 Limpiando carrito antiguo:', key);
+                sessionStorage.removeItem(key);
+              }
+            });
+            
+            const localKeys = Object.keys(localStorage);
+            localKeys.forEach(key => {
+              if (key.startsWith('autopartsstore-cart')) {
+                console.log('🧹 Limpiando carrito de localStorage:', key);
+                localStorage.removeItem(key);
+              }
+            });
+            
+            sessionStorage.setItem(sessionKey, 'true');
+            console.log('✅ Sesión inicializada - Carritos viejos limpiados');
+          }
+        } catch (e) {
+          console.warn('Error limpiando sessionStorage:', e);
+        }
+      })();
+    </script>
     
     <!-- Estilos Tailwind -->
     <style is:global>
