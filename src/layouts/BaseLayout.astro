@@ -28,15 +28,16 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <!-- Prefetch Supabase -->
     <link rel="preconnect" href="https://your-project.supabase.co" />
     
-    <!-- Limpiar sessionStorage, localStorage y cookies de usuario para invitados -->
+    <!-- Limpiar carrito de invitados al salir de la página -->
     <script>
       (function() {
         if (typeof window === 'undefined') return;
         
+        // ========== LIMPIAR AL ENTRAR ==========
         try {
-          console.log('🧹 Iniciando limpieza de carrito invitado...');
+          console.log('🧹 Limpiando datos de sesión anterior...');
           
-          // ⚠️ PASO 1: Limpiar TODAS las cookies de usuario/sesión
+          // Limpiar cookies de usuario/sesión
           const cookies = document.cookie.split(';');
           cookies.forEach(cookie => {
             const cookieName = cookie.split('=')[0].trim();
@@ -46,7 +47,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
             }
           });
           
-          // PASO 2: Limpiar TODO localStorage relacionado con carrito
+          // Limpiar localStorage de carrito
           const localKeys = Object.keys(localStorage);
           localKeys.forEach(key => {
             if (key.includes('cart') || key.includes('autopartsstore')) {
@@ -55,7 +56,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
             }
           });
           
-          // PASO 3: Limpiar sessionStorage de carritos antiguos
+          // Limpiar sessionStorage de carrito
           const sessionKeys = Object.keys(sessionStorage);
           sessionKeys.forEach(key => {
             if (key.startsWith('cart-')) {
@@ -64,10 +65,37 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
             }
           });
           
-          console.log('✅ Limpieza de carrito completada');
+          console.log('✅ Limpieza al entrar completada');
         } catch (e) {
-          console.warn('Error limpiando carrito:', e);
+          console.warn('Error limpiando al entrar:', e);
         }
+
+        // ========== LIMPIAR AL SALIR ==========
+        window.addEventListener('beforeunload', function() {
+          try {
+            console.log('👋 Usuario saliendo... limpiando carrito invitado');
+            
+            // Limpiar localStorage de carrito
+            const localKeys = Object.keys(localStorage);
+            localKeys.forEach(key => {
+              if (key.includes('cart') || key.includes('autopartsstore')) {
+                localStorage.removeItem(key);
+              }
+            });
+            
+            // Limpiar sessionStorage de carrito
+            const sessionKeys = Object.keys(sessionStorage);
+            sessionKeys.forEach(key => {
+              if (key.startsWith('cart-')) {
+                sessionStorage.removeItem(key);
+              }
+            });
+            
+            console.log('✅ Carrito limpiado al salir');
+          } catch (e) {
+            console.warn('Error limpiando al salir:', e);
+          }
+        });
       })();
     </script>
     
