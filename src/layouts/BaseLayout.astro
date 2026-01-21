@@ -28,52 +28,25 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <!-- Prefetch Supabase -->
     <link rel="preconnect" href="https://your-project.supabase.co" />
     
-    <!-- Limpiar carrito de invitados al salir de la página -->
+    <!-- Limpiar carrito de invitados solo al salir del navegador -->
     <script>
       (function() {
         if (typeof window === 'undefined') return;
         
-        // ========== LIMPIAR AL ENTRAR ==========
-        try {
-          console.log('🧹 Limpiando datos de sesión anterior...');
-          
-          // Limpiar cookies de usuario/sesión
-          const cookies = document.cookie.split(';');
-          cookies.forEach(cookie => {
-            const cookieName = cookie.split('=')[0].trim();
-            if (cookieName.includes('user') || cookieName.includes('sb-') || cookieName.includes('session')) {
-              console.log('🧹 Eliminando cookie:', cookieName);
-              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-            }
-          });
-          
-          // Limpiar localStorage de carrito
-          const localKeys = Object.keys(localStorage);
-          localKeys.forEach(key => {
-            if (key.includes('cart') || key.includes('autopartsstore')) {
-              console.log('🧹 Eliminando de localStorage:', key);
-              localStorage.removeItem(key);
-            }
-          });
-          
-          // Limpiar sessionStorage de carrito
-          const sessionKeys = Object.keys(sessionStorage);
-          sessionKeys.forEach(key => {
-            if (key.startsWith('cart-')) {
-              console.log('🧹 Eliminando de sessionStorage:', key);
-              sessionStorage.removeItem(key);
-            }
-          });
-          
-          console.log('✅ Limpieza al entrar completada');
-        } catch (e) {
-          console.warn('Error limpiando al entrar:', e);
-        }
-
-        // ========== LIMPIAR AL SALIR ==========
+        // Solo limpiar al SALIR completamente del navegador (beforeunload)
+        // NO limpiar en cada navegación dentro del sitio
         window.addEventListener('beforeunload', function() {
           try {
-            console.log('👋 Usuario saliendo... limpiando carrito invitado');
+            console.log('👋 Usuario saliendo del navegador... limpiando carrito invitado');
+            
+            // Limpiar cookies de usuario/sesión (solo al salir)
+            const cookies = document.cookie.split(';');
+            cookies.forEach(cookie => {
+              const cookieName = cookie.split('=')[0].trim();
+              if (cookieName.includes('user') || cookieName.includes('sb-') || cookieName.includes('session')) {
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              }
+            });
             
             // Limpiar localStorage de carrito
             const localKeys = Object.keys(localStorage);
@@ -91,7 +64,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
               }
             });
             
-            console.log('✅ Carrito limpiado al salir');
+            console.log('✅ Datos de sesión limpiados al salir');
           } catch (e) {
             console.warn('Error limpiando al salir:', e);
           }

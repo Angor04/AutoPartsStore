@@ -240,8 +240,26 @@ export async function loadCart() {
       }
     }
     
-    // Invitado: SIEMPRE cargar vacío (no recuperar de sessionStorage)
-    console.log("loadCart - 👤 Invitado, iniciando con carrito vacío");
+    // Invitado: Recuperar del sessionStorage si existe
+    console.log("loadCart - 👤 Invitado, recuperando del sessionStorage");
+    const sessionId = sessionStorage.getItem('guest-session-id');
+    if (sessionId) {
+      const cartKey = `cart-${sessionId}`;
+      const savedCart = sessionStorage.getItem(cartKey);
+      if (savedCart) {
+        try {
+          const cartItems = JSON.parse(savedCart);
+          console.log("loadCart - Carrito recuperado del sessionStorage:", cartItems);
+          cartStore.set(cartItems);
+          return;
+        } catch (e) {
+          console.error('Error parseando carrito del sessionStorage:', e);
+        }
+      }
+    }
+    
+    // Si no hay carrito guardado, iniciar vacío
+    console.log("loadCart - Sin carrito guardado, iniciando vacío");
     cartStore.set([]);
   } catch (e) {
     console.error('Error en loadCart:', e);
