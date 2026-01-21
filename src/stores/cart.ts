@@ -209,6 +209,15 @@ export async function loadCart() {
   }
 
   try {
+    // ⚠️ PRIMERO: Limpiar TODOS los localStorage de carritos viejos (invitados)
+    const allLocalKeys = Object.keys(localStorage);
+    allLocalKeys.forEach(key => {
+      if (key.includes('cart') || key.includes('autopartsstore')) {
+        console.log("🧹 Eliminando dato persistido de carrito:", key);
+        localStorage.removeItem(key);
+      }
+    });
+
     const isAuthenticated = await isUserAuthenticated();
     console.log("loadCart - ¿Autenticado?:", isAuthenticated);
     
@@ -231,22 +240,13 @@ export async function loadCart() {
       }
     }
     
-    // Invitado: cargar de sessionStorage con ID de sesión
-    console.log("loadCart - 👤 Invitado, cargando de sessionStorage");
-    const sessionId = getGuestSessionId();
-    const cartKey = `cart-${sessionId}`;
-    const stored = sessionStorage.getItem(cartKey);
-    const cartItems = stored ? JSON.parse(stored) : [];
-    console.log("loadCart - Carrito de invitado cargado:", cartItems, 'Clave:', cartKey);
-    cartStore.set(cartItems);
+    // Invitado: SIEMPRE cargar vacío (no recuperar de sessionStorage)
+    console.log("loadCart - 👤 Invitado, iniciando con carrito vacío");
+    cartStore.set([]);
   } catch (e) {
     console.error('Error en loadCart:', e);
-    // Fallback a sessionStorage de invitado
-    const sessionId = getGuestSessionId();
-    const cartKey = `cart-${sessionId}`;
-    const stored = sessionStorage.getItem(cartKey);
-    const cartItems = stored ? JSON.parse(stored) : [];
-    cartStore.set(cartItems);
+    // Fallback: carrito vacío
+    cartStore.set([]);
   }
 }
 
