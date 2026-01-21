@@ -29,7 +29,6 @@ RUN apk add --no-cache curl
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/start-server.js ./start-server.js
 
 # Variables de entorno
 ENV NODE_ENV=production
@@ -43,5 +42,5 @@ EXPOSE 4321
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:4321/ || exit 1
 
-# Iniciar aplicación
-CMD ["node", "start-server.js"]
+# Iniciar aplicación directamente con el entry de Astro
+CMD ["node", "dist/server/entry.mjs"]
