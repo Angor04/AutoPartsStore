@@ -209,15 +209,6 @@ export async function loadCart() {
   }
 
   try {
-    // ⚠️ PRIMERO: Limpiar TODOS los localStorage de carritos viejos (invitados)
-    const allLocalKeys = Object.keys(localStorage);
-    allLocalKeys.forEach(key => {
-      if (key.includes('cart') || key.includes('autopartsstore')) {
-        console.log("🧹 Eliminando dato persistido de carrito:", key);
-        localStorage.removeItem(key);
-      }
-    });
-
     const isAuthenticated = await isUserAuthenticated();
     console.log("loadCart - ¿Autenticado?:", isAuthenticated);
     

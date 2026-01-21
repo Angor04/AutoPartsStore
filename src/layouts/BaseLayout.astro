@@ -28,49 +28,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <!-- Prefetch Supabase -->
     <link rel="preconnect" href="https://your-project.supabase.co" />
     
-    <!-- Limpiar carrito de invitados solo al salir del navegador -->
-    <script>
-      (function() {
-        if (typeof window === 'undefined') return;
-        
-        // Solo limpiar al SALIR completamente del navegador (beforeunload)
-        // NO limpiar en cada navegación dentro del sitio
-        window.addEventListener('beforeunload', function() {
-          try {
-            console.log('👋 Usuario saliendo del navegador... limpiando carrito invitado');
-            
-            // Limpiar cookies de usuario/sesión (solo al salir)
-            const cookies = document.cookie.split(';');
-            cookies.forEach(cookie => {
-              const cookieName = cookie.split('=')[0].trim();
-              if (cookieName.includes('user') || cookieName.includes('sb-') || cookieName.includes('session')) {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-              }
-            });
-            
-            // Limpiar localStorage de carrito
-            const localKeys = Object.keys(localStorage);
-            localKeys.forEach(key => {
-              if (key.includes('cart') || key.includes('autopartsstore')) {
-                localStorage.removeItem(key);
-              }
-            });
-            
-            // Limpiar sessionStorage de carrito
-            const sessionKeys = Object.keys(sessionStorage);
-            sessionKeys.forEach(key => {
-              if (key.startsWith('cart-')) {
-                sessionStorage.removeItem(key);
-              }
-            });
-            
-            console.log('✅ Datos de sesión limpiados al salir');
-          } catch (e) {
-            console.warn('Error limpiando al salir:', e);
-          }
-        });
-      })();
-    </script>
+    <!-- SessionStorage se limpia automáticamente al cerrar navegador -->
+    <!-- No necesitamos código de limpieza manualmente -->
     
     <!-- Estilos Tailwind -->
     <style is:global>
