@@ -36,9 +36,9 @@ ENV PORT=4321
 # Exponer puerto
 EXPOSE 4321
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:4321/', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
+# Health check - simple HTTP check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:4321/ || exit 1
 
 # Iniciar aplicación
 CMD ["node", "start-server.js"]
