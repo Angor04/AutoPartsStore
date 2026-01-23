@@ -4,6 +4,7 @@
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import Button from "@/components/ui/Button.astro";
+import GoogleAuthButton from "@/components/auth/GoogleAuthButton.astro";
 
 export const prerender = false;
 
@@ -115,6 +116,16 @@ const description = "Crea una cuenta en AutoPartsStore";
             Crear Cuenta
           </button>
         </form>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-3 my-4">
+          <div class="flex-1 h-px bg-gray-300"></div>
+          <span class="text-xs text-gray-600">o</span>
+          <div class="flex-1 h-px bg-gray-300"></div>
+        </div>
+
+        <!-- Google Auth -->
+        <GoogleAuthButton redirectTo="/" text="Continuar con Google" />
 
         <!-- Sign In Link -->
         <p class="text-center text-charcoal-600 text-xs mt-4">
