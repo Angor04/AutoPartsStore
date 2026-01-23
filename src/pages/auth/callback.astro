@@ -2,7 +2,7 @@
 // src/pages/auth/callback.astro
 // Maneja el callback de autenticación de Google OAuth
 
-import { supabase } from '../../lib/supabase';
+import { supabaseClient } from '../../lib/supabase';
 
 export const prerender = false;
 
@@ -32,7 +32,7 @@ if (!code) {
 try {
   // Intercambiar el código por una sesión
   console.log('Exchanging code for session...');
-  const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error: exchangeError } = await supabaseClient.auth.exchangeCodeForSession(code);
   
   if (exchangeError || !data.session) {
     console.error('Session exchange error:', exchangeError);
@@ -44,7 +44,7 @@ try {
   const user = data.session.user;
 
   // Verificar/crear usuario en tabla usuarios
-  const { data: existingUser, error: fetchError } = await supabase
+  const { data: existingUser, error: fetchError } = await supabaseClient
     .from('usuarios')
     .select('id')
     .eq('email', user.email)
@@ -59,7 +59,7 @@ try {
     // Crear nuevo usuario
     console.log('Creating new user in database...');
     
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseClient
       .from('usuarios')
       .insert([
         {
@@ -83,7 +83,7 @@ try {
     // Actualizar último acceso
     console.log('User already exists, updating last login...');
     
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseClient
       .from('usuarios')
       .update({
         ultimo_acceso: new Date().toISOString(),
