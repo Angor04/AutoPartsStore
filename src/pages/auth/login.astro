@@ -13,12 +13,14 @@ const error = Astro.url.searchParams.get('error');
 <BaseLayout title="Iniciar Sesión" description="Acceso a tu cuenta">
   <style>
     .login-wrapper {
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       background-color: #f9f9f9;
-      padding: 20px 20px;
+      padding: 20px;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     .login-card {
@@ -36,8 +38,8 @@ const error = Astro.url.searchParams.get('error');
     }
 
     .logo {
-      width: 55px;
-      height: 55px;
+      width: 110px;
+      height: 110px;
       margin: 0 auto 12px;
     }
 
@@ -223,7 +225,7 @@ const error = Astro.url.searchParams.get('error');
           src="https://res.cloudinary.com/ddi0g76bk/image/upload/v1768210429/logo_btu63x.webp" 
           alt="AutoPartsStore" 
           class="logo"
-          style="width: 60px; height: 60px; object-fit: contain;"
+          style="width: 110px; height: 110px; object-fit: contain;"
         />
       </div>
 
