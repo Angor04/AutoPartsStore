@@ -3,7 +3,6 @@
 // Página de login para usuarios
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import GoogleAuthButton from "@/components/auth/GoogleAuthButton.astro";
 
 export const prerender = false;
 
@@ -268,9 +267,6 @@ const error = Astro.url.searchParams.get('error');
       <div class="divider-or">
         <span>o</span>
       </div>
-
-      <!-- Google Auth -->
-      <GoogleAuthButton redirectTo="/" text="Continuar con Google" />
 
       <!-- Guest Login -->
       <a href="/" class="guest-btn">Continuar como invitado</a>
