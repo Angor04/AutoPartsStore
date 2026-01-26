@@ -4,6 +4,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 
 export const prerender = false;
 
@@ -122,6 +123,28 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       numero_orden: orden.numero_orden,
       total: orden.total
     });
+
+    // ==========================================
+    // ENVIAR EMAIL DE CONFIRMACIÓN
+    // ==========================================
+    try {
+      if (session.customer_email) {
+        const emailSent = await sendOrderConfirmationEmail(
+          session.customer_email,
+          orden.numero_orden,
+          total
+        );
+        
+        if (emailSent) {
+          console.log('✉️ Email de confirmación enviado a:', session.customer_email);
+        } else {
+          console.warn('⚠️ Error al enviar email de confirmación');
+        }
+      }
+    } catch (emailError) {
+      console.error('❌ Error enviando email:', emailError);
+      // No interrumpir el flujo si falla el email
+    }
 
     // ==========================================
     // CREAR ITEMS DE LA ORDEN (EN JSON)

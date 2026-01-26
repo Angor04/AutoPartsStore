@@ -86,24 +86,75 @@ export async function sendOrderConfirmationEmail(
 ): Promise<boolean> {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">✅ Pedido Confirmado</h2>
-      <p>Tu pedido ha sido procesado correctamente.</p>
-      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <p><strong>Número de Pedido:</strong> ${orderNumber}</p>
-        <p><strong>Total:</strong> $${total.toFixed(2)}</p>
+      <div style="background-color: #dc2626; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h2 style="color: white; margin: 0;">✅ ¡Pedido Confirmado!</h2>
       </div>
-      <p>Recibirás actualizaciones sobre el estado de tu pedido en tu correo electrónico.</p>
-      <p>Gracias por tu compra.</p>
-      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-      <p style="color: #666; font-size: 12px;">
-        © 2026 Auto Parts Store. Todos los derechos reservados.
-      </p>
+      <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+        <p style="color: #666; margin-top: 0;">Tu compra ha sido procesada correctamente. A continuación encontrarás los detalles de tu pedido.</p>
+        
+        <!-- Información del Pedido -->
+        <div style="background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 6px; margin: 20px 0;">
+          <h3 style="color: #333; margin-top: 0; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">Detalles del Pedido</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; color: #666;"><strong>Número de Pedido:</strong></td>
+              <td style="padding: 10px 0; text-align: right; color: #333;"><strong>${orderNumber}</strong></td>
+            </tr>
+            <tr style="border-top: 1px solid #eee;">
+              <td style="padding: 10px 0; color: #666;"><strong>Total:</strong></td>
+              <td style="padding: 10px 0; text-align: right; color: #dc2626; font-size: 18px;"><strong>€${total.toFixed(2)}</strong></td>
+            </tr>
+            <tr style="border-top: 1px solid #eee;">
+              <td style="padding: 10px 0; color: #666;"><strong>Estado:</strong></td>
+              <td style="padding: 10px 0; text-align: right;">
+                <span style="background-color: #10b981; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px;">CONFIRMADO</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Información Importante -->
+        <div style="background-color: #f0f9ff; padding: 15px; border-left: 4px solid #3b82f6; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #333;"><strong>📍 Próximos Pasos:</strong></p>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666;">
+            <li>Recibirás un email de confirmación del envío</li>
+            <li>Tu pedido será preparado y despachado en 1-2 días hábiles</li>
+            <li>Podrás rastrear tu pedido desde tu cuenta</li>
+          </ul>
+        </div>
+
+        <!-- Call to Action -->
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://auto_parts_store.victoriafp.online/mi-cuenta" style="
+            background-color: #dc2626;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            display: inline-block;
+            font-weight: bold;
+          ">Ver mi Pedido</a>
+        </div>
+
+        <!-- Contacto -->
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 6px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0; color: #666; font-size: 12px;">
+            ¿Tienes preguntas? <a href="https://auto_parts_store.victoriafp.online" style="color: #dc2626; text-decoration: none;">Contáctanos</a>
+          </p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+          © 2026 Auto Parts Store. Todos los derechos reservados.<br>
+          Este es un email automatizado, por favor no responder.
+        </p>
+      </div>
     </div>
   `;
 
   return sendEmail({
     to: email,
-    subject: `Pedido Confirmado - ${orderNumber}`,
+    subject: `✅ Pedido Confirmado - ${orderNumber}`,
     html,
   });
 }
