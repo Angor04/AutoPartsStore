@@ -3,13 +3,12 @@
 
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { sendWelcomeEmail } from '../../../lib/email';
 
 export const prerender = false;
 
 const supabaseUrl = import.meta.env.SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-const resendApiKey = import.meta.env.RESEND_API_KEY;
 
 export const POST: APIRoute = async ({ request, redirect }) => {
   try {
@@ -83,67 +82,19 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       return redirect(`/auth/register?error=${encodeURIComponent(insertError.message || 'Error al crear el perfil')}`);
     }
 
-    // 3. Enviar email de bienvenida
+    // 3. Enviar email de bienvenida con Nodemailer
     try {
-      console.log('Resend API Key present:', !!resendApiKey);
+      console.log('Sending welcome email to:', email);
       
-      if (resendApiKey) {
-        const resend = new Resend(resendApiKey);
-        
-        console.log('Attempting to send welcome email to:', email);
-        const emailResult = await resend.emails.send({
-          from: 'onboarding@resend.dev',
-          to: email,
-          subject: '¡Bienvenido a Auto Parts Store!',
-          html: `
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                  .header { background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-                  .content { background-color: #fff; padding: 20px; border: 1px solid #dee2e6; border-top: none; }
-                  .footer { background-color: #f8f9fa; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; color: #666; }
-                  .button { display: inline-block; background-color: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1>¡Bienvenido a Auto Parts Store!</h1>
-                  </div>
-                  <div class="content">
-                    <p>Hola <strong>${fullname}</strong>,</p>
-                    <p>¡Gracias por registrarte en Auto Parts Store! Tu cuenta ha sido creada exitosamente.</p>
-                    <p>Ya puedes acceder a tu cuenta y empezar a explorar nuestros productos.</p>
-                    <a href="http://localhost:4321/auth/login" class="button">Ir a Mi Cuenta</a>
-                    <p style="margin-top: 30px; border-top: 1px solid #dee2e6; padding-top: 20px;">
-                      Si tienes alguna pregunta, no dudes en contactarnos.
-                    </p>
-                  </div>
-                  <div class="footer">
-                    <p>&copy; 2026 Auto Parts Store. Todos los derechos reservados.</p>
-                  </div>
-                </div>
-              </body>
-            </html>
-          `,
-        });
-
-        console.log('Email response:', emailResult);
-        
-        if (emailResult.error) {
-          console.error('Email sending error:', emailResult.error);
-        } else {
-          console.log('✅ Email sent successfully:', emailResult.data?.id);
-        }
+      const emailSent = await sendWelcomeEmail(fullname, email);
+      
+      if (emailSent) {
+        console.log('✅ Welcome email sent successfully');
       } else {
-        console.warn('⚠️ RESEND_API_KEY not configured');
+        console.warn('⚠️ Failed to send welcome email, but registration successful');
       }
     } catch (emailError) {
-      console.error('❌ Error sending email:', emailError);
+      console.error('❌ Error sending welcome email:', emailError);
       // No redirigir a error, solo avisar en logs
     }
 
