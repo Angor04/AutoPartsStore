@@ -12,21 +12,24 @@ CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
 );
 
 -- Índices para optimizar búsquedas
-CREATE INDEX idx_password_reset_user_id ON public.password_reset_tokens(user_id);
-CREATE INDEX idx_password_reset_token_hash ON public.password_reset_tokens(token_hash);
-CREATE INDEX idx_password_reset_expires_at ON public.password_reset_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user_id ON public.password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_token_hash ON public.password_reset_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_password_reset_expires_at ON public.password_reset_tokens(expires_at);
 
 -- RLS Policy (Row Level Security)
 ALTER TABLE public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Permitir que cualquiera pueda crear tokens (controlado en la aplicación)
+DROP POLICY IF EXISTS "Allow anyone to insert reset tokens" ON public.password_reset_tokens;
 CREATE POLICY "Allow anyone to insert reset tokens" ON public.password_reset_tokens
   FOR INSERT WITH CHECK (true);
 
 -- Permitir que se actualicen tokens propios
+DROP POLICY IF EXISTS "Allow update own reset tokens" ON public.password_reset_tokens;
 CREATE POLICY "Allow update own reset tokens" ON public.password_reset_tokens
   FOR UPDATE USING (user_id = auth.uid());
 
 -- Denegar lectura a usuarios normales (solo admin puede ver)
+DROP POLICY IF EXISTS "Admin only read reset tokens" ON public.password_reset_tokens;
 CREATE POLICY "Admin only read reset tokens" ON public.password_reset_tokens
   FOR SELECT USING (false);
