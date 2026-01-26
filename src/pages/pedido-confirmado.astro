@@ -4,6 +4,7 @@
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import CartCleaner from "@/components/islands/CartCleaner";
 
 const title = "¡Pedido Confirmado!";
 const description = "Tu pedido ha sido procesado correctamente";
@@ -121,6 +122,9 @@ function formatDate(fecha: string): string {
 ---
 
 <PublicLayout title={title} description={description}>
+  <!-- Componente para limpiar el carrito -->
+  {sessionId && <CartCleaner client:load sessionId={sessionId} />}
+  
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     
     {orden ? (
@@ -264,22 +268,45 @@ function formatDate(fecha: string): string {
 
 <script client:load>
   // Limpiar carrito después del pago exitoso
-  if (window.location.search.includes('session_id')) {
-    // Limpiar sessionStorage
+  if (typeof window !== 'undefined') {
     try {
-      const sessionId = new URLSearchParams(window.location.search).get('session_id');
-      const carritoKey = `cart-${sessionId}`;
-      sessionStorage.removeItem(carritoKey);
-      sessionStorage.removeItem('autopartsstore-cart');
-      console.log('🗑️ Carrito limpiado del navegador');
+      // Obtener session_id de la URL
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
       
-      // También limpiar del nanostores si está disponible
-      if (window.cartStore) {
-        window.cartStore.set([]);
-        console.log('🗑️ Carrito limpiado de nanostores');
+      if (sessionId) {
+        console.log('🛒 Limpiando carrito después de pago exitoso...');
+        
+        // Limpiar localStorage
+        try {
+          localStorage.removeItem('autopartsstore-cart');
+          localStorage.removeItem(`cart-${sessionId}`);
+          console.log('✅ Carrito eliminado de localStorage');
+        } catch (e) {
+          console.warn('⚠️ No se pudo limpiar localStorage:', e);
+        }
+        
+        // Limpiar sessionStorage
+        try {
+          sessionStorage.removeItem('autopartsstore-cart');
+          sessionStorage.removeItem(`cart-${sessionId}`);
+          console.log('✅ Carrito eliminado de sessionStorage');
+        } catch (e) {
+          console.warn('⚠️ No se pudo limpiar sessionStorage:', e);
+        }
+        
+        // Disparar evento personalizado para nanostores
+        try {
+          window.dispatchEvent(new CustomEvent('cart-cleared', { 
+            detail: { sessionId } 
+          }));
+          console.log('✅ Evento de carrito limpiado disparado');
+        } catch (e) {
+          console.warn('⚠️ Error disparando evento:', e);
+        }
       }
     } catch (error) {
-      console.error('⚠️ Error limpiando carrito:', error);
+      console.error('❌ Error limpiando carrito:', error);
     }
   }
 </script>
