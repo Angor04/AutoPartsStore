@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { addToCart, getItemQuantity } from '@/stores/cart';
 import { useStore } from '@nanostores/react';
 import { cartStore } from '@/stores/cart';
+import { checkProductAvailability } from '@/lib/stockManagement';
 import type { CartItem } from '@/types';
 
 interface AddToCartButtonProps {
@@ -33,6 +34,7 @@ export default function AddToCartButton({
   const isInStock = maxAddable > 0;
 
   const handleAddToCart = () => {
+    // Validación local rápida
     if (!isInStock) {
       setMessage('No hay stock disponible');
       return;
@@ -43,35 +45,59 @@ export default function AddToCartButton({
       return;
     }
 
-    const cartItem: CartItem = {
-      product_id: String(productId),
-      quantity,
-      precio: price,
-      nombre: productName,
-      urls_imagenes: [imageUrl],
-      stock, // Guardar el stock disponible
-    };
+    // Validación RPC: verificar disponibilidad en base de datos
+    validateAndAddToCart();
+  };
 
-    console.log("Agregando al carrito:", cartItem);
-    addToCart(cartItem);
-    setIsAdded(true);
-    setMessage(`${quantity} ${quantity === 1 ? 'artículo' : 'artículos'} añadido al carrito`);
+  const validateAndAddToCart = async () => {
+    try {
+      setMessage('Verificando disponibilidad...');
 
-    // Disparar evento para actualizar el carrito en todos lados
-    if (typeof window !== 'undefined') {
-      console.log("Disparando evento cartUpdated");
-      window.dispatchEvent(new CustomEvent('cartUpdated'));
-      
-      // Log del sessionStorage
-      const stored = sessionStorage.getItem('autopartsstore-cart');
-      console.log("Contenido del sessionStorage:", stored);
+      // Llamar RPC para verificar stock en BD
+      const { available, currentStock, error: availError } = 
+        await checkProductAvailability(productId, quantity);
+
+      if (!available) {
+        setMessage(
+          `Stock insuficiente. Disponible: ${currentStock} ${currentStock === 1 ? 'unidad' : 'unidades'}`
+        );
+        return;
+      }
+
+      // Stock verificado, agregar al carrito
+      const cartItem: CartItem = {
+        product_id: String(productId),
+        quantity,
+        precio: price,
+        nombre: productName,
+        urls_imagenes: [imageUrl],
+        stock, // Guardar el stock disponible
+      };
+
+      console.log("Agregando al carrito:", cartItem);
+      addToCart(cartItem);
+      setIsAdded(true);
+      setMessage(`${quantity} ${quantity === 1 ? 'artículo' : 'artículos'} añadido al carrito`);
+
+      // Disparar evento para actualizar el carrito en todos lados
+      if (typeof window !== 'undefined') {
+        console.log("Disparando evento cartUpdated");
+        window.dispatchEvent(new CustomEvent('cartUpdated'));
+        
+        // Log del sessionStorage
+        const stored = sessionStorage.getItem('autopartsstore-cart');
+        console.log("Contenido del sessionStorage:", stored);
+      }
+
+      setTimeout(() => {
+        setIsAdded(false);
+        setMessage('');
+        setQuantity(1);
+      }, 2000);
+    } catch (err) {
+      console.error('Error al agregar al carrito:', err);
+      setMessage('Error al verificar stock. Intenta de nuevo.');
     }
-
-    setTimeout(() => {
-      setIsAdded(false);
-      setMessage('');
-      setQuantity(1);
-    }, 2000);
   };
 
   const handleIncrement = () => {

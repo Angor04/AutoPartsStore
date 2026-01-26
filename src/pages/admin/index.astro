@@ -7,9 +7,19 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getProducts } from "@/lib/supabase";
 import { formatNumber } from "@/lib/utils";
+import { getLowStockAlerts } from "@/lib/stockManagement";
 
 // Obtener productos para calcular estadísticas
 const productos = await getProducts();
+
+// Obtener alertas de bajo stock (productos con menos de 10 unidades)
+const { alerts: productosBalsoStock, error: alertError } = 
+  await getLowStockAlerts(10);
+
+console.log('📊 Alertas de bajo stock:', productosBalsoStock?.length || 0);
+if (alertError) {
+  console.error('⚠️ Error obteniendo alertas:', alertError);
+}
 
 // Calcular estadísticas
 const totalProductos = productos.length;
@@ -38,6 +48,23 @@ const descuentoTotal = productos.reduce((sum, p) => {
     <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a;">Bienvenido al Panel de Control</h2>
     <p style="color: #666; margin-top: 8px;">Aquí tienes un resumen de tu negocio</p>
   </div>
+
+  <!-- Alertas de Bajo Stock (si hay) -->
+  {productosBalsoStock && productosBalsoStock.length > 0 && (
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+      <div style="display: flex; gap: 12px;">
+        <svg style="flex-shrink: 0; width: 24px; height: 24px; color: #d97706;" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <div style="flex: 1;">
+          <h3 style="font-weight: bold; color: #92400e; margin: 0;">Alerta de Stock Bajo</h3>
+          <p style="color: #b45309; margin: 4px 0 0 0; font-size: 14px;">
+            {productosBalsoStock.length} {productosBalsoStock.length === 1 ? 'producto' : 'productos'} con stock menor a 10 unidades
+          </p>
+        </div>
+      </div>
+    </div>
+  )}
 
   <!-- Widgets Grid -->
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 32px;">
@@ -96,4 +123,38 @@ const descuentoTotal = productos.reduce((sum, p) => {
       <p style="color: #dc2626; font-size: 12px; margin-top: 12px;">Dinero en ofertas del stock</p>
     </div>
   </div>
+
+  <!-- Tabla de Productos con Bajo Stock -->
+  {productosBalsoStock && productosBalsoStock.length > 0 && (
+    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h3 style="font-size: 18px; font-weight: bold; color: #1a1a1a; margin: 0 0 16px 0;">Productos con Stock Bajo</h3>
+      
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e5e7eb;">
+              <th style="text-align: left; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Producto</th>
+              <th style="text-align: center; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Stock</th>
+              <th style="text-align: right; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Precio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {productosBalsoStock.map((producto: any) => (
+              <tr style="border-bottom: 1px solid #e5e7eb; hover:background: #f9fafb;">
+                <td style="padding: 12px; color: #1a1a1a;">{producto.nombre}</td>
+                <td style={`text-align: center; padding: 12px; font-weight: bold; ${
+                  producto.stock === 0 
+                    ? 'color: #dc2626;' 
+                    : 'color: #f59e0b;'
+                }`}>
+                  {producto.stock} {producto.stock === 1 ? 'unidad' : 'unidades'}
+                </td>
+                <td style="text-align: right; padding: 12px; color: #1a1a1a;">€{(producto.precio || 0).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
 </AdminLayout>
