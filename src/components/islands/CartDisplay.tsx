@@ -49,6 +49,19 @@ export default function CartDisplay() {
         console.error('Error cargando carrito:', err);
         setMounted(true);
       });
+      
+      // Escuchar evento de limpieza de carrito
+      const handleCartCleared = () => {
+        console.log('🛒 CartDisplay: Evento cart-cleared recibido, limpiando...');
+        setCartItems([]);
+        updateSummaryDOM([]);
+      };
+      
+      window.addEventListener('cart-cleared', handleCartCleared);
+      
+      return () => {
+        window.removeEventListener('cart-cleared', handleCartCleared);
+      };
     } else {
       setMounted(true);
     }

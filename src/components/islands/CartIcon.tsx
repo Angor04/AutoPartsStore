@@ -1,12 +1,26 @@
 // src/components/islands/CartIcon.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
 import { cartStore } from '@/stores/cart';
 
 export default function CartIcon() {
   const items = useStore(cartStore);
   const [isOpen, setIsOpen] = useState(false);
+
+  // Escuchar cambios en el carrito
+  useEffect(() => {
+    const handleCartCleared = () => {
+      console.log('🛒 CartIcon: Evento cart-cleared recibido');
+      // El useStore ya se actualiza automáticamente
+    };
+    
+    window.addEventListener('cart-cleared', handleCartCleared);
+    
+    return () => {
+      window.removeEventListener('cart-cleared', handleCartCleared);
+    };
+  }, []);
 
   // Calcular el contador directamente del store
   const itemCount = Array.isArray(items) 
@@ -26,6 +40,7 @@ export default function CartIcon() {
       onClick={handleOpenCart}
       className="relative p-2 text-charcoal-700 hover:text-navy-500 transition-colors"
       aria-label="Abrir carrito de compra"
+      data-cart-count={itemCount}
     >
       <svg
         className="w-6 h-6"

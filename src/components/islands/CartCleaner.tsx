@@ -10,43 +10,66 @@ interface CartCleanerProps {
 
 export default function CartCleaner({ sessionId }: CartCleanerProps) {
   useEffect(() => {
-    if (sessionId) {
-      // Pequeño delay para asegurar que se renderiza completamente
-      const timer = setTimeout(() => {
-        clearCart();
-      }, 500);
+    if (sessionId && typeof window !== 'undefined') {
+      console.log('🛒 CartCleaner activado para sesión:', sessionId);
       
-      return () => clearTimeout(timer);
+      // Ejecutar inmediatamente
+      clearCartEverywhere();
+      
+      // También escuchar por cambios
+      const handleCartCleared = () => clearCartEverywhere();
+      window.addEventListener('cart-cleared', handleCartCleared);
+      
+      return () => {
+        window.removeEventListener('cart-cleared', handleCartCleared);
+      };
     }
   }, [sessionId]);
 
-  const clearCart = () => {
-    console.log('🛒 Limpiando carrito después de pago exitoso...');
+  const clearCartEverywhere = async () => {
+    console.log('🛒 Iniciando limpieza completa del carrito...');
     
     try {
-      // 1. Limpiar localStorage
+      // 1. Limpiar nanostores PRIMERO (esto es lo más importante)
+      console.log('📦 Limpiando nanostores...');
+      cartStore.set([]);
+      
+      // 2. Limpiar localStorage
+      console.log('💾 Limpiando localStorage...');
       localStorage.removeItem('autopartsstore-cart');
-      localStorage.removeItem(`cart-${sessionId}`);
-      console.log('✅ Carrito eliminado de localStorage');
-      
-      // 2. Limpiar sessionStorage
-      sessionStorage.removeItem('autopartsstore-cart');
-      sessionStorage.removeItem(`cart-${sessionId}`);
-      console.log('✅ Carrito eliminado de sessionStorage');
-      
-      // 3. Actualizar nanostores
-      try {
-        cartStore.set([]);
-        console.log('✅ Carrito limpiado en nanostores');
-      } catch (e) {
-        console.warn('⚠️ No se pudo actualizar nanostores:', e);
+      if (sessionId) {
+        localStorage.removeItem(`cart-${sessionId}`);
       }
       
-      // 4. Disparar evento personalizado
+      // 3. Limpiar sessionStorage
+      console.log('🔒 Limpiando sessionStorage...');
+      sessionStorage.removeItem('autopartsstore-cart');
+      if (sessionId) {
+        sessionStorage.removeItem(`cart-${sessionId}`);
+      }
+      
+      // 4. Disparar evento personalizado para otros componentes
+      console.log('📡 Disparando evento global...');
       window.dispatchEvent(new CustomEvent('cart-cleared', { 
-        detail: { sessionId } 
+        detail: { sessionId, timestamp: Date.now() } 
       }));
-      console.log('✅ Evento cart-cleared disparado');
+      
+      // 5. Forzar actualización del DOM si existe
+      if (typeof window !== 'undefined') {
+        // Actualizar cualquier elemento que muestre el contador
+        const itemCountEl = document.getElementById('item-count');
+        if (itemCountEl) {
+          itemCountEl.textContent = '0 productos';
+        }
+        
+        const cartBadge = document.querySelector('[data-cart-count]');
+        if (cartBadge) {
+          cartBadge.textContent = '0';
+          cartBadge.parentElement?.classList.add('hidden');
+        }
+      }
+      
+      console.log('✅ Carrito limpiado exitosamente en todas partes');
     } catch (error) {
       console.error('❌ Error limpiando carrito:', error);
     }

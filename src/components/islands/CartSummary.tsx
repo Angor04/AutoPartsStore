@@ -19,6 +19,18 @@ export default function CartSummary() {
       }).catch(() => {
         setMounted(true);
       });
+      
+      // Escuchar evento de limpieza de carrito
+      const handleCartCleared = () => {
+        console.log('🛒 CartSummary: Evento cart-cleared recibido');
+        // El useStore se actualiza automáticamente
+      };
+      
+      window.addEventListener('cart-cleared', handleCartCleared);
+      
+      return () => {
+        window.removeEventListener('cart-cleared', handleCartCleared);
+      };
     } else {
       setMounted(true);
     }
