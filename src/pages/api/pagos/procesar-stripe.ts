@@ -78,32 +78,47 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // CREAR ORDEN EN BD
     // ==========================================
     const numeroOrden = 'ORD-' + Date.now();
-    const subtotal = (session.amount_total || 0) / 100 + descuentoMonto; // Revertir descuento
-    const total = (session.amount_total || 0) / 100;
+    const subtotal = Math.round(((session.amount_total || 0) / 100 + descuentoMonto) * 100) / 100;
+    const total = Math.round(((session.amount_total || 0) / 100) * 100) / 100;
+
+    console.log('📝 Creando orden:', {
+      numeroOrden,
+      usuarioId,
+      email: session.customer_email,
+      total
+    });
+
+    // Preparar datos para insertar
+    const ordenData: any = {
+      numero_orden: numeroOrden,
+      estado: 'PAGADO',
+      estado_pago: 'COMPLETADO',
+      subtotal: subtotal,
+      total: total,
+      costo_envio: 0,
+      descuento_aplicado: descuentoMonto,
+      direccion_envio: {
+        nombre: shippingDetails?.name,
+        calle: shippingDetails?.address?.line1,
+        ciudad: shippingDetails?.address?.city,
+        provincia: shippingDetails?.address?.state,
+        codigo_postal: shippingDetails?.address?.postal_code,
+        pais: shippingDetails?.address?.country
+      },
+      telefono_envio: shippingDetails?.phone || null,
+      fecha_pago: new Date().toISOString(),
+      creado_en: new Date().toISOString(),
+      actualizado_en: new Date().toISOString()
+    };
+
+    // Solo agregar usuario_id si existe un usuario autenticado
+    if (usuarioId) {
+      ordenData.usuario_id = usuarioId;
+    }
 
     const { data: orden, error: ordenError } = await supabaseAdmin
       .from('ordenes')
-      .insert({
-        numero_orden: numeroOrden,
-        usuario_id: usuarioId || null,
-        email_cliente: session.customer_email,
-        subtotal: subtotal,
-        total: total,
-        costo_envio: 0,
-        metodo_pago: 'stripe',
-        id_transaccion_stripe: sessionId,
-        direccion_envio: {
-          nombre: shippingDetails?.name,
-          calle: shippingDetails?.address?.line1,
-          ciudad: shippingDetails?.address?.city,
-          provincia: shippingDetails?.address?.state,
-          codigo_postal: shippingDetails?.address?.postal_code,
-          pais: shippingDetails?.address?.country
-        },
-        telefono_cliente: shippingDetails?.phone || null,
-        // Guardar referencia de descuento
-        notas_internas: codigoCupon ? `Cupón aplicado: ${codigoCupon}, Descuento: €${descuentoMonto}` : null
-      })
+      .insert(ordenData)
       .select()
       .single();
 
@@ -127,50 +142,61 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // ENVIAR EMAIL DE CONFIRMACIÓN
     // ==========================================
+    let emailSent = false;
     try {
       if (session.customer_email) {
-        const emailSent = await sendOrderConfirmationEmail(
+        console.log('📧 Intentando enviar email de confirmación...');
+        emailSent = await sendOrderConfirmationEmail(
           session.customer_email,
           orden.numero_orden,
           total
         );
         
         if (emailSent) {
-          console.log('✉️ Email de confirmación enviado a:', session.customer_email);
+          console.log('✉️ Email de confirmación enviado exitosamente a:', session.customer_email);
         } else {
-          console.warn('⚠️ Error al enviar email de confirmación');
+          console.warn('⚠️ Falló el envío del email de confirmación (pero el pedido se guardó)');
         }
+      } else {
+        console.warn('⚠️ No hay email de cliente, saltando envío de confirmación');
       }
     } catch (emailError) {
-      console.error('❌ Error enviando email:', emailError);
+      console.error('❌ Excepción al enviar email:', emailError);
       // No interrumpir el flujo si falla el email
     }
 
     // ==========================================
-    // CREAR ITEMS DE LA ORDEN (EN JSON)
+    // CREAR ITEMS DE LA ORDEN
     // ==========================================
-    if (session.line_items?.data) {
+    if (session.line_items?.data && orden?.id) {
       const items = session.line_items.data
         .filter((item: any) => !item.description?.includes('Descuento'))
-        .map((item: any) => ({
-          producto_id: parseInt(item.metadata?.producto_id) || 0,
-          nombre: item.description || 'Producto',
-          cantidad: item.quantity,
-          precio_unitario: item.price_data?.unit_amount ? (item.price_data.unit_amount / 100) : 0,
-          subtotal: item.amount_total ? (item.amount_total / 100) : 0
-        }));
+        .map((item: any) => {
+          const precio_unitario = item.price_data?.unit_amount ? (item.price_data.unit_amount / 100) : 0;
+          const cantidad = item.quantity || 1;
+          const subtotal = item.amount_total ? (item.amount_total / 100) : (precio_unitario * cantidad);
+          
+          return {
+            orden_id: orden.id,
+            producto_id: parseInt(item.metadata?.producto_id) || 0,
+            cantidad: cantidad,
+            precio_unitario: Math.round(precio_unitario * 100) / 100,
+            subtotal: Math.round(subtotal * 100) / 100,
+            creado_en: new Date().toISOString()
+          };
+        });
 
       if (items.length > 0) {
-        // Actualizar la orden con los items en el JSON
-        const { error: updateError } = await supabaseAdmin
-          .from('ordenes')
-          .update({ productos: items })
-          .eq('id', orden.id);
+        console.log('📝 Insertando', items.length, 'items en ordenes_items');
+        const { error: itemsError } = await supabaseAdmin
+          .from('ordenes_items')
+          .insert(items);
 
-        if (updateError) {
-          console.error('⚠️ Error guardando items:', updateError);
+        if (itemsError) {
+          console.error('⚠️ Error guardando items:', itemsError);
+          // No interrumpir el flujo si falla guardar items
         } else {
-          console.log(`✅ ${items.length} items guardados en la orden`);
+          console.log(`✅ ${items.length} items guardados en ordenes_items`);
         }
       }
     }

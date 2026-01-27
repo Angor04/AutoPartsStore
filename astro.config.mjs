@@ -6,8 +6,8 @@ import node from '@astrojs/node';
 // Configurado para Node.js (Coolify, Docker, VPS)
 export default defineConfig({
   output: 'server',
-  adapter: node({ 
-    mode: 'middleware',
+  adapter: node({
+    mode: 'standalone',
   }),
   server: {
     host: '0.0.0.0',

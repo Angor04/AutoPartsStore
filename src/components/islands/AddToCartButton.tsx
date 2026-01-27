@@ -33,6 +33,14 @@ export default function AddToCartButton({
   const maxAddable = Math.max(0, stock - currentQuantity);
   const isInStock = maxAddable > 0;
 
+  // Normalizar precio: asegurar que siempre esté en céntimos
+  // Si > 1000 → ya está en céntimos (12000 = 120€)
+  // Si ≤ 1000 → está en euros, multiplicar por 100 (120 → 12000)
+  const normalizarPrecio = (p: number): number => {
+    if (p > 1000) return p; // Ya está en céntimos
+    return Math.round(p * 100); // Convertir euros a céntimos
+  };
+
   const handleAddToCart = () => {
     // Validación local rápida
     if (!isInStock) {
@@ -65,10 +73,13 @@ export default function AddToCartButton({
       }
 
       // Stock verificado, agregar al carrito
+      const normalizedPrice = normalizarPrecio(price);
+      console.log(`normalizarPrecio: ${price} → ${normalizedPrice}`);
+      
       const cartItem: CartItem = {
         product_id: String(productId),
         quantity,
-        precio: price,
+        precio: normalizedPrice, // Usar precio normalizado
         nombre: productName,
         urls_imagenes: [imageUrl],
         stock, // Guardar el stock disponible

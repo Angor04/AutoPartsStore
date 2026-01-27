@@ -1,6 +1,6 @@
 ---
 // src/pages/pedido-confirmado.astro
-// Página de confirmación de pedido - Compatible con Stripe y checkout tradicional
+// Página de confirmación de pedido - Recupera datos desde BD
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import { getSupabaseAdmin } from "@/lib/supabase";
@@ -12,45 +12,35 @@ const description = "Tu pedido ha sido procesado correctamente";
 interface Orden {
   id: string;
   numero_orden: string;
-  created_at: string;
-  creada_en: string;
   estado: string;
+  estado_pago: string;
   subtotal: number;
   descuento_aplicado: number;
   costo_envio: number;
   total: number;
   direccion_envio: any;
-  email_cliente: string;
+  telefono_envio: string;
+  fecha_creacion: string;
   fecha_pago: string;
+  impuestos: number;
+  items: any[];
 }
 
-interface OrdenItem {
-  id: string;
-  producto_id: string;
-  cantidad: number;
-  precio_unitario: number;
-  nombre_producto: string;
-  subtotal: number;
-  productos?: { nombre: string; urls_imagenes: string[] };
-}
-
-// Obtener orden - puede venir de Stripe (session_id) o directamente (orden)
+// Obtener parámetros de la URL
 const url = new URL(Astro.request.url);
 const sessionId = url.searchParams.get('session_id');
 const ordenId = url.searchParams.get('orden');
+const usuarioId = Astro.cookies.get('user-id')?.value;
 
 let orden: Orden | null = null;
-let items: OrdenItem[] = [];
 let error = null;
 
-const supabaseAdmin = getSupabaseAdmin();
-
-// Si viene de Stripe
+// Procesar sesión de Stripe primero
 if (sessionId) {
   try {
     console.log('📦 Procesando sesión de Stripe:', sessionId);
     
-    // Llamar al endpoint que procesa Stripe
+    // Llamar al endpoint que procesa Stripe y retorna orden_id
     const response = await fetch(`${import.meta.env.SITE}/api/pagos/procesar-stripe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,14 +52,8 @@ if (sessionId) {
     if (resultado.success && resultado.orden_id) {
       console.log('✅ Orden creada desde Stripe:', resultado.numero_orden);
       
-      // Cargar la orden que acabamos de crear
-      const { data: ordenData } = await supabaseAdmin
-        .from('ordenes')
-        .select('*')
-        .eq('id', resultado.orden_id)
-        .single();
-      
-      orden = ordenData as Orden | null;
+      // Redirigir a la misma página pero con orden_id en lugar de session_id
+      return Astro.redirect(`/pedido-confirmado?orden=${resultado.orden_id}`);
     } else {
       error = resultado.error || 'Error procesando el pago';
       console.error('❌ Error en Stripe:', error);
@@ -79,40 +63,41 @@ if (sessionId) {
     error = 'Error al procesar el pago';
   }
 }
-// Si viene de checkout tradicional
-else if (ordenId) {
-  const { data: ordenData } = await supabaseAdmin
-    .from('ordenes')
-    .select('*')
-    .or(`id.eq.${ordenId},numero_orden.eq.${ordenId}`)
-    .single();
-  
-  orden = ordenData as Orden | null;
-}
 
-// Cargar items si tenemos orden
-if (orden) {
-  // Los items están en el JSON 'productos' de la orden
-  if (orden.productos && Array.isArray(orden.productos)) {
-    items = orden.productos.map((prod: any) => ({
-      id: `${prod.producto_id || '0'}`,
-      producto_id: `${prod.producto_id || '0'}`,
-      cantidad: prod.cantidad || 0,
-      precio_unitario: prod.precio_unitario || prod.precio || 0,
-      nombre_producto: prod.nombre || 'Producto desconocido',
-      subtotal: prod.subtotal || 0
-    })) as OrdenItem[];
+// Cargar orden desde BD si tenemos ordenId
+if (ordenId && !sessionId) {
+  try {
+    const response = await fetch(`${import.meta.env.SITE}/api/ordenes/${ordenId}`, {
+      headers: {
+        'Cookie': `user-id=${usuarioId || ''}`
+      }
+    });
+
+    const resultado = await response.json();
+
+    if (resultado.success && resultado.orden) {
+      orden = resultado.orden;
+      console.log('✅ Orden cargada desde BD:', orden.numero_orden);
+    } else {
+      error = resultado.error || 'No se encontró la orden';
+      console.error('❌ Error cargando orden:', error);
+    }
+  } catch (e) {
+    console.error('❌ Error cargando orden desde API:', e);
+    error = 'Error al cargar la orden';
   }
 }
 
-function formatPrice(precio: number): string {
+function formatPrice(precio: number | undefined): string {
+  if (!precio && precio !== 0) return '0,00 €';
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'EUR'
   }).format(precio);
 }
 
-function formatDate(fecha: string): string {
+function formatDate(fecha: string | undefined): string {
+  if (!fecha) return 'No disponible';
   return new Date(fecha).toLocaleDateString('es-ES', {
     year: 'numeric',
     month: 'long',
@@ -122,8 +107,8 @@ function formatDate(fecha: string): string {
 ---
 
 <PublicLayout title={title} description={description}>
-  <!-- Componente para limpiar el carrito -->
-  {sessionId && <CartCleaner client:load sessionId={sessionId} />}
+  <!-- Componente para limpiar el carrito después de Stripe -->
+  {!sessionId && <CartCleaner client:load sessionId={ordenId || ''} />}
   
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     
@@ -148,16 +133,21 @@ function formatDate(fecha: string): string {
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <div>
             <p class="text-sm text-charcoal-500 mb-1">Número de pedido</p>
-            <p class="font-bold text-navy-600">{orden.numero_orden || `ORD-${orden.id?.slice(0,8)}`}</p>
+            <p class="font-bold text-navy-600">{orden.numero_orden}</p>
           </div>
           <div>
             <p class="text-sm text-charcoal-500 mb-1">Fecha</p>
-            <p class="font-semibold">{new Date(orden.creada_en || orden.created_at).toLocaleDateString('es-ES')}</p>
+            <p class="font-semibold">{formatDate(orden.fecha_creacion)}</p>
           </div>
           <div>
             <p class="text-sm text-charcoal-500 mb-1">Estado</p>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              {orden.estado}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+              class:list={{
+                'bg-green-100 text-green-800': orden.estado_pago === 'COMPLETADO',
+                'bg-yellow-100 text-yellow-800': orden.estado_pago === 'PENDIENTE',
+                'bg-red-100 text-red-800': orden.estado_pago === 'FALLIDO'
+              }}>
+              {orden.estado_pago}
             </span>
           </div>
           <div>
@@ -172,14 +162,14 @@ function formatDate(fecha: string): string {
         <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4">Productos Comprados</h2>
         
         <div class="divide-y divide-charcoal-100">
-          {items.length > 0 ? (
-            items.map((item: any) => (
-              <div class="py-4 flex items-center gap-4">
+          {orden.items && orden.items.length > 0 ? (
+            orden.items.map((item: any) => (
+              <div class="py-4 flex items-center justify-between gap-4">
                 <div class="flex-1">
-                  <p class="font-medium text-charcoal-900">{item.nombre_producto || 'Producto desconocido'}</p>
-                  <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad}</p>
+                  <p class="font-medium text-charcoal-900">{item.nombre_producto}</p>
+                  <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}</p>
                 </div>
-                <p class="font-semibold text-charcoal-900">{formatPrice(item.subtotal)}</p>
+                <p class="font-semibold text-charcoal-900 whitespace-nowrap">{formatPrice(item.subtotal)}</p>
               </div>
             ))
           ) : (
@@ -194,10 +184,16 @@ function formatDate(fecha: string): string {
             <span>Subtotal</span>
             <span>{formatPrice(orden.subtotal)}</span>
           </div>
-          {orden.subtotal - orden.total > 0 && (
+          {orden.impuestos && orden.impuestos > 0 && (
+            <div class="flex justify-between text-charcoal-600">
+              <span>Impuestos</span>
+              <span>{formatPrice(orden.impuestos)}</span>
+            </div>
+          )}
+          {orden.descuento_aplicado && orden.descuento_aplicado > 0 && (
             <div class="flex justify-between text-green-600">
               <span>Descuento</span>
-              <span>-{formatPrice(orden.subtotal - orden.total)}</span>
+              <span>-{formatPrice(orden.descuento_aplicado)}</span>
             </div>
           )}
           <div class="flex justify-between text-charcoal-600">

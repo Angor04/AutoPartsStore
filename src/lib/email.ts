@@ -1,8 +1,16 @@
 import nodemailer from 'nodemailer';
 
+// Log de variables de entorno al iniciar
+console.log('🔍 Email config:', {
+  host: process.env.EMAIL_SMTP_HOST,
+  port: process.env.EMAIL_SMTP_PORT,
+  user: process.env.EMAIL_USER ? process.env.EMAIL_USER.slice(0, 5) + '***' : 'NO CONFIGURADO',
+  from: process.env.EMAIL_FROM
+});
+
 // Crear transportador de correo con Gmail
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_SMTP_HOST,
+  host: process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
   secure: false, // true para 465, false para otros puertos
   auth: {
@@ -12,13 +20,18 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verificar conexión al iniciar
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Email service error:', error);
-  } else if (success) {
-    console.log('✅ Email service is ready');
+(async () => {
+  try {
+    const verified = await transporter.verify();
+    if (verified) {
+      console.log('✅ Email service is ready');
+    } else {
+      console.warn('⚠️ Email service verification failed');
+    }
+  } catch (error) {
+    console.error('❌ Email service verification error:', error instanceof Error ? error.message : error);
   }
-});
+})();
 
 interface EmailOptions {
   to: string;
@@ -31,16 +44,20 @@ interface EmailOptions {
  */
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
   try {
+    console.log('📧 Sending email to:', to, 'Subject:', subject);
+    
     const result = await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to,
       subject,
       html,
     });
-    console.log('✅ Email sent:', result.messageId);
+    
+    console.log('✅ Email sent successfully:', result.messageId);
     return true;
   } catch (error) {
-    console.error('❌ Error sending email:', error);
+    console.error('❌ Error sending email:', error instanceof Error ? error.message : error);
+    console.error('Error details:', error);
     return false;
   }
 }
