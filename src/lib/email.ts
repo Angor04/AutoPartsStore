@@ -1,21 +1,21 @@
 import nodemailer from 'nodemailer';
 
 // Log de variables de entorno al iniciar
-console.log('🔍 Email config:', {
-  host: process.env.EMAIL_SMTP_HOST,
-  port: process.env.EMAIL_SMTP_PORT,
-  user: process.env.EMAIL_USER ? process.env.EMAIL_USER.slice(0, 5) + '***' : 'NO CONFIGURADO',
-  from: process.env.EMAIL_FROM
+console.log('🔍 Email config (Astro env):', {
+  host: import.meta.env.EMAIL_SMTP_HOST,
+  port: import.meta.env.EMAIL_SMTP_PORT,
+  user: import.meta.env.EMAIL_USER ? import.meta.env.EMAIL_USER.slice(0, 5) + '***' : 'NO CONFIGURADO',
+  from: import.meta.env.EMAIL_FROM
 });
 
 // Crear transportador de correo con Gmail
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
+  host: import.meta.env.EMAIL_SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(import.meta.env.EMAIL_SMTP_PORT || '587'),
   secure: false, // true para 465, false para otros puertos
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
+    user: import.meta.env.EMAIL_USER,
+    pass: import.meta.env.EMAIL_PASSWORD,
   },
 });
 
@@ -45,14 +45,14 @@ interface EmailOptions {
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
   try {
     console.log('📧 Sending email to:', to, 'Subject:', subject);
-    
+
     const result = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      from: import.meta.env.EMAIL_FROM || import.meta.env.EMAIL_USER,
       to,
       subject,
       html,
     });
-    
+
     console.log('✅ Email sent successfully:', result.messageId);
     return true;
   } catch (error) {
@@ -94,84 +94,101 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<boo
 }
 
 /**
- * Envía correo de confirmación de pedido
+ * Envía correo de confirmación de pedido con detalles completos
  */
 export async function sendOrderConfirmationEmail(
   email: string,
   orderNumber: string,
-  total: number
+  total: number,
+  customerName: string = 'Cliente',
+  items: any[] = [],
+  summary?: { subtotal: number, envio: number, descuento: number }
 ): Promise<boolean> {
+  const itemsHtml = items.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        ${item.nombre_producto || item.nombre || 'Producto'} <br>
+        <span style="color: #666; font-size: 12px;">Cantidad: ${item.cantidad} x €${(item.precio_unitario || item.precio || 0).toFixed(2)}</span>
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
+        €${(item.subtotal || ((item.precio_unitario || item.precio || 0) * item.cantidad)).toFixed(2)}
+      </td>
+    </tr>
+  `).join('');
+
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #dc2626; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h2 style="color: white; margin: 0;">✅ ¡Pedido Confirmado!</h2>
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <div style="background-color: #1e293b; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Confirmación de pedido #${orderNumber}</h2>
       </div>
-      <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
-        <p style="color: #666; margin-top: 0;">Tu compra ha sido procesada correctamente. A continuación encontrarás los detalles de tu pedido.</p>
+      
+      <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #1e293b; margin-top: 0;">¡Hola ${customerName}!</h2>
+        <p style="line-height: 1.6;">Gracias por confiar en <strong>Auto Parts Store</strong>. Tu pedido ha sido confirmado y ya estamos trabajando en él.</p>
         
-        <!-- Información del Pedido -->
-        <div style="background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 6px; margin: 20px 0;">
-          <h3 style="color: #333; margin-top: 0; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">Detalles del Pedido</h3>
+        <div style="margin: 30px 0;">
+          <h3 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; color: #1e293b;">Resumen del Pedido</h3>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 10px 0; color: #666;"><strong>Número de Pedido:</strong></td>
-              <td style="padding: 10px 0; text-align: right; color: #333;"><strong>${orderNumber}</strong></td>
-            </tr>
-            <tr style="border-top: 1px solid #eee;">
-              <td style="padding: 10px 0; color: #666;"><strong>Total:</strong></td>
-              <td style="padding: 10px 0; text-align: right; color: #dc2626; font-size: 18px;"><strong>€${total.toFixed(2)}</strong></td>
-            </tr>
-            <tr style="border-top: 1px solid #eee;">
-              <td style="padding: 10px 0; color: #666;"><strong>Estado:</strong></td>
-              <td style="padding: 10px 0; text-align: right;">
-                <span style="background-color: #10b981; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px;">CONFIRMADO</span>
-              </td>
+            <thead>
+              <tr style="background-color: #f8fafc;">
+                <th style="padding: 10px; text-align: left; font-size: 14px;">Producto</th>
+                <th style="padding: 10px; text-align: right; font-size: 14px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+          <table style="width: 100%; font-size: 14px;">
+            ${summary ? `
+              <tr>
+                <td style="padding: 5px 0; color: #64748b;">Subtotal:</td>
+                <td style="padding: 5px 0; text-align: right;">€${summary.subtotal.toFixed(2)}</td>
+              </tr>
+              ${summary.descuento > 0 ? `
+              <tr>
+                <td style="padding: 5px 0; color: #10b981;">Descuento:</td>
+                <td style="padding: 5px 0; text-align: right; color: #10b981;">-€${summary.descuento.toFixed(2)}</td>
+              </tr>` : ''}
+              <tr>
+                <td style="padding: 5px 0; color: #64748b;">Envío:</td>
+                <td style="padding: 5px 0; text-align: right;">${summary.envio === 0 ? 'Gratis' : `€${summary.envio.toFixed(2)}`}</td>
+              </tr>
+            ` : ''}
+            <tr style="font-weight: bold; font-size: 18px; color: #1e293b;">
+              <td style="padding: 10px 0; border-top: 1px solid #e2e8f0;">TOTAL:</td>
+              <td style="padding: 10px 0; text-align: right; border-top: 1px solid #e2e8f0;">€${total.toFixed(2)}</td>
             </tr>
           </table>
         </div>
 
-        <!-- Información Importante -->
-        <div style="background-color: #f0f9ff; padding: 15px; border-left: 4px solid #3b82f6; margin: 20px 0; border-radius: 4px;">
-          <p style="margin: 0; color: #333;"><strong>📍 Próximos Pasos:</strong></p>
-          <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666;">
-            <li>Recibirás un email de confirmación del envío</li>
-            <li>Tu pedido será preparado y despachado en 1-2 días hábiles</li>
-            <li>Podrás rastrear tu pedido desde tu cuenta</li>
-          </ul>
-        </div>
-
-        <!-- Call to Action -->
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://auto_parts_store.victoriafp.online/mi-cuenta" style="
-            background-color: #dc2626;
-            color: white;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            display: inline-block;
-            font-weight: bold;
-          ">Ver mi Pedido</a>
-        </div>
-
-        <!-- Contacto -->
-        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 6px; margin: 20px 0; text-align: center;">
-          <p style="margin: 0; color: #666; font-size: 12px;">
-            ¿Tienes preguntas? <a href="https://auto_parts_store.victoriafp.online" style="color: #dc2626; text-decoration: none;">Contáctanos</a>
+        <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+          <h4 style="margin: 0 0 10px 0; color: #1e293b;">📌 ¿Qué sigue ahora?</h4>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5;">
+            Te enviaremos otro correo electrónico en cuanto tu pedido salga de nuestro almacén con el número de seguimiento para que puedas rastrearlo en todo momento.
           </p>
         </div>
 
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
-          © 2026 Auto Parts Store. Todos los derechos reservados.<br>
-          Este es un email automatizado, por favor no responder.
-        </p>
+        <div style="text-align: center; margin-top: 40px; border-top: 1px solid #e2e8f0; pt: 20px;">
+          <p style="font-size: 14px; color: #64748b;">¿Tienes alguna pregunta?</p>
+          <p style="font-size: 14px; color: #64748b;">Estamos aquí para ayudarte. Responde a este email o contáctanos a través de nuestra web.</p>
+          <p style="margin-top: 20px; font-weight: bold; color: #1e293b;">Auto Parts Store</p>
+        </div>
       </div>
+      
+      <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 20px;">
+        © 2026 Auto Parts Store. Av. de la Innovación, 42. Madrid. <br>
+        Has recibido este correo porque realizaste una compra en nuestra tienda.
+      </p>
     </div>
   `;
 
   return sendEmail({
     to: email,
-    subject: `✅ Pedido Confirmado - ${orderNumber}`,
+    subject: `Confirmación de tu pedido #${orderNumber}`,
     html,
   });
 }

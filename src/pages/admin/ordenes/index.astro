@@ -98,8 +98,8 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
               return (
                 <tr>
                   <td style="font-weight: 600; color: #1a1a1a;">#{orden.id?.toString().slice(0, 8)}</td>
-                  <td>{orden.customer_name || 'N/A'}</td>
-                  <td style="color: #0369a1;">{orden.customer_email || 'N/A'}</td>
+                  <td>{orden.nombre || 'N/A'}</td>
+                  <td style="color: #0369a1;">{orden.email || 'N/A'}</td>
                   <td style="font-weight: 600;">{formatPrice(orden.total || 0)}</td>
                   <td>
                     <span class={`badge ${badgeClass}`}>

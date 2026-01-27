@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     console.log('💳 Creando sesión de Stripe. UsuarioID:', usuarioId || 'Invitado');
 
-    const { items, email, nombre, apellidos, subtotal, descuento, total, codigoPostal } = body;
+    const { items, email, nombre, apellidos, telefono, subtotal, descuento, total, codigoPostal, direccion, ciudad, provincia, cupon_id } = body;
 
     console.log('📦 Items del carrito:', items.length);
     console.log('💰 Total:', total, 'Descuento:', descuento);
@@ -71,7 +71,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           },
           unit_amount: unit_amount
         },
-        quantity: qty
+        quantity: qty,
+        metadata: {
+          producto_id: item.product_id ? String(item.product_id) : String(item.id)
+        }
       };
     });
 
@@ -127,8 +130,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         carrito_id: body.carrito_id || 'guest',
         descuento_codigo: body.codigo_cupon || '',
         descuento_monto: descuento || 0,
-        // Guardar los items para actualizar stock después del pago
-        items_json: JSON.stringify(items)
+        cupon_id: cupon_id || '',
+        nombre_cliente: `${nombre || ''} ${apellidos || ''}`.trim(),
+        telefono_cliente: telefono || '',
+        direccion_cliente: direccion || '',
+        ciudad_cliente: ciudad || '',
+        provincia_cliente: provincia || '',
+        codigo_postal_cliente: codigoPostal || '',
+        // Guardar los items optimizados para evitar límites de tamaño de Stripe (500 caracteres)
+        items_json: JSON.stringify(items.map((i: any) => ({
+          id: i.product_id || i.id,
+          q: i.quantity,
+          p: i.precio
+        })))
       },
       billing_address_collection: 'required',
       shipping_address_collection: {

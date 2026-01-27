@@ -91,30 +91,28 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Preparar datos para insertar
     const ordenData: any = {
       numero_orden: numeroOrden,
+      usuario_id: usuarioId || null,
+      email: session.customer_email || metadata.email_cliente || 'invitado@tienda.com',
+      nombre: metadata.nombre_cliente || shippingDetails?.name || 'Cliente Invitado',
+      telefono: metadata.telefono_cliente || (session as any).customer_details?.phone || null,
+      session_stripe_id: sessionId,
       estado: 'PAGADO',
       estado_pago: 'COMPLETADO',
       subtotal: subtotal,
       total: total,
-      costo_envio: 0,
-      descuento_aplicado: descuentoMonto,
+      gastos_envio: Math.round((total - subtotal + descuentoMonto) * 100) / 100,
+      cupon_id: metadata.cupon_id || null,
       direccion_envio: {
-        nombre: shippingDetails?.name,
-        calle: shippingDetails?.address?.line1,
-        ciudad: shippingDetails?.address?.city,
-        provincia: shippingDetails?.address?.state,
-        codigo_postal: shippingDetails?.address?.postal_code,
-        pais: shippingDetails?.address?.country
+        nombre: metadata.nombre_cliente || shippingDetails?.name,
+        calle: metadata.direccion_cliente || shippingDetails?.address?.line1,
+        ciudad: metadata.ciudad_cliente || shippingDetails?.address?.city,
+        provincia: metadata.provincia_cliente || shippingDetails?.address?.state,
+        codigo_postal: metadata.codigo_postal_cliente || shippingDetails?.address?.postal_code,
+        pais: shippingDetails?.address?.country || 'ES'
       },
-      telefono_envio: shippingDetails?.phone || null,
-      fecha_pago: new Date().toISOString(),
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString()
+      fecha_pago: new Date().toISOString()
     };
 
-    // Solo agregar usuario_id si existe un usuario autenticado
-    if (usuarioId) {
-      ordenData.usuario_id = usuarioId;
-    }
 
     const { data: orden, error: ordenError } = await supabaseAdmin
       .from('ordenes')
@@ -140,64 +138,92 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
 
     // ==========================================
-    // ENVIAR EMAIL DE CONFIRMACIÓN
+    // CREAR ITEMS DE LA ORDEN Y ENVIAR EMAIL
     // ==========================================
-    let emailSent = false;
-    try {
-      if (session.customer_email) {
-        console.log('📧 Intentando enviar email de confirmación...');
-        emailSent = await sendOrderConfirmationEmail(
-          session.customer_email,
-          orden.numero_orden,
-          total
-        );
+    const itemsJson = metadata.items_json;
+    let itemsParaEmail: any[] = [];
 
-        if (emailSent) {
-          console.log('✉️ Email de confirmación enviado exitosamente a:', session.customer_email);
-        } else {
-          console.warn('⚠️ Falló el envío del email de confirmación (pero el pedido se guardó)');
-        }
-      } else {
-        console.warn('⚠️ No hay email de cliente, saltando envío de confirmación');
-      }
-    } catch (emailError) {
-      console.error('❌ Excepción al enviar email:', emailError);
-      // No interrumpir el flujo si falla el email
-    }
+    if (itemsJson && orden?.id) {
+      try {
+        const cartItemsRaw = JSON.parse(itemsJson);
+        console.log('📦 Reconstruyendo items desde metadata:', cartItemsRaw.length);
 
-    // ==========================================
-    // CREAR ITEMS DE LA ORDEN
-    // ==========================================
-    if (session.line_items?.data && orden?.id) {
-      const items = session.line_items.data
-        .filter((item: any) => !item.description?.includes('Descuento'))
-        .map((item: any) => {
-          const precio_unitario = item.price_data?.unit_amount ? (item.price_data.unit_amount / 100) : 0;
-          const cantidad = item.quantity || 1;
-          const subtotal = item.amount_total ? (item.amount_total / 100) : (precio_unitario * cantidad);
+        const items = cartItemsRaw.map((item: any) => {
+          const precio_unitario = parseFloat(item.p || item.precio) || 0;
+          const cantidad = parseInt(item.q || item.quantity) || 1;
 
           return {
             orden_id: orden.id,
-            producto_id: item.metadata?.producto_id || '0',
+            producto_id: item.id || item.product_id || 0,
             cantidad: cantidad,
             precio_unitario: Math.round(precio_unitario * 100) / 100,
-            subtotal: Math.round(subtotal * 100) / 100,
+            subtotal: Math.round(precio_unitario * cantidad * 100) / 100,
             creado_en: new Date().toISOString()
           };
         });
 
-      if (items.length > 0) {
-        console.log('📝 Insertando', items.length, 'items en ordenes_items');
-        const { error: itemsError } = await supabaseAdmin
-          .from('ordenes_items')
-          .insert(items);
+        // Para el email necesitamos nombres, los sacaremos de line_items de Stripe si es posible
+        itemsParaEmail = (session.line_items?.data || []).map(li => ({
+          nombre_producto: li.description,
+          cantidad: li.quantity,
+          precio_unitario: (li.price?.unit_amount || 0) / 100,
+          subtotal: (li.amount_total || 0) / 100
+        }));
 
-        if (itemsError) {
-          console.error('⚠️ Error guardando items:', itemsError);
-          // No interrumpir el flujo si falla guardar items
-        } else {
-          console.log(`✅ ${items.length} items guardados en ordenes_items`);
+        if (items.length > 0) {
+          console.log('📝 Insertando', items.length, 'items en ordenes_items');
+          const { error: itemsError } = await supabaseAdmin
+            .from('ordenes_items')
+            .insert(items);
+
+          if (itemsError) {
+            console.error('⚠️ Error guardando items:', itemsError);
+          } else {
+            console.log(`✅ ${items.length} items guardados en ordenes_items`);
+          }
         }
+      } catch (parseError) {
+        console.error('❌ Error parseando items_json:', parseError);
+      }
+    } else {
+      console.warn('⚠️ No se encontraron items en metadata o la orden no tiene ID');
+    }
+
+    // ==========================================
+    // ENVIAR EMAIL DE CONFIRMACIÓN (AHORA CON ITEMS)
+    // ==========================================
+    let emailSent = false;
+    const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
+
+    console.log('📧 Preparando envío de email:', {
+      emailDestino,
+      session_email: session.customer_email,
+      metadata_email: metadata.email_cliente,
+      customer_details_email: (session as any).customer_details?.email,
+      itemsCount: itemsParaEmail.length
+    });
+
+    if (emailDestino) {
+      try {
+        console.log('📧 Intentando enviar email de confirmación completo a:', emailDestino);
+        emailSent = await sendOrderConfirmationEmail(
+          emailDestino,
+          orden.numero_orden,
+          total,
+          metadata.nombre_cliente || (session as any).customer_details?.name || 'Cliente',
+          itemsParaEmail,
+          {
+            subtotal: subtotal,
+            envio: ordenData.gastos_envio || 0,
+            descuento: descuentoMonto || 0
+          }
+        );
+
+        if (emailSent) {
+          console.log('✉️ Email de confirmación enviado exitosamente a:', emailDestino);
+        }
+      } catch (emailError) {
+        console.error('❌ Error al enviar email:', emailError);
       }
     }
 

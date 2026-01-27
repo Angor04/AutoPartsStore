@@ -20,9 +20,8 @@ interface Orden {
   total: number;
   direccion_envio: any;
   telefono_envio: string;
-  fecha_creacion: string;
-  fecha_pago: string;
-  impuestos: number;
+  email_cliente: string;
+  nombre_cliente?: string;
   items: any[];
 }
 
@@ -41,7 +40,7 @@ if (sessionId) {
     console.log('📦 Procesando sesión de Stripe:', sessionId);
     
     // Llamar al endpoint que procesa Stripe y retorna orden_id
-    const response = await fetch(`${import.meta.env.SITE}/api/pagos/procesar-stripe`, {
+    const response = await fetch(`${url.origin}/api/pagos/procesar-stripe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId })
@@ -67,7 +66,7 @@ if (sessionId) {
 // Cargar orden desde BD si tenemos ordenId
 if (ordenId && !sessionId) {
   try {
-    const response = await fetch(`${import.meta.env.SITE}/api/ordenes/${ordenId}`, {
+    const response = await fetch(`${url.origin}/api/ordenes/${ordenId}`, {
       headers: {
         'Cookie': `user-id=${usuarioId || ''}`
       }
@@ -155,6 +154,17 @@ function formatDate(fecha: string | undefined): string {
             <p class="font-bold text-lg text-red-600">{formatPrice(orden.total)}</p>
           </div>
         </div>
+        
+        <div class="mt-6 pt-6 border-t border-charcoal-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+          <div>
+            <p class="text-xs text-charcoal-500 uppercase tracking-wider font-semibold mb-1">Cliente</p>
+            <p class="text-charcoal-800 font-medium">{orden.nombre || 'Invitado'}</p>
+          </div>
+          <div>
+            <p class="text-xs text-charcoal-500 uppercase tracking-wider font-semibold mb-1">Email de contacto</p>
+            <p class="text-charcoal-800 font-medium">{orden.email}</p>
+          </div>
+        </div>
       </div>
 
       <!-- Productos comprados -->
@@ -190,12 +200,15 @@ function formatDate(fecha: string | undefined): string {
               <span>{formatPrice(orden.impuestos)}</span>
             </div>
           )}
-          {orden.descuento_aplicado && orden.descuento_aplicado > 0 && (
-            <div class="flex justify-between text-green-600">
-              <span>Descuento</span>
-              <span>-{formatPrice(orden.descuento_aplicado)}</span>
-            </div>
-          )}
+          {(() => {
+            const calculadoDescuento = (orden.subtotal || 0) + (orden.costo_envio || 0) - (orden.total || 0);
+            return calculadoDescuento > 0.01 ? (
+              <div class="flex justify-between text-green-600">
+                <span>Descuento</span>
+                <span>-{formatPrice(calculadoDescuento)}</span>
+              </div>
+            ) : null;
+          })()}
           <div class="flex justify-between text-charcoal-600">
             <span>Envío</span>
             <span>{orden.costo_envio === 0 ? 'Gratis' : formatPrice(orden.costo_envio)}</span>
@@ -250,7 +263,7 @@ function formatDate(fecha: string | undefined): string {
           </svg>
         </div>
         <h2 class="text-2xl font-serif font-bold text-charcoal-900 mb-2">No se encontró el pedido</h2>
-        <p class="text-charcoal-600 mb-6">No pudimos encontrar la información del pedido.</p>
+        <p class="text-charcoal-600 mb-6">{error || 'No pudimos encontrar la información del pedido. Asegúrate de haber completado el proceso de pago correctamente.'}</p>
         <a 
           href="/productos" 
           class="inline-block px-8 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"

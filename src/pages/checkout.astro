@@ -298,6 +298,7 @@ if (userId) {
   let subtotal = 0;
   let descuento = 0;
   let codigoCuponAplicado = null;
+  let idCuponAplicado = null;
   const ENVIO_GRATIS_DESDE = 0;
   const COSTO_ENVIO = 0;
 
@@ -486,6 +487,7 @@ if (userId) {
       if (data.valido) {
         descuento = data.descuento_calculado || 0;
         codigoCuponAplicado = codigo;
+        idCuponAplicado = data.cupon_id;
         
         mensaje.classList.add('hidden');
         
@@ -516,6 +518,7 @@ if (userId) {
   function quitarCupon() {
     descuento = 0;
     codigoCuponAplicado = null;
+    idCuponAplicado = null;
     
     document.getElementById('cuponAplicado').style.display = 'none';
     document.getElementById('cupon').disabled = false;
@@ -560,11 +563,16 @@ if (userId) {
           email: formData.get('email'),
           nombre: formData.get('nombre'),
           apellidos: formData.get('apellidos'),
+          telefono: formData.get('telefono'),
           subtotal: subtotal,
           descuento: descuento,
-          total: subtotal - descuento,
+          total: subtotal - descuento + (subtotal >= ENVIO_GRATIS_DESDE ? 0 : COSTO_ENVIO),
           codigo_cupon: codigoCuponAplicado,
-          codigoPostal: formData.get('codigo_postal')
+          cupon_id: idCuponAplicado,
+          codigoPostal: formData.get('codigo_postal'),
+          direccion: formData.get('direccion'),
+          ciudad: formData.get('ciudad'),
+          provincia: formData.get('provincia')
         })
       });
       

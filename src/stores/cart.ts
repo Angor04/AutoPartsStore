@@ -99,12 +99,12 @@ export function addToCart(item: CartItem) {
     // Si el producto ya existe, incrementa la cantidad
     updated = currentItems.map((i) =>
       String(i.product_id) === String(item.product_id)
-        ? { ...i, quantity: i.quantity + item.quantity }
+        ? { ...i, quantity: i.quantity + item.quantity, subtotal: (i.quantity + item.quantity) * i.precio }
         : i
     );
   } else {
     // Si no existe, añádelo
-    updated = [...currentItems, item];
+    updated = [...currentItems, { ...item, subtotal: item.quantity * item.precio }];
   }
 
   console.log("addToCart - updated state:", updated);
@@ -145,7 +145,7 @@ export function updateCartItem(productId: string, quantity: number) {
     updated = current.filter((i) => i.product_id !== productId);
   } else {
     updated = current.map((i) =>
-      String(i.product_id) === String(productId) ? { ...i, quantity } : i
+      String(i.product_id) === String(productId) ? { ...i, quantity, subtotal: quantity * i.precio } : i
     );
   }
   cartStore.set(updated);
