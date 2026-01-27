@@ -28,6 +28,6 @@ export default defineConfig({
     },
   },
   image: {
-    domains: ['https://aebzgxrpvbwmcktnvkea.supabase.co'],
+    domains: ['aebzgxrpvbwmcktnvkea.supabase.co'],
   },
 });
