@@ -1,5 +1,7 @@
 // src/types/index.ts
 
+export type UUID = string;
+
 export type Database = {
   public: {
     Tables: {
@@ -93,7 +95,7 @@ export interface Order {
 export interface OrderItem {
   id: string;
   orden_id: string;
-  producto_id: number;
+  producto_id: number | string;
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
@@ -171,15 +173,13 @@ export type SettingUpdate = Partial<SettingInsert>;
 
 // Cart
 export interface CartItem {
-  product_id?: string;
-  id?: string;
-  quantity?: number;
-  cantidad?: number;
+  product_id: string;
+  quantity: number;
   precio: number;
   nombre: string;
   urls_imagenes?: string[];
   imagen?: string;
-  stock?: number; // Stock disponible del producto
+  stock?: number;
 }
 
 export interface Cart {

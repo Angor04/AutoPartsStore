@@ -9,11 +9,11 @@ import type { UUID } from '@/types';
  * Retorna si hay stock suficiente y el stock actual
  */
 export async function checkProductAvailability(
-  productId: UUID | string,
+  productId: string | number,
   quantity: number
 ) {
   try {
-    const { data, error } = await supabaseClient.rpc(
+    const { data, error } = await (supabaseClient as any).rpc(
       'check_product_availability',
       {
         p_product_id: productId,
@@ -62,7 +62,7 @@ export async function updateStockAfterPurchase(
   quantity: number
 ) {
   try {
-    const { data, error } = await supabaseClient.rpc(
+    const { data, error } = await (supabaseClient as any).rpc(
       'update_stock_after_purchase',
       {
         p_product_id: productId,
@@ -110,7 +110,7 @@ export async function updateStockAfterPurchase(
  */
 export async function getLowStockAlerts(threshold: number = 10) {
   try {
-    const { data, error } = await supabaseClient.rpc(
+    const { data, error } = await (supabaseClient as any).rpc(
       'get_low_stock_alerts',
       {
         p_threshold: threshold,

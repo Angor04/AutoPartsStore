@@ -18,7 +18,7 @@ export const supabaseClient = createClient<Database>(
 );
 
 // Cliente para operaciones de servidor con permisos de admin
-let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
+let supabaseAdmin: any = null;
 
 export const getSupabaseAdmin = () => {
   if (!supabaseAdmin) {

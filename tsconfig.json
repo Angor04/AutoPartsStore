@@ -1,7 +1,13 @@
 {
+  "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
+    "noEmit": true,
     "jsxImportSource": "react",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "target": "ES2020",
@@ -11,18 +17,26 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@layouts/*": ["src/layouts/*"],
-      "@lib/*": ["src/lib/*"],
-      "@stores/*": ["src/stores/*"],
-      "@types/*": ["src/types/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@components/*": [
+        "src/components/*"
+      ],
+      "@layouts/*": [
+        "src/layouts/*"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ],
+      "@stores/*": [
+        "src/stores/*"
+      ],
+      "@types/*": [
+        "src/types/*"
+      ]
     }
-  },
-  "extends": "astro/tsconfigs/strict"
+  }
 }

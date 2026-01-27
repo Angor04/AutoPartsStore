@@ -1,0 +1,6 @@
+[phases.install]
+cmds = ["npm install --legacy-peer-deps --prefer-offline --no-audit --fetch-timeout=300000 --fetch-retry-mintimeout=20000"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["npm run build"]

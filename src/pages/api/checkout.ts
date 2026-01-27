@@ -8,7 +8,8 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 export const prerender = false;
 
 interface ItemCarrito {
-  producto_id: string;
+  /** El ID del producto (UUID string o integer ID) */
+  producto_id: string | number;
   cantidad: number;
   precio_unitario: number;
   nombre?: string;
@@ -63,13 +64,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAdmin = getSupabaseAdmin() as any;
 
     // ==========================================
     // 3. VERIFICAR STOCK DE TODOS LOS PRODUCTOS
     // ==========================================
     const productosIds = items.map(i => i.producto_id);
-    
+
     const { data: productos, error: errorProductos } = await supabaseAdmin
       .from('productos')
       .select('id, nombre, precio, stock, activo')
@@ -84,21 +85,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Verificar cada producto
     const erroresStock: string[] = [];
-    const productosMap = new Map(productos.map(p => [p.id, p]));
+    const productosMap = new Map((productos as any[]).map((p: any) => [p.id, p]));
 
     for (const item of items) {
-      const producto = productosMap.get(item.producto_id);
-      
+      const producto = productosMap.get(item.producto_id) ||
+        productosMap.get(Number(item.producto_id)) ||
+        productosMap.get(String(item.producto_id));
+
       if (!producto) {
         erroresStock.push(`Producto no encontrado: ${item.producto_id}`);
         continue;
       }
-      
+
       if (!producto.activo) {
         erroresStock.push(`"${producto.nombre}" ya no está disponible`);
         continue;
       }
-      
+
       if (producto.stock < item.cantidad) {
         if (producto.stock === 0) {
           erroresStock.push(`"${producto.nombre}" está agotado`);
@@ -110,7 +113,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (erroresStock.length > 0) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Stock insuficiente',
           detalles: erroresStock
         }),
@@ -125,10 +128,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const itemsConPrecio: ItemCarrito[] = [];
 
     for (const item of items) {
-      const producto = productosMap.get(item.producto_id)!;
+      const producto = (productosMap.get(item.producto_id) ||
+        productosMap.get(Number(item.producto_id)) ||
+        productosMap.get(String(item.producto_id)))!;
       const precioReal = producto.precio;
       subtotal += precioReal * item.cantidad;
-      
+
       itemsConPrecio.push({
         producto_id: item.producto_id,
         cantidad: item.cantidad,
@@ -339,7 +344,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     return new Response(
       JSON.stringify({
-        productos: productos.map(p => ({
+        productos: (productos as any[]).map((p: any) => ({
           id: p.id,
           nombre: p.nombre,
           stock: p.stock,

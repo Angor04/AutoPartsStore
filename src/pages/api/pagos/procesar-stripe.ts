@@ -9,7 +9,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email';
 export const prerender = false;
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2023-10-16' as any,
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const codigoCupon = metadata.descuento_codigo || null;
 
     // Obtener dirección de envío
-    const shippingDetails = session.shipping_details;
+    const shippingDetails = (session as any).shipping_details;
     const billingDetails = (session.payment_intent as any)?.charges?.data?.[0]?.billing_details;
 
     console.log('📦 Información de envío:', {
@@ -151,7 +151,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           orden.numero_orden,
           total
         );
-        
+
         if (emailSent) {
           console.log('✉️ Email de confirmación enviado exitosamente a:', session.customer_email);
         } else {
@@ -175,10 +175,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           const precio_unitario = item.price_data?.unit_amount ? (item.price_data.unit_amount / 100) : 0;
           const cantidad = item.quantity || 1;
           const subtotal = item.amount_total ? (item.amount_total / 100) : (precio_unitario * cantidad);
-          
+
           return {
             orden_id: orden.id,
-            producto_id: parseInt(item.metadata?.producto_id) || 0,
+            producto_id: item.metadata?.producto_id || '0',
             cantidad: cantidad,
             precio_unitario: Math.round(precio_unitario * 100) / 100,
             subtotal: Math.round(subtotal * 100) / 100,

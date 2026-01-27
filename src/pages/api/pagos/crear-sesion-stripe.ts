@@ -9,7 +9,7 @@ import { updateStockAfterPurchase } from '@/lib/stockManagement';
 export const prerender = false;
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2023-10-16' as any,
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -154,7 +154,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     for (const item of items) {
       try {
         const { success, newStock, error: stockError } =
-          await updateStockAfterPurchase(item.product_id, item.quantity);
+          await updateStockAfterPurchase(String(item.product_id), item.quantity);
 
         if (success) {
           console.log(

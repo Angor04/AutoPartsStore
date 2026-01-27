@@ -14,7 +14,7 @@ export const cartStore = atom<CartItem[]>([]);
  */
 function getGuestSessionId(): string {
   if (typeof window === 'undefined') return '';
-  
+
   let sessionId = sessionStorage.getItem('guest-session-id');
   if (!sessionId) {
     sessionId = 'guest-' + Math.random().toString(36).substr(2, 9);
@@ -34,10 +34,10 @@ function saveCartToSessionStorage(items: CartItem[]) {
     console.log("saveCart - Corriendo en servidor, saliendo");
     return;
   }
-  
+
   const sessionId = getGuestSessionId();
   const cartKey = `cart-${sessionId}`;
-  
+
   console.log("saveCart - Guardando carrito de invitado en sessionStorage:", cartKey);
   try {
     const jsonStr = JSON.stringify(items);
@@ -58,7 +58,7 @@ function saveCartToSessionStorage(items: CartItem[]) {
  */
 async function saveCart(items: CartItem[]) {
   console.log("saveCart - Intentando guardar:", items);
-  
+
   if (typeof window === 'undefined') {
     console.log("saveCart - Corriendo en servidor, saliendo");
     return;
@@ -67,7 +67,7 @@ async function saveCart(items: CartItem[]) {
   try {
     const isAuthenticated = await isUserAuthenticated();
     console.log("saveCart - ¿Autenticado?:", isAuthenticated);
-    
+
     if (isAuthenticated) {
       console.log("saveCart - Usuario autenticado, guardando en BD");
       await saveCartToDB(items);
@@ -87,18 +87,18 @@ async function saveCart(items: CartItem[]) {
  */
 export function addToCart(item: CartItem) {
   console.log("addToCart - Función llamada con:", item);
-  
+
   // Obtener el estado actual del store
   const currentItems = cartStore.get();
   console.log("addToCart - current state:", currentItems);
-  
+
   const existingItem = currentItems.find((i) => i.product_id === item.product_id);
 
   let updated;
   if (existingItem) {
     // Si el producto ya existe, incrementa la cantidad
     updated = currentItems.map((i) =>
-      i.product_id === item.product_id
+      String(i.product_id) === String(item.product_id)
         ? { ...i, quantity: i.quantity + item.quantity }
         : i
     );
@@ -108,13 +108,13 @@ export function addToCart(item: CartItem) {
   }
 
   console.log("addToCart - updated state:", updated);
-  
+
   // Actualizar el store PRIMERO (para que el UI se actualice inmediatamente)
   cartStore.set(updated);
-  
+
   // Actualizar el stock reservado
   updateReservedStock(updated);
-  
+
   // Luego guardar (puede ser async sin bloquear el UI)
   saveCart(updated);
 }
@@ -128,7 +128,7 @@ export function removeFromCart(productId: string) {
   cartStore.set(updated);
   updateReservedStock(updated);
   saveCart(updated);
-  
+
   // Disparar evento para actualizar stock en el UI
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cartUpdated'));
@@ -145,13 +145,13 @@ export function updateCartItem(productId: string, quantity: number) {
     updated = current.filter((i) => i.product_id !== productId);
   } else {
     updated = current.map((i) =>
-      i.product_id === productId ? { ...i, quantity } : i
+      String(i.product_id) === String(productId) ? { ...i, quantity } : i
     );
   }
   cartStore.set(updated);
   updateReservedStock(updated);
   saveCart(updated);
-  
+
   // Disparar evento para actualizar stock en el UI
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cartUpdated'));
@@ -166,7 +166,7 @@ export function clearCart() {
   cartStore.set(updated);
   clearReservedStock();
   saveCart(updated);
-  
+
   // Disparar evento para actualizar stock en el UI
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cartUpdated'));
@@ -179,14 +179,14 @@ export function clearCart() {
 export async function clearCartOnLogout() {
   console.log("clearCartOnLogout - Limpiando carrito");
   clearCart();
-  
+
   // Limpiar también sessionStorage completamente
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('autopartsstore-cart');
     localStorage.removeItem('autopartsstore-cart');
     console.log("clearCartOnLogout - sessionStorage y localStorage limpiados");
   }
-  
+
   if (typeof window !== 'undefined') {
     // También intentar limpiar de BD
     try {
@@ -202,7 +202,7 @@ export async function clearCartOnLogout() {
  */
 export async function loadCart() {
   console.log("loadCart - Cargando carrito");
-  
+
   if (typeof window === 'undefined') {
     console.log("loadCart - En servidor, saliendo");
     return;
@@ -211,7 +211,7 @@ export async function loadCart() {
   try {
     const isAuthenticated = await isUserAuthenticated();
     console.log("loadCart - ¿Autenticado?:", isAuthenticated);
-    
+
     if (isAuthenticated) {
       console.log("loadCart - ✅ Usuario autenticado, cargando de BD");
       const cartFromDB = await loadCartFromDB();
@@ -230,7 +230,7 @@ export async function loadCart() {
         return;
       }
     }
-    
+
     // Invitado: Recuperar del sessionStorage si existe
     console.log("loadCart - 👤 Invitado, recuperando del sessionStorage");
     const sessionId = sessionStorage.getItem('guest-session-id');
@@ -248,7 +248,7 @@ export async function loadCart() {
         }
       }
     }
-    
+
     // Si no hay carrito guardado, iniciar vacío
     console.log("loadCart - Sin carrito guardado, iniciando vacío");
     cartStore.set([]);
