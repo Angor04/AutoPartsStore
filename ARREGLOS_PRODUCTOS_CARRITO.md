@@ -3,7 +3,7 @@
 ## Problemas Identificados
 
 1. ❌ No aparecen los productos en la página de confirmación
-2. ❌ El carrito no se limpia después de comprar
+2. ❌ El carrito no se limpia después de compr
 
 ## Soluciones Aplicadas
 
