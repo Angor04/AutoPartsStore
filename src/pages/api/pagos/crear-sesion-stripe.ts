@@ -9,7 +9,7 @@ import { updateStockAfterPurchase } from '@/lib/stockManagement';
 export const prerender = false;
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2023-10-16' as any,
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -55,27 +55,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const line_items = items.map((item: any) => {
       // Asegurar que precio es un número válido
       let precio = parseFloat(item.precio);
-      
+
       // Si el precio es 0 o inválido, usar 0.01 como mínimo
       if (!precio || precio <= 0) {
         console.warn(`Precio inválido para ${item.nombre}:`, item.precio);
         precio = 0.01;
       }
-      
+
       // Convertir a centavos (número entero)
       const unit_amount = Math.round(precio * 100);
       const qty = parseInt(item.quantity) || 1;
-      
+
       subtotalEnCentavos += unit_amount * qty;
 
       console.log(`📦 Producto: ${item.nombre}, Precio: ${precio}€, Cantidad: ${qty}, Centavos: ${unit_amount}`);
-      
+
       return {
         price_data: {
           currency: 'eur',
           product_data: {
             name: item.nombre,
-            images: Array.isArray(item.urls_imagenes) && item.urls_imagenes.length > 0 
+            images: Array.isArray(item.urls_imagenes) && item.urls_imagenes.length > 0
               ? [item.urls_imagenes[0]]
               : undefined,
             description: item.categoria || 'Producto'
@@ -159,13 +159,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Se hace aquí porque Stripe garantiza que la sesión se completará
     // Nota: En producción, deberías hacer esto en un webhook cuando se confirme el pago
     // Para este MVP, lo hacemos aquí cuando se crea la sesión
-    
+
     console.log('📦 Iniciando actualización de stock para', items.length, 'productos');
-    
+
     for (const item of items) {
       try {
-        const { success, newStock, error: stockError } = 
-          await updateStockAfterPurchase(item.product_id, item.quantity);
+        const { success, newStock, error: stockError } =
+          await updateStockAfterPurchase(String(item.product_id), item.quantity);
 
         if (success) {
           console.log(
@@ -189,7 +189,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         session_id: session.id,
         url: session.url
       }),
-      { 
+      {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       }

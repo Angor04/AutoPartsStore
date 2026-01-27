@@ -24,18 +24,19 @@ export function getAvailableStock(originalStock: number, productId: string): num
  */
 export function updateReservedStock(items: CartItem[]) {
   const reserved: Record<string, number> = {};
-  
+
   items.forEach(item => {
-    reserved[item.product_id] = (reserved[item.product_id] || 0) + item.quantity;
+    const pid = String(item.product_id);
+    reserved[pid] = (reserved[pid] || 0) + item.quantity;
   });
 
   stockReservedStore.set(reserved);
-  
+
   // Guardar también en sessionStorage para que ProductCard lo pueda leer
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('stock-reserved', JSON.stringify(reserved));
   }
-  
+
   console.log("Stock reservado actualizado:", reserved);
 }
 
@@ -44,7 +45,7 @@ export function updateReservedStock(items: CartItem[]) {
  */
 export function clearReservedStock() {
   stockReservedStore.set({});
-  
+
   // Limpiar también de sessionStorage
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('stock-reserved');
