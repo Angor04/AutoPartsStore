@@ -13,44 +13,29 @@ const description = "Completa tu pedido de forma segura";
 const userId = Astro.cookies.get('user-id')?.value;
 const userEmail = Astro.cookies.get('user-email')?.value;
 
-if (!userId) {
-  // Redirigir a login pero guardar la intención de ir a checkout
-  return Astro.redirect('/auth/login?redirect=/checkout');
-}
-
-// Cargar dirección guardada del usuario
+// Cargar datos si el usuario está logueado
 const supabaseAdmin = getSupabaseAdmin();
+let direccion = null;
+let perfil = null;
 
-interface DireccionEnvio {
-  direccion: string;
-  ciudad: string;
-  provincia: string;
-  codigo_postal: string;
-  pais: string;
+if (userId) {
+  const { data: direccionData } = await supabaseAdmin
+    .from('direcciones_envio')
+    .select('*')
+    .eq('usuario_id', userId)
+    .eq('es_principal', true)
+    .single();
+  
+  direccion = direccionData;
+
+  const { data: perfilData } = await supabaseAdmin
+    .from('perfiles_usuario')
+    .select('nombre, apellidos, telefono')
+    .eq('usuario_id', userId)
+    .single();
+  
+  perfil = perfilData;
 }
-
-interface PerfilUsuario {
-  nombre: string;
-  apellidos: string;
-  telefono: string;
-}
-
-const { data: direccionData } = await supabaseAdmin
-  .from('direcciones_envio')
-  .select('*')
-  .eq('usuario_id', userId)
-  .eq('es_principal', true)
-  .single();
-
-const direccion = direccionData as DireccionEnvio | null;
-
-const { data: perfilData } = await supabaseAdmin
-  .from('perfiles_usuario')
-  .select('nombre, apellidos, telefono')
-  .eq('usuario_id', userId)
-  .single();
-
-const perfil = perfilData as PerfilUsuario | null;
 ---
 
 <PublicLayout title={title} description={description}>
