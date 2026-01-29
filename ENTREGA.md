@@ -4,7 +4,7 @@
 
 **Fecha**: 8 de enero de 2025
 **Versión**: 0.1.0
-**Estado**: ✅ Arquitectura base completada - Listo para Hito 1
+**Estado**: ✅ Arquitectura base completada - ListoS
 
 ---
 
