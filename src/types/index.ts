@@ -178,7 +178,7 @@ export type SettingUpdate = Partial<SettingInsert>;
 export interface CartItem {
   product_id: string;
   quantity: number;
-  precio: number;
+  precio: number; // Precio real decimal (ej: 119.99)
   nombre: string;
   subtotal?: number;
   urls_imagenes?: string[];

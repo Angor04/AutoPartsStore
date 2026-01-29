@@ -1,13 +1,13 @@
 // src/lib/utils.ts
 
 /**
- * Convierte un número en céntimos a formato de moneda legible
- * @param cents Cantidad en céntimos
- * @returns String formateado como moneda (ej: "29,99 €")
+ * Formatea un precio decimal a formato legible (€)
+ * @param price Cantidad en euros (ej: 119.99)
+ * @returns String formateado (ej: "119,99 €")
  */
-export function formatPrice(cents: number): string {
-  const euros = (cents / 100).toFixed(2);
-  return `${euros.replace('.', ',')} €`;
+export function formatPrice(price: number): string {
+  const formatted = Number(price || 0).toFixed(2);
+  return `${formatted.replace('.', ',')} €`;
 }
 
 /**
@@ -41,11 +41,12 @@ export function toSlug(str: string): string {
 /**
  * Calcula el total de un carrito
  * @param items Array de items del carrito
- * @returns Total en céntimos
+ * @returns Total real (sin conversiones)
  */
 export function calculateCartTotal(items: { precio: number; quantity: number }[]): number {
   if (!Array.isArray(items)) return 0;
-  return items.reduce((total, item) => total + (item.precio || 0) * (item.quantity || 0), 0);
+  const total = items.reduce((sum, item) => sum + (Number(item.precio) || 0) * (item.quantity || 0), 0);
+  return Math.round(total * 100) / 100; // Redondear a 2 decimales para evitar problemas de coma flotante
 }
 
 /**

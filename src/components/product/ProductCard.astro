@@ -12,9 +12,13 @@ interface Props {
 
 const { product } = Astro.props;
 const mainImage = product.urls_imagenes?.[0] || "https://via.placeholder.com/400x500?text=No+Image";
-const priceDisplay = formatPrice(product.precio);
-const hasDiscount = product.precio_original && product.precio < product.precio_original;
-const originalPriceDisplay = hasDiscount ? formatPrice(product.precio_original) : null;
+
+// Requisito: Usar EXCLUSIVAMENTE precio_original como fuente de verdad
+const originalPrice = product.precio_original || product.precio || 0;
+const hasDiscount = product.precio && product.precio < originalPrice;
+const discountPrice = hasDiscount ? product.precio : null;
+const priceDisplay = formatPrice(discountPrice || originalPrice);
+const originalPriceDisplay = hasDiscount ? formatPrice(originalPrice) : null;
 // Nota: El stock dinámico se calcula en el componente de la isla
 const inStock = product.stock > 0;
 // Usar ID como identificador principal, slug como alternativa
@@ -50,9 +54,13 @@ const productLink = `/productos/${product.id}`;
     <!-- Price -->
     <div class="mt-1.5 mb-2">
       <div class="flex items-baseline gap-1.5">
-        <p class="text-sm font-bold text-red-600">{priceDisplay}</p>
-        {originalPriceDisplay && (
-          <p class="text-xs text-charcoal-500 line-through opacity-70">{originalPriceDisplay}</p>
+        {hasDiscount ? (
+          <>
+            <p class="text-sm font-bold text-red-600">{priceDisplay}</p>
+            <p class="text-xs text-charcoal-500 line-through opacity-70">Antes: {originalPriceDisplay}</p>
+          </>
+        ) : (
+          <p class="text-sm font-bold text-red-600">{priceDisplay}</p>
         )}
       </div>
       <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70 stock-display">

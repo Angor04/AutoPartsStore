@@ -33,13 +33,8 @@ export default function AddToCartButton({
   const maxAddable = Math.max(0, stock - currentQuantity);
   const isInStock = maxAddable > 0;
 
-  // Normalizar precio: asegurar que siempre esté en céntimos
-  // Si > 1000 → ya está en céntimos (12000 = 120€)
-  // Si ≤ 1000 → está en euros, multiplicar por 100 (120 → 12000)
-  const normalizarPrecio = (p: number): number => {
-    if (p > 1000) return p; // Ya está en céntimos
-    return Math.round(p * 100); // Convertir euros a céntimos
-  };
+  // No normalizar precio, usar tal cual viene de la base de datos (precio_original)
+  // Requisito: precio único fuente de verdad.
 
   const handleAddToCart = () => {
     // Validación local rápida
@@ -62,7 +57,7 @@ export default function AddToCartButton({
       setMessage('Verificando disponibilidad...');
 
       // Llamar RPC para verificar stock en BD
-      const { available, currentStock, error: availError } = 
+      const { available, currentStock, error: availError } =
         await checkProductAvailability(productId, quantity);
 
       if (!available) {
@@ -73,13 +68,14 @@ export default function AddToCartButton({
       }
 
       // Stock verificado, agregar al carrito
-      const normalizedPrice = normalizarPrecio(price);
-      console.log(`normalizarPrecio: ${price} → ${normalizedPrice}`);
-      
+      // Requisito: NO aplicar ningún cálculo, división ni conversión.
+      const finalPrice = Number(price);
+      console.log(`Precio final para el carrito: ${finalPrice}€`);
+
       const cartItem: CartItem = {
         product_id: String(productId),
         quantity,
-        precio: normalizedPrice, // Usar precio normalizado
+        precio: finalPrice, // Usar precio directo de la BD
         nombre: productName,
         urls_imagenes: [imageUrl],
         stock, // Guardar el stock disponible
@@ -94,7 +90,7 @@ export default function AddToCartButton({
       if (typeof window !== 'undefined') {
         console.log("Disparando evento cartUpdated");
         window.dispatchEvent(new CustomEvent('cartUpdated'));
-        
+
         // Log del sessionStorage
         const stored = sessionStorage.getItem('autopartsstore-cart');
         console.log("Contenido del sessionStorage:", stored);
@@ -191,13 +187,12 @@ export default function AddToCartButton({
       <button
         onClick={handleAddToCart}
         disabled={!isInStock}
-        className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-          isAdded
+        className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${isAdded
             ? 'bg-green-500 text-white'
             : isInStock
               ? 'bg-navy-500 text-white hover:bg-navy-600 active:bg-navy-700'
               : 'bg-charcoal-300 text-charcoal-600 cursor-not-allowed'
-        }`}
+          }`}
       >
         {isInStock ? (
           <>
@@ -211,9 +206,8 @@ export default function AddToCartButton({
       {/* Message */}
       {message && (
         <p
-          className={`text-sm text-center font-medium ${
-            isAdded ? 'text-green-600' : 'text-red-600'
-          }`}
+          className={`text-sm text-center font-medium ${isAdded ? 'text-green-600' : 'text-red-600'
+            }`}
         >
           {message}
         </p>

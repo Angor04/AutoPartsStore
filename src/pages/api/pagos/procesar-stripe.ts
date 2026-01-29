@@ -75,17 +75,48 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
 
     // ==========================================
-    // CREAR ORDEN EN BD
+    // CREAR NÚMERO DE ORDEN CORRELATIVO GLOBAL
     // ==========================================
-    const numeroOrden = 'ORD-' + Date.now();
-    const subtotal = Math.round(((session.amount_total || 0) / 100 + descuentoMonto) * 100) / 100;
-    const total = Math.round(((session.amount_total || 0) / 100) * 100) / 100;
+    let numeroOrden = '';
+    try {
+      // Buscar la última orden creada (mayor número correlativo)
+      const { data: ultimaOrden, error: ultimaOrdenError } = await supabaseAdmin
+        .from('ordenes')
+        .select('numero_orden')
+        .order('id', { ascending: false })
+        .limit(1)
+        .single();
+      if (ultimaOrden && ultimaOrden.numero_orden) {
+        // Extraer el número correlativo (ORD-000123)
+        const match = ultimaOrden.numero_orden.match(/ORD-(\d+)/);
+        const ultimoNum = match ? parseInt(match[1], 10) : 0;
+        const siguienteNum = ultimoNum + 1;
+        numeroOrden = 'ORD-' + String(siguienteNum).padStart(6, '0');
+      } else {
+        numeroOrden = 'ORD-000000';
+      }
+    } catch (e) {
+      console.error('Error generando número de orden correlativo:', e);
+      numeroOrden = 'ORD-000000';
+    }
+    // Requisito: Convertir céntimos de Stripe a decimal real una sola vez
+    const total = Math.round((session.amount_total || 0)) / 100;
+    // Leer costo_envio de metadata si existe
+    let costoEnvio = 5.99;
+    if (metadata.costo_envio !== undefined) {
+      costoEnvio = parseFloat(metadata.costo_envio);
+    } else if (metadata.descuento_codigo && metadata.descuento_codigo.toUpperCase() === 'ENVIOGRATIS') {
+      costoEnvio = 0;
+    }
+    const subtotal = Math.round((total + descuentoMonto - costoEnvio) * 100) / 100;
 
-    console.log('📝 Creando orden:', {
+    console.log('📝 Creando orden con importes reales:', {
       numeroOrden,
       usuarioId,
       email: session.customer_email,
-      total
+      total,
+      subtotal,
+      descuentoMonto
     });
 
     // Preparar datos para insertar
@@ -100,7 +131,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       estado_pago: 'COMPLETADO',
       subtotal: subtotal,
       total: total,
-      gastos_envio: Math.round((total - subtotal + descuentoMonto) * 100) / 100,
+      gastos_envio: costoEnvio,
       cupon_id: metadata.cupon_id || null,
       direccion_envio: {
         nombre: metadata.nombre_cliente || shippingDetails?.name,
@@ -162,11 +193,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           };
         });
 
-        // Para el email necesitamos nombres, los sacaremos de line_items de Stripe si es posible
+        // Para el email necesitamos nombres, los sacaremos de line_items de Stripe
         itemsParaEmail = (session.line_items?.data || []).map(li => ({
           nombre_producto: li.description,
           cantidad: li.quantity,
-          precio_unitario: (li.price?.unit_amount || 0) / 100,
+          precio_unitario: (li.price?.unit_amount || 0) / 100, // Conversión solo para el objeto de email
           subtotal: (li.amount_total || 0) / 100
         }));
 

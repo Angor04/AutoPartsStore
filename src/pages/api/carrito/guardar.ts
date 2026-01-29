@@ -6,22 +6,10 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const prerender = false;
 
-/**
- * Normaliza el precio: si es > 1000, probablemente esté en céntimos sin decimales
- * por ejemplo 7299 = 72,99 €
- */
-function normalizarPrecio(precio: any): number {
-  const num = parseFloat(precio);
-  if (num > 1000) {
-    return num / 100;
-  }
-  return num;
-}
-
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const userId = cookies.get('user-id')?.value;
-    
+
     if (!userId) {
       return new Response(JSON.stringify({ error: 'No autenticado' }), {
         status: 401,
@@ -29,20 +17,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    let { items } = await request.json();
-    
-    // Normalizar precios en los items
-    if (items && Array.isArray(items)) {
-      items = items.map((item: any) => ({
-        ...item,
-        precio: normalizarPrecio(item.precio)
-      }));
-    }
-    
+    const { items } = await request.json();
+
+    // Requisito: Guardar precios tal cual vienen (decimales)
+    // No aplicar ninguna normalización ni división.
+
     console.log('API carrito/guardar - Usuario:', userId, 'Items:', items?.length);
 
     const supabase = getSupabaseAdmin();
-    
+
     const { error } = await supabase
       .from('carrito_temporal')
       .upsert(

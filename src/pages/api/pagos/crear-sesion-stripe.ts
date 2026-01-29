@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     console.log('💳 Creando sesión de Stripe. UsuarioID:', usuarioId || 'Invitado');
 
-    const { items, email, nombre, apellidos, telefono, subtotal, descuento, total, codigoPostal, direccion, ciudad, provincia, cupon_id } = body;
+    const { items, email, nombre, apellidos, telefono, subtotal, descuento, total, codigoPostal, direccion, ciudad, provincia, cupon_id, codigo_cupon } = body;
 
     console.log('📦 Items del carrito:', items.length);
     console.log('💰 Total:', total, 'Descuento:', descuento);
@@ -36,6 +36,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // ==========================================
+    // CALCULAR COSTO DE ENVÍO
+    // ==========================================
+    let costoEnvio = 5.99;
+    let descuentoFinal = descuento;
+    if (codigo_cupon && codigo_cupon.toUpperCase() === 'ENVIOGRATIS') {
+      costoEnvio = 0;
+      // No aplicar descuento adicional, solo el envío gratis
+      descuentoFinal = 0;
+    }
+
+    // ==========================================
     // CREAR LÍNEAS PARA STRIPE
     // ==========================================
     // Calcular subtotal primero
@@ -43,21 +54,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const line_items = items.map((item: any) => {
       // Asegurar que precio es un número válido
+      // Requisito: Usar precio directo (real)
       let precio = parseFloat(item.precio);
 
-      // Si el precio es 0 o inválido, usar 0.01 como mínimo
-      if (!precio || precio <= 0) {
-        console.warn(`Precio inválido para ${item.nombre}:`, item.precio);
-        precio = 0.01;
-      }
-
-      // Convertir a centavos (número entero)
+      // Convertir a centavos (número entero) solo para Stripe
       const unit_amount = Math.round(precio * 100);
       const qty = parseInt(item.quantity) || 1;
 
       subtotalEnCentavos += unit_amount * qty;
 
-      console.log(`📦 Producto: ${item.nombre}, Precio: ${precio}€, Cantidad: ${qty}, Centavos: ${unit_amount}`);
+      console.log(`📦 Producto: ${item.nombre}, Precio: ${precio}€, Cantidad: ${qty}, Stripe unit_amount: ${unit_amount}`);
 
       return {
         price_data: {
@@ -79,21 +85,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
 
     console.log('💳 Line items creados:', line_items.length);
-    console.log(`💰 Subtotal en centavos: ${subtotalEnCentavos} = ${subtotalEnCentavos / 100}€`);
+    console.log(`💰 Subtotal en centavos: ${subtotalEnCentavos} (${(subtotalEnCentavos / 100).toFixed(2)}€)`);
 
     // ==========================================
-    // CALCULAR MONTO FINAL CON DESCUENTO
+    // CALCULAR MONTO FINAL CON DESCUENTO Y ENVÍO
     // ==========================================
     let amountTotal = subtotalEnCentavos;
-
-    // Aplicar descuento si existe
-    if (descuento && descuento > 0) {
-      const descuentoEnCentavos = Math.round(parseFloat(descuento) * 100);
-      console.log(`🎉 Descuento aplicado: ${descuento}€ (${descuentoEnCentavos} centavos)`);
+    // Sumar costo de envío
+    const costoEnvioCentavos = Math.round(costoEnvio * 100);
+    amountTotal += costoEnvioCentavos;
+    // Aplicar descuento si existe (pero nunca si ENVIOGRATIS)
+    if (descuentoFinal && descuentoFinal > 0) {
+      const descuentoEnCentavos = Math.round(parseFloat(descuentoFinal) * 100);
+      console.log(`🎉 Descuento aplicado: ${descuentoFinal}€ (${descuentoEnCentavos} centavos)`);
       amountTotal = Math.max(1, amountTotal - descuentoEnCentavos); // Mínimo 1 centavo
     }
-
-    console.log(`💰 Monto TOTAL a pagar: ${amountTotal} centavos = ${(amountTotal / 100).toFixed(2)}€`);
+    console.log(`💰 Monto TOTAL a pagar: ${amountTotal} centavos (${(amountTotal / 100).toFixed(2)}€)`);
 
     // ==========================================
     // CREAR SESIÓN DE STRIPE
@@ -129,8 +136,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         usuario_id: usuarioId || 'guest',
         carrito_id: body.carrito_id || 'guest',
         descuento_codigo: body.codigo_cupon || '',
-        descuento_monto: descuento || 0,
+        descuento_monto: descuentoFinal || 0,
         cupon_id: cupon_id || '',
+        costo_envio: costoEnvio,
         nombre_cliente: `${nombre || ''} ${apellidos || ''}`.trim(),
         telefono_cliente: telefono || '',
         direccion_cliente: direccion || '',

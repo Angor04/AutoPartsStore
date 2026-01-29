@@ -299,8 +299,7 @@ if (userId) {
   let descuento = 0;
   let codigoCuponAplicado = null;
   let idCuponAplicado = null;
-  const ENVIO_GRATIS_DESDE = 0;
-  const COSTO_ENVIO = 0;
+  const COSTO_ENVIO = 5.99;
 
   // ==================================================
   // FUNCIÓN PARA FORMATEAR PRECIOS
@@ -438,13 +437,15 @@ if (userId) {
   // ==================================================
   function calcularTotales() {
     subtotal = cartItems.reduce((sum, item) => sum + (item.precio * item.quantity), 0);
-    const envio = subtotal >= ENVIO_GRATIS_DESDE ? 0 : COSTO_ENVIO;
+    let envio = COSTO_ENVIO;
+    // Si el cupón aplicado es ENVIOGRATIS, el envío es gratis
+    if (codigoCuponAplicado && codigoCuponAplicado.toUpperCase() === 'ENVIOGRATIS') {
+      envio = 0;
+    }
     const total = subtotal - descuento + envio;
-    
     document.getElementById('subtotalDisplay').textContent = formatearPrecio(subtotal);
     document.getElementById('envioDisplay').textContent = envio === 0 ? 'Gratis' : formatearPrecio(envio);
     document.getElementById('totalDisplay').textContent = formatearPrecio(total);
-    
     // Mostrar/ocultar descuento
     const descuentoRow = document.getElementById('descuentoRow');
     if (descuento > 0) {
@@ -485,20 +486,21 @@ if (userId) {
       const data = await response.json();
       
       if (data.valido) {
-        descuento = data.descuento_calculado || 0;
         codigoCuponAplicado = codigo;
         idCuponAplicado = data.cupon_id;
-        
+        // Si el cupón es ENVIOGRATIS, el descuento debe ser 0 aunque el backend devuelva 5,99
+        if (codigo === 'ENVIOGRATIS') {
+          descuento = 0;
+        } else {
+          descuento = data.descuento_calculado || 0;
+        }
         mensaje.classList.add('hidden');
-        
         const cuponAplicado = document.getElementById('cuponAplicado');
         document.getElementById('cuponTexto').textContent = `${codigo} - ${data.descripcion || 'Descuento aplicado'}`;
         cuponAplicado.style.display = 'flex';
-        
         input.value = '';
         input.disabled = true;
         document.getElementById('btnAplicarCupon').disabled = true;
-        
         calcularTotales();
       } else {
         console.error('❌ Cupón inválido:', data);

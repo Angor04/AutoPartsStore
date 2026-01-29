@@ -4,18 +4,6 @@
 import type { APIRoute } from 'astro';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
-/**
- * Normaliza el precio: si es > 1000, probablemente esté en céntimos sin decimales
- * por ejemplo 7299 = 72,99 €
- */
-function normalizarPrecio(precio: any): number {
-  const num = parseFloat(precio);
-  if (num > 1000) {
-    return num / 100;
-  }
-  return num;
-}
-
 export const GET: APIRoute = async ({ request, cookies }) => {
   const userId = cookies.get('user-id')?.value;
 
@@ -28,7 +16,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
 
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    
+
     // Obtener el carrito del usuario
     const { data: cartData, error } = await (supabaseAdmin as any)
       .from('carrito_temporal')
@@ -44,16 +32,11 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    let items = cartData.items || [];
-    
-    // Normalizar precios en los items
-    if (items && Array.isArray(items)) {
-      items = items.map((item: any) => ({
-        ...item,
-        precio: normalizarPrecio(item.precio)
-      }));
-    }
-    
+    const items = cartData.items || [];
+
+    // Requisito: Los precios ya vienen como decimales de la BD (precio_original)
+    // No aplicar ninguna normalización ni división.
+
     console.log('Carrito cargado para usuario', userId, ':', items.length, 'items');
 
     return new Response(JSON.stringify({ items }), {
