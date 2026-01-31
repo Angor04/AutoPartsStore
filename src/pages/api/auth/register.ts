@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       creado_en: new Date().toISOString(),
       actualizado_en: new Date().toISOString(),
     };
-    
+
     console.log('Inserting user data:', insertData);
 
     const { data: insertResult, error: insertError } = await supabase
@@ -82,19 +82,46 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       return redirect(`/auth/register?error=${encodeURIComponent(insertError.message || 'Error al crear el perfil')}`);
     }
 
+    // 2b. Vincular pedidos de invitado anteriores
+    try {
+      console.log('🔗 Vinculando pedidos de invitado anteriores para:', email);
+
+      // Intentar vincular por columna 'email'
+      const { error: updateError1 } = await supabase
+        .from('ordenes')
+        .update({ usuario_id: authData.user.id })
+        .eq('email', email)
+        .is('usuario_id', null);
+
+      // Intentar vincular por columna 'email_cliente' (según schema base)
+      const { error: updateError2 } = await supabase
+        .from('ordenes')
+        .update({ usuario_id: authData.user.id })
+        .eq('email_cliente', email)
+        .is('usuario_id', null);
+
+      if (updateError1 && updateError2) {
+        console.warn('Error vinculando pedidos anteriores (ninguna columna respondió):', { updateError1, updateError2 });
+      } else {
+        console.log('Intento de vinculación de pedidos completado');
+      }
+    } catch (linkError) {
+      console.error('Error vinculando pedidos:', linkError);
+    }
+
     // 3. Enviar email de bienvenida con Nodemailer
     try {
       console.log('Sending welcome email to:', email);
-      
+
       const emailSent = await sendWelcomeEmail(fullname, email);
-      
+
       if (emailSent) {
-        console.log('✅ Welcome email sent successfully');
+        console.log('Welcome email sent successfully');
       } else {
-        console.warn('⚠️ Failed to send welcome email, but registration successful');
+        console.warn('Failed to send welcome email, but registration successful');
       }
     } catch (emailError) {
-      console.error('❌ Error sending welcome email:', emailError);
+      console.error('Error sending welcome email:', emailError);
       // No redirigir a error, solo avisar en logs
     }
 

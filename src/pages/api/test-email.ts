@@ -8,11 +8,11 @@ export const prerender = false;
 
 export const GET: APIRoute = async () => {
   try {
-    console.log('🧪 Testing email service...');
-    
+    console.log('Testing email service...');
+
     const success = await sendEmail({
       to: 'agonzalezcruces2004@gmail.com',
-      subject: '🧪 Test Email from Auto Parts Store',
+      subject: 'Test Email from Auto Parts Store',
       html: `
         <h2>Test Email</h2>
         <p>Si ves este email, Nodemailer está funcionando correctamente.</p>
@@ -23,7 +23,7 @@ export const GET: APIRoute = async () => {
     return new Response(
       JSON.stringify({
         success,
-        message: success ? '✅ Email sent successfully' : '❌ Email failed to send',
+        message: success ? 'Email sent successfully' : 'Email failed to send',
         timestamp: new Date().toISOString()
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

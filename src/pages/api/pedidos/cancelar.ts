@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     if (orden.estado !== 'PAGADO') {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `No se puede cancelar. Estado actual: ${orden.estado}. Solo se pueden cancelar pedidos en estado PAGADO.`,
           estado_actual: orden.estado
         }),
@@ -72,7 +72,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (funcError) {
       console.error('Error canceling order:', funcError);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Error al cancelar el pedido',
           detalles: funcError.message
         }),
@@ -87,7 +87,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!exito) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: mensaje || 'No se pudo cancelar el pedido',
           exito: false
         }),
@@ -111,10 +111,10 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // 7. ENVIAR EMAIL DE CONFIRMACIÓN (MANUAL)
     // ==========================================
-    console.log(`📧 ENVIAR EMAIL DE CANCELACIÓN A: usuario@example.com`);
-    console.log(`📦 Pedido: ${orden.numero_orden}`);
-    console.log(`💰 Reembolso: ${orden.total}€ en ${stock_restaurado} productos`);
-    console.log(`⏱️ Tiempo de reembolso: 5-7 días hábiles`);
+    console.log(`ENVIAR EMAIL DE CANCELACIÓN A: usuario@example.com`);
+    console.log(`Pedido: ${orden.numero_orden}`);
+    console.log(`Reembolso: ${orden.total}€ en ${stock_restaurado} productos`);
+    console.log(`Tiempo de reembolso: 5-7 días hábiles`);
 
     // ==========================================
     // 8. RETORNAR ÉXITO
@@ -154,12 +154,12 @@ PROBLEMA SI NO USAMOS TRANSACCIONES:
 
 Escenario: Cancelar pedido con 3 productos
 
-1. Restaurar stock producto A ✅
-2. Restaurar stock producto B ✅
-3. Restaurar stock producto C ❌ (error de conexión)
-4. Cambiar estado a CANCELADO ✅
+1. Restaurar stock producto A
+2. Restaurar stock producto B
+3. Restaurar stock producto C (error de conexión)
+4. Cambiar estado a CANCELADO
 
-RESULTADO: 
+RESULTADO:
 - Stock desincronizado
 - Usuario ve pedido cancelado pero no se restauró 1 producto
 - Venta perdida, stock incorrecto
@@ -168,9 +168,9 @@ SOLUCIÓN: TRANSACCIÓN ATÓMICA
 
 ```sql
 BEGIN TRANSACTION;
-  1. Restaurar stock A ✅
-  2. Restaurar stock B ✅
-  3. Restaurar stock C ❌ ERROR
+  1. Restaurar stock A
+  2. Restaurar stock B
+  3. Restaurar stock C ERROR
   → ROLLBACK (REVERTIR TODO)
 COMMIT;
 ```

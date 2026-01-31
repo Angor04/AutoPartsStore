@@ -34,7 +34,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (existente && existente.estado_suscripcion) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           mensaje: 'Ya estás suscrito a nuestra newsletter',
           ya_suscrito: true
         }),
@@ -111,11 +111,11 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // Este es un paso que DEBE HACERSE MANUALMENTE después
     // Se explica en detalle al final
-    
+
     // Simulamos que enviamos email
-    console.log(`📧 ENVIAR EMAIL A: ${email}`);
-    console.log(`🎁 CÓDIGO DE DESCUENTO: ${codigo_descuento}`);
-    console.log(`💰 DESCUENTO: 10% en tu primera compra`);
+    console.log(`ENVIAR EMAIL A: ${email}`);
+    console.log(`CÓDIGO DE DESCUENTO: ${codigo_descuento}`);
+    console.log(`DESCUENTO: 10% en tu primera compra`);
 
     // ==========================================
     // 7. RETORNAR RESPUESTA

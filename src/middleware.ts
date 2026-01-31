@@ -24,7 +24,7 @@ export const onRequest = defineMiddleware(
 
       if (!authToken) {
         // No hay sesión, redirigir a login
-        console.log('❌ Sin token, redirigiendo a login');
+        console.log('Sin token, redirigiendo a login');
         return context.redirect('/admin/login');
       }
 
@@ -38,7 +38,7 @@ export const onRequest = defineMiddleware(
 
         if (timeDiff > oneHourMs) {
           // Más de 1 hora sin actividad
-          console.log('❌ Sesión expirada por inactividad');
+          console.log('Sesión expirada por inactividad');
           context.cookies.delete('sb-auth-token');
           context.cookies.delete('sb-last-activity');
           return context.redirect('/admin/login?error=Sesi%F3n%20expirada%20por%20inactividad');
@@ -57,15 +57,15 @@ export const onRequest = defineMiddleware(
       try {
         // Verificar que el usuario esté autenticado
         const supabaseAdmin = getSupabaseAdmin();
-        
+
         const { data: { user }, error } = await supabaseAdmin.auth.getUser(authToken);
 
         if (error || !user) {
-          console.error('❌ Token inválido:', error?.message);
+          console.error('Token inválido:', error?.message);
           return context.redirect('/admin/login');
         }
 
-        console.log('✅ Usuario autenticado:', user.email, user.id);
+        console.log('Usuario autenticado:', user.email, user.id);
 
         // Verificar que sea admin en la tabla admin_users
         const { data: adminUserData, error: adminError } = await (supabaseAdmin as any)
@@ -76,22 +76,22 @@ export const onRequest = defineMiddleware(
 
         const adminUser = adminUserData as any;
         if (adminError || !adminUser) {
-          console.error('❌ Usuario NO es admin:', adminError?.message);
+          console.error('Usuario NO es admin:', adminError?.message);
           return context.redirect('/admin/login');
         }
 
         if (!adminUser.activo) {
-          console.error('❌ Admin desactivado');
+          console.error('Admin desactivado');
           return context.redirect('/admin/login');
         }
 
-        console.log('✅ Admin verificado:', adminUser.email);
+        console.log('Admin verificado:', adminUser.email);
 
         context.locals.user = user;
         context.locals.admin = adminUser;
 
       } catch (error) {
-        console.error('❌ Error en middleware:', error);
+        console.error('Error en middleware:', error);
         return context.redirect('/admin/login');
       }
     }

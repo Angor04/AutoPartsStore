@@ -46,41 +46,51 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 2. OBTENER USUARIO AUTENTICADO
     // ==========================================
-    const supabaseAdmin = getSupabaseAdmin();
-    
-    // El token del usuario viene en el header Authorization
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Intentar obtener token de cookies o header
+    const token = cookies.get('sb-access-token')?.value ||
+      (request.headers.get('Authorization')?.startsWith('Bearer ')
+        ? request.headers.get('Authorization')?.slice(7)
+        : null);
+
+    if (!token) {
       return new Response(
-        JSON.stringify({ error: 'No autorizado' }),
+        JSON.stringify({ error: 'No autorizado. Por favor inicia sesión.' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = authHeader.slice(7); // Remover "Bearer "
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Obtener usuario del token para obtener su email
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user || !user.email) {
+      return new Response(
+        JSON.stringify({ error: 'Sesión inválida o expirada' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // ==========================================
     // 3. VERIFICAR CONTRASEÑA ACTUAL
     // ==========================================
-    // En Supabase, el cambio de contraseña se hace a través de la API de Auth
-    // Primero validamos que la contraseña actual sea correcta intentando autenticarse
-    
-    // Obtener email del usuario desde el token
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    // Para verificar la contraseña actual, intentamos hacer login con ella
+    const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+      email: user.email,
+      password: contraseniaActual
+    });
 
-    if (userError || !user) {
+    if (signInError) {
       return new Response(
-        JSON.stringify({ error: 'No se pudo verificar el usuario' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'La contraseña actual es incorrecta' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     // ==========================================
-    // 4. ACTUALIZAR CONTRASEÑA EN SUPABASE AUTH
+    // 4. ACTUALIZAR CONTRASEÑA
     // ==========================================
-    // IMPORTANTE: Esta operación debe hacerse con el token del usuario
-    // NO con la contraseña actual (Supabase no lo permite por seguridad)
-    
+    // Usamos updateUserById con el cliente admin
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       user.id,
       { password: contraseniaNueva }
@@ -89,8 +99,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (updateError) {
       console.error('Error updating password:', updateError);
       return new Response(
-        JSON.stringify({ 
-          error: 'Error al cambiar contraseña. ' + (updateError.message || '') 
+        JSON.stringify({
+          error: 'Error al cambiar contraseña. ' + (updateError.message || '')
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -101,7 +111,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // Podrías guardar en una tabla "cambios_contrasena" el timestamp
     // para auditoría o detección de actividad sospechosa
-    
+
     const { error: logError } = await supabaseAdmin
       .from('cambios_contrasena')
       .insert({
@@ -119,8 +129,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 6. RETORNAR ÉXITO
     // ==========================================
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         mensaje: 'Contraseña cambiada exitosamente',
         usuario_id: user.id
       }),
@@ -130,7 +140,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   } catch (error) {
     console.error('Error en cambio de contraseña:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Error interno del servidor',
         detalles: error instanceof Error ? error.message : 'Desconocido'
       }),
@@ -176,11 +186,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
 4. SEGURIDAD:
 
-   ✅ La contraseña nunca viaja en texto plano al servidor
-   ✅ El servidor no almacena contraseñas
-   ✅ Usar HTTPS obligatorio
-   ✅ El token JWT expira en ~1 hora
-   ✅ Registrar en auditoría cada cambio
+   - La contraseña nunca viaja en texto plano al servidor
+   - El servidor no almacena contraseñas
+   - Usar HTTPS obligatorio
+   - El token JWT expira en ~1 hora
+   - Registrar en auditoría cada cambio
 
 5. CONFIGURACIÓN MANUAL EN SUPABASE:
 

@@ -3,25 +3,25 @@
  * Se ejecuta inmediatamente antes de cargar Nanostores
  */
 
-(function() {
+(function () {
   if (typeof window === 'undefined') return;
-  
+
   try {
     // Verificar si esta es una nueva sesión (primera carga)
     const sessionKey = '__appmod_session_init__';
     const hasInitialized = sessionStorage.getItem(sessionKey);
-    
+
     if (!hasInitialized) {
       // Primera carga de la sesión: limpiar carritos viejos
       const keys = Object.keys(sessionStorage);
-      
+
       keys.forEach(key => {
         if (key.startsWith('cart-') && key !== `cart-${getNewSessionId()}`) {
           console.log('🧹 Limpiando carrito antiguo:', key);
           sessionStorage.removeItem(key);
         }
       });
-      
+
       // Limpiar también localStorage de carritos viejos
       const localKeys = Object.keys(localStorage);
       localKeys.forEach(key => {
@@ -30,10 +30,10 @@
           localStorage.removeItem(key);
         }
       });
-      
+
       // Marcar que ya se inicializó
       sessionStorage.setItem(sessionKey, 'true');
-      console.log('✅ Sesión inicializada - Carritos viejos limpiados');
+      console.log('Sesión inicializada - Carritos viejos limpiados');
     }
   } catch (e) {
     console.warn('Error limpiando sessionStorage:', e);

@@ -34,10 +34,32 @@ export const GET: APIRoute = async ({ request, cookies }) => {
 
     const items = cartData.items || [];
 
-    // Requisito: Los precios ya vienen como decimales de la BD (precio_original)
-    // No aplicar ninguna normalización ni división.
+    // ENRIQUECER ITEMS CON PRECIOS ACTUALES DE LA BD
+    // Esto asegura que si un producto entra en oferta, el carrito muestre el precio actual
+    if (items.length > 0) {
+      const productIds = items.map((i: any) => i.product_id);
+      const { data: currentProducts } = await supabaseAdmin
+        .from('productos')
+        .select('id, precio, precio_original, stock, nombre')
+        .in('id', productIds);
 
-    console.log('Carrito cargado para usuario', userId, ':', items.length, 'items');
+      if (currentProducts) {
+        const productMap = new Map(currentProducts.map((p: any) => [String(p.id), p]));
+
+        for (const item of items) {
+          const actual: any = productMap.get(String((item as any).product_id));
+          if (actual) {
+            // Actualizar con el precio de venta actual (el que el usuario ve en la web)
+            (item as any).precio = actual.precio;
+            // También actualizar otros datos importantes por si han cambiado
+            (item as any).nombre = actual.nombre;
+            (item as any).stock = actual.stock;
+          }
+        }
+      }
+    }
+
+    console.log('Carrito cargado y actualizado para usuario', userId, ':', items.length, 'items');
 
     return new Response(JSON.stringify({ items }), {
       status: 200,

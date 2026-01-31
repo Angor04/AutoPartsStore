@@ -631,14 +631,14 @@ function describeTipoDescuento(tipo: string, valor: number): string {
 
         // Aquí iría la llamada a la API para guardar el cupón
         // Por ahora, solo mostramos un mensaje de éxito
-        alert(`✅ Cupón ${codigo} guardado correctamente`);
+        alert(`Cupón ${codigo} guardado correctamente`);
         cerrarModal('modalCupon');
         
         // Recargar página para ver cambios
         setTimeout(() => location.reload(), 500);
 
       } catch (error) {
-        errorDiv.textContent = '❌ ' + error.message;
+        errorDiv.textContent = 'Error: ' + error.message;
         errorDiv.style.display = 'block';
       }
     });

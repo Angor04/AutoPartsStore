@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     if (orden.estado !== 'ENTREGADO') {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `No se puede solicitar devolución. Estado actual: ${orden.estado}. Solo se pueden devolver pedidos en estado ENTREGADO.`,
           estado_actual: orden.estado
         }),
@@ -107,7 +107,7 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // 7. ENVIAR EMAIL CON ETIQUETA (MANUAL)
     // ==========================================
-    console.log(`\n📧 ENVIAR EMAIL DE DEVOLUCIÓN:`);
+    console.log(`\nENVIAR EMAIL DE DEVOLUCIÓN:`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`Asunto: Instrucciones de Devolución - ${numero_etiqueta}`);
     console.log(`\nCuerpo del email:`);
@@ -116,7 +116,7 @@ Hola,
 
 Hemos recibido tu solicitud de devolución para el pedido ${orden.numero_orden}.
 
-📦 INSTRUCCIONES DE ENVÍO:
+INSTRUCCIONES DE ENVÍO:
 ═════════════════════════════════════════════════════════════════════════════
 
 Por favor, devuelve los artículos sin usar en su embalaje original a:
@@ -128,14 +128,14 @@ España
 
 Número de etiqueta de devolución: ${numero_etiqueta}
 
-⚠️ IMPORTANTE:
+IMPORTANTE:
 - Incluye el número de etiqueta dentro del paquete
 - Utiliza un servicio de mensajería con seguimiento
 - Conserva el recibo de envío para tu referencia
 
 ═════════════════════════════════════════════════════════════════════════════
 
-💰 REEMBOLSO:
+REEMBOLSO:
 Una vez recibido y validado el paquete, el reembolso de ${orden.total}€ se 
 procesará en tu método de pago original en un plazo de 5 a 7 días hábiles.
 
@@ -190,7 +190,7 @@ USUARIO EN PANEL (Estado: ENTREGADO):
 │ Mis Pedidos                            │
 ├────────────────────────────────────────┤
 │ Pedido: ORD-2026-001                   │
-│ Estado: ENTREGADO ✅                   │
+│ Estado: ENTREGADO                      │
 │ Total: 150€                            │
 │                                        │
 │ [Botón: SOLICITAR DEVOLUCIÓN] ← Visible│
@@ -198,7 +198,7 @@ USUARIO EN PANEL (Estado: ENTREGADO):
 
 AL HACER CLIC:
 
-1️⃣ MOSTRAR MODAL / DIALOG:
+1. MOSTRAR MODAL / DIALOG:
    ┌─────────────────────────────────────────┐
    │ Solicitar Devolución                    │
    ├─────────────────────────────────────────┤
@@ -215,22 +215,22 @@ AL HACER CLIC:
    │ [CONFIRMAR] [CANCELAR]                 │
    └─────────────────────────────────────────┘
 
-2️⃣ POST /api/pedidos/solicitar-devolucion
+2. POST /api/pedidos/solicitar-devolucion
    Body: { orden_id, usuario_id, motivo, descripcion }
 
-3️⃣ BACKEND:
+3. BACKEND:
    a) Valida que pedido existe y está ENTREGADO
    b) Genera número de etiqueta: DEV-1705413000000-ABC123
    c) Crea registro en solicitudes_devolucion
    d) Vincula a la orden
    e) Envía email con instrucciones
 
-4️⃣ MOSTRAR CONFIRMACIÓN EN MODAL:
+4. MOSTRAR CONFIRMACIÓN EN MODAL:
    ┌─────────────────────────────────────────┐
-   │ ✅ Devolución Solicitada               │
+   │ Devolución Solicitada                   │
    ├─────────────────────────────────────────┤
    │                                         │
-   │ 📦 INSTRUCCIONES DE ENVÍO:              │
+   │ INSTRUCCIONES DE ENVÍO:                 │
    │                                         │
    │ Dirección de retorno:                  │
    │ Calle de la Moda 123                   │
@@ -240,23 +240,23 @@ AL HACER CLIC:
    │ Número de etiqueta:                    │
    │ DEV-1705413000000-ABC123               │
    │                                         │
-   │ 💰 REEMBOLSO:                          │
+   │ REEMBOLSO:                             │
    │ Monto: 150€                            │
    │ Plazo: 5-7 días hábiles                │
    │                                         │
-   │ ⚠️ Una vez recibido el paquete,        │
+   │ Una vez recibido el paquete,           │
    │ procesaremos el reembolso              │
    │                                         │
    │ [DESCARGAR ETIQUETA] [CERRAR]          │
    └─────────────────────────────────────────┘
 
-5️⃣ EMAIL RECIBIDO POR USUARIO:
+5. EMAIL RECIBIDO POR USUARIO:
    "Hemos recibido tu solicitud de devolución..."
    (Ver contenido en logs arriba)
 
-6️⃣ USUARIO IMPRIME ETIQUETA Y DEVUELVE PAQUETE
+6. USUARIO IMPRIME ETIQUETA Y DEVUELVE PAQUETE
 
-7️⃣ BASE DE DATOS:
+7. BASE DE DATOS:
 
    solicitudes_devolucion:
    ┌──────────────────────────────────┐
@@ -272,13 +272,13 @@ AL HACER CLIC:
    │ 1  │ 1             │ ENTREGADO │ 150 │
    └─────────────────────────────────────────┘
 
-8️⃣ ADMIN RECIBE PAQUETE:
+8. ADMIN RECIBE PAQUETE:
    - Escanea etiqueta DEV-...
    - Valida contenido
    - Actualiza: solicitud_devolucion.estado = ACEPTADA
    - Procesa reembolso
 
-9️⃣ USUARIO RECIBE EMAIL:
+9. USUARIO RECIBE EMAIL:
    "Tu devolución ha sido aceptada. Reembolso procesado: 150€"
 
 IMPORTANTE:

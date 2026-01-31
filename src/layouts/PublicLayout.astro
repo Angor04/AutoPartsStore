@@ -26,7 +26,7 @@ const isLoggedIn = !!accessToken;
 
 <BaseLayout title={title} description={description} image={image}>
   <!-- Cart SlideOver Panel -->
-  <CartSlideOver />
+  {!Astro.url.pathname.includes('/pedido-confirmado') && <CartSlideOver />}
   
   <div class="flex flex-col min-h-screen bg-ivory-50">
     <!-- Header -->
@@ -65,7 +65,7 @@ const isLoggedIn = !!accessToken;
 
           <!-- Cart Icon & Auth -->
           <div class="flex items-center gap-4">
-            <CartIcon client:load />
+            {!Astro.url.pathname.includes('/pedido-confirmado') && <CartIcon client:load />}
             {isLoggedIn ? (
               <div class="relative group">
                 <button class="p-2 hover:bg-red-50 rounded-lg transition-colors">

@@ -96,10 +96,10 @@ export function addToCart(item: CartItem) {
 
   let updated;
   if (existingItem) {
-    // Si el producto ya existe, incrementa la cantidad
+    // Si el producto ya existe, incrementa la cantidad y ACTUALIZA el precio (por si ha cambiado o estaba mal)
     updated = currentItems.map((i) =>
       String(i.product_id) === String(item.product_id)
-        ? { ...i, quantity: i.quantity + item.quantity, subtotal: (i.quantity + item.quantity) * i.precio }
+        ? { ...i, quantity: i.quantity + item.quantity, precio: item.precio, subtotal: (i.quantity + item.quantity) * item.precio }
         : i
     );
   } else {
@@ -174,6 +174,23 @@ export function clearCart() {
 }
 
 /**
+ * Limpia el carrito y espera a que la persistencia termine
+ */
+export async function clearCartPersistent() {
+  const updated: CartItem[] = [];
+  cartStore.set(updated);
+  clearReservedStock();
+
+  // Limpiar en BD y Storage esperando el resultado
+  await saveCart(updated);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cartUpdated'));
+    window.dispatchEvent(new CustomEvent('cart-cleared'));
+  }
+}
+
+/**
  * Limpia el carrito cuando el usuario cierra sesión
  */
 export async function clearCartOnLogout() {
@@ -213,7 +230,7 @@ export async function loadCart() {
     console.log("loadCart - ¿Autenticado?:", isAuthenticated);
 
     if (isAuthenticated) {
-      console.log("loadCart - ✅ Usuario autenticado, cargando de BD");
+      console.log("loadCart - Usuario autenticado, cargando de BD");
       const cartFromDB = await loadCartFromDB();
       if (cartFromDB && Array.isArray(cartFromDB) && cartFromDB.length > 0) {
         console.log("loadCart - Carrito cargado de BD:", cartFromDB);
@@ -232,7 +249,7 @@ export async function loadCart() {
     }
 
     // Invitado: Recuperar del sessionStorage si existe
-    console.log("loadCart - 👤 Invitado, recuperando del sessionStorage");
+    console.log("loadCart - Invitado, recuperando del sessionStorage");
     const sessionId = sessionStorage.getItem('guest-session-id');
     if (sessionId) {
       const cartKey = `cart-${sessionId}`;

@@ -7,7 +7,7 @@ export const getCloudinaryConfig = () => {
   const apiSecret = import.meta.env.CLOUDINARY_API_SECRET;
 
   if (!cloudName || !apiKey || !apiSecret) {
-    console.error('❌ Cloudinary environment variables missing:', {
+    console.error('Cloudinary environment variables missing:', {
       CLOUDINARY_CLOUD_NAME: cloudName ? '✓' : '✗',
       CLOUDINARY_API_KEY: apiKey ? '✓' : '✗',
       CLOUDINARY_API_SECRET: apiSecret ? '✓' : '✗',
@@ -26,7 +26,7 @@ export const getCloudinaryPublicConfig = () => {
   const cloudName = import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME;
 
   if (!cloudName) {
-    console.error('❌ PUBLIC_CLOUDINARY_CLOUD_NAME environment variable missing');
+    console.error('PUBLIC_CLOUDINARY_CLOUD_NAME environment variable missing');
   }
 
   return {
@@ -39,7 +39,7 @@ export const getCloudinaryUrl = (publicId: string, options?: Record<string, any>
   const { cloudName } = getCloudinaryPublicConfig();
 
   if (!cloudName) {
-    console.error('❌ Cannot build Cloudinary URL: cloudName missing');
+    console.error('Cannot build Cloudinary URL: cloudName missing');
     return '';
   }
 

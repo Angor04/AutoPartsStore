@@ -14,11 +14,11 @@ const { pedidos, usuarioId, devoluciones = new Map() } = Astro.props;
 
 // Estados y sus colores
 const ESTADOS_BADGES = {
-  PENDIENTE: { bg: '#fef3c7', color: '#92400e', texto: '⏳ Pendiente' },
-  PAGADO: { bg: '#dbeafe', color: '#0369a1', texto: '✅ Pagado' },
-  ENVIADO: { bg: '#e0e7ff', color: '#3730a3', texto: '📦 Enviado' },
-  ENTREGADO: { bg: '#dcfce7', color: '#166534', texto: '✅ Entregado' },
-  CANCELADO: { bg: '#fee2e2', color: '#991b1b', texto: '❌ Cancelado' }
+  PENDIENTE: { bg: '#fef3c7', color: '#92400e', texto: 'Pendiente' },
+  PAGADO: { bg: '#dbeafe', color: '#0369a1', texto: 'Pagado' },
+  ENVIADO: { bg: '#e0e7ff', color: '#3730a3', texto: 'Enviado' },
+  ENTREGADO: { bg: '#dcfce7', color: '#166534', texto: 'Entregado' },
+  CANCELADO: { bg: '#fee2e2', color: '#991b1b', texto: 'Cancelado' }
 };
 
 function getBadgeEstado(estado: string) {
@@ -140,7 +140,7 @@ function puedeSolicitar Devolucion(orden: Order): boolean {
     <p id="textoCancelar"></p>
     
     <div class="warning-box">
-      <p>⚠️ <strong>Importante:</strong> Solo puedes cancelar pedidos en estado PAGADO. El stock se restaurará automáticamente.</p>
+      <p><strong>Importante:</strong> Solo puedes cancelar pedidos en estado PAGADO. El stock se restaurará automáticamente.</p>
     </div>
 
     <div class="modal-actions">
@@ -200,10 +200,10 @@ function puedeSolicitar Devolucion(orden: Order): boolean {
 <!-- CONFIRMACIÓN DE DEVOLUCIÓN EXITOSA -->
 <div id="modalDevolucioéxito" class="modal" style="display: none;">
   <div class="modal-content" style="text-align: center;">
-    <h3>✅ Devolución Solicitada</h3>
+    <h3>Devolución Solicitada</h3>
     
     <div class="success-box">
-      <p><strong>📦 INSTRUCCIONES DE ENVÍO:</strong></p>
+      <p><strong>INSTRUCCIONES DE ENVÍO:</strong></p>
       <p>Devuelve los artículos sin usar a:</p>
       <p style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 16px 0;">
         Calle de la Moda 123<br />
@@ -216,7 +216,7 @@ function puedeSolicitar Devolucion(orden: Order): boolean {
 
       <hr style="margin: 20px 0;" />
 
-      <p><strong>💰 REEMBOLSO:</strong></p>
+      <p><strong>REEMBOLSO:</strong></p>
       <p id="montoReembolsoExito"></p>
 
       <p style="color: #666; font-size: 14px;">
@@ -556,7 +556,7 @@ function puedeSolicitar Devolucion(orden: Order): boolean {
         return;
       }
 
-      alert('✅ Pedido cancelado exitosamente. El reembolso se procesará en 5-7 días hábiles.');
+      alert('Pedido cancelado exitosamente. El reembolso se procesará en 5-7 días hábiles.');
       cerrarModal('modalCancelar');
       location.reload(); // Recargar para ver cambios
 

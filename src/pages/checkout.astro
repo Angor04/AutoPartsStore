@@ -29,9 +29,9 @@ if (userId) {
   direccion = direccionData;
 
   const { data: perfilData } = await supabaseAdmin
-    .from('perfiles_usuario')
+    .from('usuarios')
     .select('nombre, apellidos, telefono')
-    .eq('usuario_id', userId)
+    .eq('id', userId)
     .single();
   
   perfil = perfilData;
@@ -268,7 +268,7 @@ if (userId) {
 
             <!-- Alerta de stock -->
             <div id="stockAlert" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p class="text-red-700 text-sm font-medium">⚠️ Algunos productos tienen problemas de stock</p>
+              <p class="text-red-700 text-sm font-medium">Algunos productos tienen problemas de stock</p>
               <ul id="stockErrores" class="text-red-600 text-sm mt-2 space-y-1"></ul>
             </div>
 
@@ -300,6 +300,7 @@ if (userId) {
   let codigoCuponAplicado = null;
   let idCuponAplicado = null;
   const COSTO_ENVIO = 5.99;
+  const ENVIO_GRATIS_DESDE = 50;
 
   // ==================================================
   // FUNCIÓN PARA FORMATEAR PRECIOS
@@ -362,7 +363,7 @@ if (userId) {
         console.log('cargarCarrito() - Items de BD:', cartItems.length);
         
         if (cartItems && cartItems.length > 0) {
-          console.log('cargarCarrito() - ✅ Carrito cargado de BD');
+          console.log('cargarCarrito() - Carrito cargado de BD');
           renderizarProductos();
           calcularTotales();
           return;
@@ -377,14 +378,14 @@ if (userId) {
       console.log('cargarCarrito() - Items de sessionStorage:', cartItems.length);
       
       if (!cartItems || cartItems.length === 0) {
-        console.warn('cargarCarrito() - ⚠️ Carrito vacío, redirigiendo a /carrito');
+        console.warn('cargarCarrito() - Carrito vacío, redirigiendo a /carrito');
         setTimeout(() => {
           window.location.href = '/carrito';
         }, 500);
         return;
       }
       
-      console.log('cargarCarrito() - ✅ Carrito cargado de sessionStorage');
+      console.log('cargarCarrito() - Carrito cargado de sessionStorage');
       renderizarProductos();
       calcularTotales();
     } catch (e) {
@@ -466,7 +467,7 @@ if (userId) {
     
     if (!codigo) return;
     
-    console.log('🎟️ Validando cupón:', codigo, 'Subtotal:', subtotal);
+    console.log('Validando cupón:', codigo, 'Subtotal:', subtotal);
     
     mensaje.className = 'mt-3 p-2 rounded text-sm bg-blue-50 text-blue-700';
     mensaje.textContent = 'Validando cupón...';
@@ -486,9 +487,15 @@ if (userId) {
       const data = await response.json();
       
       if (data.valido) {
+        // Si el cupón es ENVIOGRATIS, solo permitir si subtotal >= ENVIO_GRATIS_DESDE
+        if (codigo === 'ENVIOGRATIS' && subtotal < ENVIO_GRATIS_DESDE) {
+          mensaje.className = 'mt-3 p-2 rounded text-sm bg-yellow-50 text-yellow-700';
+          mensaje.textContent = `El cupón ENVIOGRATIS solo es válido para compras de ${ENVIO_GRATIS_DESDE} € o más.`;
+          mensaje.classList.remove('hidden');
+          return;
+        }
         codigoCuponAplicado = codigo;
         idCuponAplicado = data.cupon_id;
-        // Si el cupón es ENVIOGRATIS, el descuento debe ser 0 aunque el backend devuelva 5,99
         if (codigo === 'ENVIOGRATIS') {
           descuento = 0;
         } else {
@@ -503,12 +510,12 @@ if (userId) {
         document.getElementById('btnAplicarCupon').disabled = true;
         calcularTotales();
       } else {
-        console.error('❌ Cupón inválido:', data);
+        console.error('Cupón inválido:', data);
         mensaje.className = 'mt-3 p-2 rounded text-sm bg-red-50 text-red-700';
         mensaje.textContent = data.mensaje || data.error || 'Cupón no válido';
       }
     } catch (error) {
-      console.error('❌ Error al validar cupón:', error);
+      console.error('Error al validar cupón:', error);
       mensaje.className = 'mt-3 p-2 rounded text-sm bg-red-50 text-red-700';
       mensaje.textContent = 'Error al validar cupón: ' + (error instanceof Error ? error.message : 'Error desconocido');
     }
@@ -581,13 +588,13 @@ if (userId) {
       const stripeData = await stripeResponse.json();
       
       if (stripeData.success && stripeData.url) {
-        console.log('✅ Sesión de Stripe creada:', stripeData.session_id);
+        console.log('Sesión de Stripe creada:', stripeData.session_id);
         console.log('Redirigiendo a:', stripeData.url);
         
         // Redirigir a Stripe Checkout
         window.location.href = stripeData.url;
       } else {
-        console.error('❌ Error en Stripe:', stripeData);
+        console.error('Error en Stripe:', stripeData);
         
         estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-red-50 text-red-700';
         estadoMensaje.textContent = stripeData.error || 'Error al procesar el pago. Intenta de nuevo.';
@@ -596,7 +603,7 @@ if (userId) {
         btnPagar.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Confirmar Pedido</span>';
       }
     } catch (error) {
-      console.error('❌ Error:', error);
+      console.error('Error:', error);
       estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-red-50 text-red-700';
       estadoMensaje.textContent = 'Error de conexión. Inténtalo de nuevo.';
       

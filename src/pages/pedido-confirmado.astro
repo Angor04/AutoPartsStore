@@ -23,6 +23,12 @@ interface Orden {
   email_cliente: string;
   nombre_cliente?: string;
   items: any[];
+  // Propiedades usadas en la plantilla:
+  fecha_creacion?: string;
+  nombre?: string;
+  email?: string;
+  impuestos?: number;
+  usuario_id?: string | null;
 }
 
 // Obtener parámetros de la URL
@@ -37,7 +43,7 @@ let error = null;
 // Procesar sesión de Stripe primero
 if (sessionId) {
   try {
-    console.log('📦 Procesando sesión de Stripe:', sessionId);
+    console.log('Procesando sesión de Stripe:', sessionId);
     
     // Llamar al endpoint que procesa Stripe y retorna orden_id
     const response = await fetch(`${url.origin}/api/pagos/procesar-stripe`, {
@@ -49,16 +55,16 @@ if (sessionId) {
     const resultado = await response.json();
 
     if (resultado.success && resultado.orden_id) {
-      console.log('✅ Orden creada desde Stripe:', resultado.numero_orden);
+      console.log('Orden creada desde Stripe:', resultado.numero_orden);
       
       // Redirigir a la misma página pero con orden_id en lugar de session_id
       return Astro.redirect(`/pedido-confirmado?orden=${resultado.orden_id}`);
     } else {
       error = resultado.error || 'Error procesando el pago';
-      console.error('❌ Error en Stripe:', error);
+      console.error('Error en Stripe:', error);
     }
   } catch (e) {
-    console.error('❌ Error en procesamiento de Stripe:', e);
+    console.error('Error en procesamiento de Stripe:', e);
     error = 'Error al procesar el pago';
   }
 }
@@ -76,13 +82,13 @@ if (ordenId && !sessionId) {
 
     if (resultado.success && resultado.orden) {
       orden = resultado.orden;
-      console.log('✅ Orden cargada desde BD:', orden.numero_orden);
+      console.log('Orden cargada desde BD:', orden.numero_orden);
     } else {
       error = resultado.error || 'No se encontró la orden';
-      console.error('❌ Error cargando orden:', error);
+      console.error('Error cargando orden:', error);
     }
   } catch (e) {
-    console.error('❌ Error cargando orden desde API:', e);
+    console.error('Error cargando orden desde API:', e);
     error = 'Error al cargar la orden';
   }
 }
@@ -106,8 +112,8 @@ function formatDate(fecha: string | undefined): string {
 ---
 
 <PublicLayout title={title} description={description}>
-  <!-- Componente para limpiar el carrito después de Stripe -->
-  {!sessionId && <CartCleaner client:load sessionId={ordenId || ''} />}
+  <!-- Componente para limpiar SIEMPRE el carrito al llegar a esta página -->
+  <CartCleaner client:load sessionId={ordenId || sessionId || ''} />
   
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     
@@ -173,15 +179,27 @@ function formatDate(fecha: string | undefined): string {
         
         <div class="divide-y divide-charcoal-100">
           {orden.items && orden.items.length > 0 ? (
-            orden.items.map((item: any) => (
-              <div class="py-4 flex items-center justify-between gap-4">
-                <div class="flex-1">
-                  <p class="font-medium text-charcoal-900">{item.nombre_producto}</p>
-                  <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}</p>
+            orden.items.map((item: any) => {
+              const productImg = item.urls_imagenes?.[0] || null;
+              return (
+                <div class="py-4 flex items-center justify-between gap-4">
+                  <div class="flex items-center gap-4 flex-1">
+                    <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
+                      {productImg ? (
+                        <img src={productImg} alt={item.nombre_producto} class="w-full h-full object-cover" />
+                      ) : (
+                        <span class="text-xl"></span>
+                      )}
+                    </div>
+                    <div>
+                      <p class="font-medium text-charcoal-900">{item.nombre_producto}</p>
+                      <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}</p>
+                    </div>
+                  </div>
+                  <p class="font-semibold text-charcoal-900 whitespace-nowrap">{formatPrice(item.subtotal)}</p>
                 </div>
-                <p class="font-semibold text-charcoal-900 whitespace-nowrap">{formatPrice(item.subtotal)}</p>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div class="py-4 text-center text-charcoal-500">
               <p>No hay productos en este pedido</p>
@@ -194,12 +212,12 @@ function formatDate(fecha: string | undefined): string {
             <span>Subtotal</span>
             <span>{formatPrice(orden.subtotal)}</span>
           </div>
-          {orden.impuestos && orden.impuestos > 0 && (
+          {orden.impuestos ? (
             <div class="flex justify-between text-charcoal-600">
               <span>Impuestos</span>
               <span>{formatPrice(orden.impuestos)}</span>
             </div>
-          )}
+          ) : null}
           {(() => {
             const calculadoDescuento = (orden.subtotal || 0) + (orden.costo_envio || 0) - (orden.total || 0);
             return calculadoDescuento > 0.01 ? (
@@ -222,7 +240,7 @@ function formatDate(fecha: string | undefined): string {
 
       <!-- Próximos pasos -->
       <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-        <h3 class="font-semibold text-blue-900 mb-3">📦 ¿Qué sigue ahora?</h3>
+        <h3 class="font-semibold text-blue-900 mb-3">¿Qué sigue ahora?</h3>
         <ul class="space-y-2 text-blue-800 text-sm">
           <li class="flex items-start gap-2">
             <span class="mt-1">✓</span>
@@ -239,14 +257,15 @@ function formatDate(fecha: string | undefined): string {
         </ul>
       </div>
 
-      <!-- Botones -->
       <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a 
-          href="/mi-cuenta/pedidos" 
-          class="px-8 py-3 bg-navy-500 text-white font-semibold rounded-lg hover:bg-navy-600 transition-colors text-center"
-        >
-          Ver Mis Pedidos
-        </a>
+        {(orden.usuario_id && (usuarioId || Astro.cookies.get('sb-access-token')?.value)) ? (
+          <a 
+            href="/mi-cuenta/pedidos" 
+            class="px-8 py-3 bg-navy-500 text-white font-semibold rounded-lg hover:bg-navy-600 transition-colors text-center"
+          >
+            Ver Mis Pedidos
+          </a>
+        ) : null}
         <a 
           href="/productos" 
           class="px-8 py-3 bg-white border border-charcoal-300 text-charcoal-700 font-semibold rounded-lg hover:bg-charcoal-50 transition-colors text-center"
@@ -275,47 +294,4 @@ function formatDate(fecha: string | undefined): string {
   </div>
 </PublicLayout>
 
-<script client:load>
-  // Limpiar carrito después del pago exitoso
-  if (typeof window !== 'undefined') {
-    try {
-      // Obtener session_id de la URL
-      const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get('session_id');
-      
-      if (sessionId) {
-        console.log('🛒 Limpiando carrito después de pago exitoso...');
-        
-        // Limpiar localStorage
-        try {
-          localStorage.removeItem('autopartsstore-cart');
-          localStorage.removeItem(`cart-${sessionId}`);
-          console.log('✅ Carrito eliminado de localStorage');
-        } catch (e) {
-          console.warn('⚠️ No se pudo limpiar localStorage:', e);
-        }
-        
-        // Limpiar sessionStorage
-        try {
-          sessionStorage.removeItem('autopartsstore-cart');
-          sessionStorage.removeItem(`cart-${sessionId}`);
-          console.log('✅ Carrito eliminado de sessionStorage');
-        } catch (e) {
-          console.warn('⚠️ No se pudo limpiar sessionStorage:', e);
-        }
-        
-        // Disparar evento personalizado para nanostores
-        try {
-          window.dispatchEvent(new CustomEvent('cart-cleared', { 
-            detail: { sessionId } 
-          }));
-          console.log('✅ Evento de carrito limpiado disparado');
-        } catch (e) {
-          console.warn('⚠️ Error disparando evento:', e);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error limpiando carrito:', error);
-    }
-  }
-</script>
+<!-- Eliminado script redundante: ahora la limpieza SIEMPRE la hace CartCleaner -->

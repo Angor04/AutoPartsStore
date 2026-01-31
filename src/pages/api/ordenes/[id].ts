@@ -31,7 +31,7 @@ export const GET: APIRoute = async ({ params, cookies }) => {
       .single();
 
     if (ordenError || !orden) {
-      console.error('❌ Orden no encontrada:', ordenError);
+      console.error('Orden no encontrada:', ordenError);
       return new Response(
         JSON.stringify({
           success: false,
@@ -39,6 +39,24 @@ export const GET: APIRoute = async ({ params, cookies }) => {
         }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // AUTO-LINKING: Si la orden no tiene usuario_id pero el usuario está logueado y el email coincide
+    if (!orden.usuario_id && usuarioId) {
+      // Obtener email del usuario actual para comparar
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(usuarioId);
+      const userEmail = userData?.user?.email;
+      const orderEmail = orden.email || orden.email_cliente;
+
+      if (userEmail && orderEmail && userEmail.toLowerCase() === orderEmail.toLowerCase()) {
+        console.log(`Auto-vinculando orden ${orden.numero_orden} al usuario ${usuarioId}`);
+        await supabaseAdmin
+          .from('ordenes')
+          .update({ usuario_id: usuarioId })
+          .eq('id', orden.id);
+
+        orden.usuario_id = usuarioId; // Actualizar objeto local
+      }
     }
 
     // Verificar que el usuario solo puede ver sus propias órdenes
@@ -72,19 +90,14 @@ export const GET: APIRoute = async ({ params, cookies }) => {
       .order('creado_en', { ascending: true });
 
     if (itemsError) {
-      console.error('⚠️ Error recuperando items:', itemsError);
+      console.error('Error recuperando items:', itemsError);
     }
 
     // Mapear items para incluir nombre_producto desde la tabla productos
     const itemsConNombre = items?.map((item: any) => ({
-      id: item.id,
-      producto_id: item.producto_id,
+      ...item, // Keep existing item properties
       nombre_producto: item.productos?.nombre || 'Producto desconocido',
-      cantidad: item.cantidad,
-      precio_unitario: item.precio_unitario,
-      subtotal: item.subtotal,
-      creado_en: item.creado_en,
-      urls_imagenes: item.productos?.urls_imagenes || []
+      urls_imagenes: item.productos?.urls_imagenes || [] // Ensure urls_imagenes is mapped
     })) || [];
 
     // Calcular totales
@@ -101,26 +114,27 @@ export const GET: APIRoute = async ({ params, cookies }) => {
           estado_pago: orden.estado_pago,
           subtotal: orden.subtotal,
           cupon_id: orden.cupon_id || null,
-          costo_envio: orden.gastos_envio || 0,
+          costo_envio: orden.gastos_envio || orden.costo_envio || 0,
           total: orden.total,
           direccion_envio: orden.direccion_envio,
-          email: orden.email || orden.email_cliente,
+          email: orden.email,
           nombre: orden.nombre || orden.customer_name || orden.direccion_envio?.nombre || null,
           telefono: orden.telefono || orden.telefono_cliente || null,
-          fecha_creacion: orden.created_at || orden.fecha_creacion || orden.creada_en,
+          fecha_creacion: orden.fecha_creacion || orden.creada_en || orden.created_at,
           fecha_pago: orden.fecha_pago,
           fecha_envio: orden.fecha_envio,
           numero_seguimiento: orden.numero_seguimiento,
           items: itemsConNombre,
           item_count: itemCount,
-          impuestos: orden.impuestos || 0
+          impuestos: orden.impuestos || 0,
+          usuario_id: orden.usuario_id || null
         }
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('❌ Error en GET /api/ordenes/[id]:', error);
+    console.error('Error en GET /api/ordenes/[id]:', error);
     return new Response(
       JSON.stringify({
         success: false,

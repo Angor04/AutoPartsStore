@@ -8,33 +8,49 @@ export const prerender = false;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const userId = cookies.get('user-id')?.value;
+    // 1. Obtener token
+    const token = cookies.get('sb-access-token')?.value ||
+      (request.headers.get('Authorization')?.startsWith('Bearer ')
+        ? request.headers.get('Authorization')?.slice(7)
+        : null);
 
-    if (!userId) {
+    if (!token) {
       return new Response(
         JSON.stringify({ error: 'No autenticado' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // 2. Verificar usuario real
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Sesión inválida' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = user.id;
     const body = await request.json();
     const { recibir_ofertas, notificaciones_pedidos } = body;
 
-    const supabaseAdmin = getSupabaseAdmin();
-
+    // 3. Update usuarios table
     const { error } = await supabaseAdmin
-      .from('perfiles_usuario')
-      .upsert({
-        usuario_id: userId,
+      .from('usuarios')
+      .update({
         recibir_ofertas: recibir_ofertas !== false,
         notificaciones_pedidos: notificaciones_pedidos !== false,
         actualizado_en: new Date().toISOString()
-      } as any, { onConflict: 'usuario_id' });
+      })
+      .eq('id', userId);
 
     if (error) {
-      console.error('Error actualizando preferencias:', error);
+      console.error('Error actualizando preferencias (DB):', error);
       return new Response(
-        JSON.stringify({ error: 'Error al actualizar preferencias' }),
+        JSON.stringify({ error: `Error al actualizar preferencias: ${error.message}` }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }

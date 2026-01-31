@@ -18,7 +18,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const sessionId = body.session_id;
     const usuarioId = cookies.get('user-id')?.value;
 
-    console.log('💳 Procesando sesión de Stripe:', sessionId);
+    console.log('Procesando sesión de Stripe:', sessionId);
 
     if (!sessionId) {
       return new Response(
@@ -37,7 +37,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       expand: ['line_items', 'payment_intent']
     });
 
-    console.log('✅ Sesión recuperada:', {
+    console.log('Sesión recuperada:', {
       payment_status: session.payment_status,
       customer_email: session.customer_email,
       amount_total: session.amount_total
@@ -59,8 +59,58 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     const supabaseAdmin = getSupabaseAdmin();
 
+    // IDEMPOTENCIA: Verificar si ya existe una orden para esta sesión
+    const { data: ordenExistente } = await supabaseAdmin
+      .from('ordenes')
+      .select('id, numero_orden')
+      .eq('session_stripe_id', sessionId)
+      .single();
+
+    if (ordenExistente) {
+      console.log('Sesión ya procesada, devolviendo orden existente:', ordenExistente.numero_orden);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          orden_id: ordenExistente.id,
+          numero_orden: ordenExistente.numero_orden,
+          message: 'Orden ya procesada anteriormente'
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Extraer datos de metadata
     const metadata = session.metadata || {};
+    let usuarioIdDesdeMetadata = metadata.usuario_id && metadata.usuario_id !== 'guest' ? metadata.usuario_id : null;
+    let finalUsuarioId = usuarioIdDesdeMetadata || usuarioId;
+
+    // Fallback: Si no hay usuarioId pero el email coincide con un usuario registrado, vincularlo
+    if (!finalUsuarioId && session.customer_email) {
+      console.log('🔍 Buscando usuario por email:', session.customer_email);
+      const { data: usuarioPorEmail } = await supabaseAdmin
+        .from('usuarios')
+        .select('id')
+        .eq('email', session.customer_email)
+        .maybeSingle();
+
+      if (usuarioPorEmail) {
+        console.log('Usuario vinculado por email:', usuarioPorEmail.id);
+        finalUsuarioId = usuarioPorEmail.id;
+      } else {
+        // Opción B: Buscar en auth.users via admin
+        try {
+          const { data: { users }, error: searchError } = await supabaseAdmin.auth.admin.listUsers();
+          const targetUser = users.find((u: any) => u.email === session.customer_email);
+          if (targetUser) {
+            console.log('Usuario vinculado por email (auth):', targetUser.id);
+            finalUsuarioId = targetUser.id;
+          }
+        } catch (e) {
+          console.error('Error buscando usuario en auth:', e);
+        }
+      }
+    }
+
     const descuentoMonto = parseFloat(metadata.descuento_monto || '0');
     const codigoCupon = metadata.descuento_codigo || null;
 
@@ -68,36 +118,39 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const shippingDetails = (session as any).shipping_details;
     const billingDetails = (session.payment_intent as any)?.charges?.data?.[0]?.billing_details;
 
-    console.log('📦 Información de envío:', {
+    console.log('Información de envío:', {
       nombre: shippingDetails?.name,
       email: session.customer_email,
-      address: shippingDetails?.address
+      address: shippingDetails?.address,
+      usuario_id: finalUsuarioId
     });
 
     // ==========================================
     // CREAR NÚMERO DE ORDEN CORRELATIVO GLOBAL
     // ==========================================
-    let numeroOrden = '';
+    let numeroOrden = 'ORD-000000';
     try {
-      // Buscar la última orden creada (mayor número correlativo)
-      const { data: ultimaOrden, error: ultimaOrdenError } = await supabaseAdmin
+      // Buscar el número de orden más alto existente (solo formato 6 dígitos ORD-XXXXXX)
+      const { data: ultimaOrden } = await supabaseAdmin
         .from('ordenes')
         .select('numero_orden')
-        .order('id', { ascending: false })
+        .ilike('numero_orden', 'ORD-______')
+        .order('numero_orden', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
+
       if (ultimaOrden && ultimaOrden.numero_orden) {
-        // Extraer el número correlativo (ORD-000123)
+        // Extraer el número correlativo (ej: ORD-000123 -> 123)
         const match = ultimaOrden.numero_orden.match(/ORD-(\d+)/);
-        const ultimoNum = match ? parseInt(match[1], 10) : 0;
-        const siguienteNum = ultimoNum + 1;
-        numeroOrden = 'ORD-' + String(siguienteNum).padStart(6, '0');
-      } else {
-        numeroOrden = 'ORD-000000';
+        if (match) {
+          const ultimoNum = parseInt(match[1], 10);
+          const siguienteNum = ultimoNum + 1;
+          numeroOrden = 'ORD-' + String(siguienteNum).padStart(6, '0');
+        }
       }
     } catch (e) {
       console.error('Error generando número de orden correlativo:', e);
-      numeroOrden = 'ORD-000000';
+      // En caso de error, dejamos el valor por defecto ORD-000000
     }
     // Requisito: Convertir céntimos de Stripe a decimal real una sola vez
     const total = Math.round((session.amount_total || 0)) / 100;
@@ -112,7 +165,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     console.log('📝 Creando orden con importes reales:', {
       numeroOrden,
-      usuarioId,
+      usuarioId: finalUsuarioId,
       email: session.customer_email,
       total,
       subtotal,
@@ -122,8 +175,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Preparar datos para insertar
     const ordenData: any = {
       numero_orden: numeroOrden,
-      usuario_id: usuarioId || null,
-      email: session.customer_email || metadata.email_cliente || 'invitado@tienda.com',
+      usuario_id: finalUsuarioId || null,
+      email: session.customer_email || metadata.email || 'invitado@tienda.com',
       nombre: metadata.nombre_cliente || shippingDetails?.name || 'Cliente Invitado',
       telefono: metadata.telefono_cliente || (session as any).customer_details?.phone || null,
       session_stripe_id: sessionId,
@@ -152,7 +205,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .single();
 
     if (ordenError) {
-      console.error('❌ Error creando orden:', ordenError);
+      console.error('Error creando orden:', ordenError);
       return new Response(
         JSON.stringify({
           success: false,
@@ -162,7 +215,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    console.log('✅ Orden creada:', {
+    console.log('Orden creada:', {
       id: orden.id,
       numero_orden: orden.numero_orden,
       total: orden.total
@@ -177,7 +230,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (itemsJson && orden?.id) {
       try {
         const cartItemsRaw = JSON.parse(itemsJson);
-        console.log('📦 Reconstruyendo items desde metadata:', cartItemsRaw.length);
+        console.log('Reconstruyendo items desde metadata:', cartItemsRaw.length);
 
         const items = cartItemsRaw.map((item: any) => {
           const precio_unitario = parseFloat(item.p || item.precio) || 0;
@@ -208,16 +261,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             .insert(items);
 
           if (itemsError) {
-            console.error('⚠️ Error guardando items:', itemsError);
+            console.error('Error guardando items:', itemsError);
           } else {
-            console.log(`✅ ${items.length} items guardados en ordenes_items`);
+            console.log(`${items.length} items guardados en ordenes_items`);
           }
         }
       } catch (parseError) {
-        console.error('❌ Error parseando items_json:', parseError);
+        console.error('Error parseando items_json:', parseError);
       }
     } else {
-      console.warn('⚠️ No se encontraron items en metadata o la orden no tiene ID');
+      console.warn('No se encontraron items en metadata o la orden no tiene ID');
     }
 
     // ==========================================
@@ -226,7 +279,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     let emailSent = false;
     const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
 
-    console.log('📧 Preparando envío de email:', {
+    console.log('Preparando envío de email:', {
       emailDestino,
       session_email: session.customer_email,
       metadata_email: metadata.email_cliente,
@@ -236,7 +289,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (emailDestino) {
       try {
-        console.log('📧 Intentando enviar email de confirmación completo a:', emailDestino);
+        console.log('Intentando enviar email de confirmación completo a:', emailDestino);
         emailSent = await sendOrderConfirmationEmail(
           emailDestino,
           orden.numero_orden,
@@ -251,10 +304,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         );
 
         if (emailSent) {
-          console.log('✉️ Email de confirmación enviado exitosamente a:', emailDestino);
+          console.log('Email de confirmación enviado exitosamente a:', emailDestino);
         }
       } catch (emailError) {
-        console.error('❌ Error al enviar email:', emailError);
+        console.error('Error al enviar email:', emailError);
       }
     }
 
@@ -268,7 +321,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .from('carrito_temporal')
         .delete()
         .eq('usuario_id', usuarioId);
-      console.log('🗑️ Carrito temporal eliminado');
+      console.log('Carrito temporal eliminado');
     }
 
     // ==========================================
@@ -289,7 +342,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     );
 
   } catch (error) {
-    console.error('❌ Error procesando Stripe:', error);
+    console.error('Error procesando Stripe:', error);
     return new Response(
       JSON.stringify({
         success: false,

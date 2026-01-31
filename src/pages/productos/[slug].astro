@@ -135,7 +135,7 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
             client:load 
             productId={producto.id}
             productName={producto.nombre}
-            price={precioOriginal}
+            price={producto.precio}
             imageUrl={images[0] || ''}
             stock={producto.stock}
           />

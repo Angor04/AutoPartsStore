@@ -5,6 +5,7 @@
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import AccountSidebar from "@/components/ui/AccountSidebar.astro";
 
 const title = "Mis Pedidos";
 const description = "Ver el historial de tus pedidos";
@@ -13,12 +14,28 @@ const description = "Ver el historial de tus pedidos";
 const userId = Astro.cookies.get('user-id')?.value;
 
 if (!userId) {
+  console.log('🚫 No userId found in cookies for /mi-cuenta/pedidos');
   return Astro.redirect('/auth/login?redirect=/mi-cuenta/pedidos');
 }
 
+console.log('🔍 Fetching orders for userId:', userId);
+
 // Cargar pedidos del usuario
 const supabaseAdmin = getSupabaseAdmin();
-const { data: ordenes, error } = await supabaseAdmin
+
+// Obtener email del usuario para búsqueda por email (fallback robusto)
+let userEmail = '';
+try {
+  const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+  userEmail = userData?.user?.email || '';
+} catch (e) {
+  console.error('Error obteniendo email:', e);
+}
+
+// Búsqueda por ID o por Email (Normalizar email a minúsculas)
+const normalizedEmail = userEmail.toLowerCase().trim();
+
+let query = supabaseAdmin
   .from('ordenes')
   .select(`
     id,
@@ -27,42 +44,58 @@ const { data: ordenes, error } = await supabaseAdmin
     estado_pago,
     total,
     subtotal,
-    descuento_aplicado,
-    costo_envio,
-    creada_en,
+    gastos_envio,
+    fecha_creacion,
     fecha_cancelacion,
     numero_seguimiento,
     direccion_envio,
+    email,
+    usuario_id,
     ordenes_items(
       id,
       cantidad,
       precio_unitario,
-      nombre_producto,
-      producto_id
+      subtotal,
+      producto_id,
+      productos:producto_id (
+        nombre,
+        urls_imagenes
+      )
     )
-  `)
-  .eq('usuario_id', userId)
-  .order('creada_en', { ascending: false });
+  `);
+
+if (normalizedEmail) {
+  // PostgREST ILIKE compatible OR
+  query = query.or(`usuario_id.eq."${userId}",email.ilike."${normalizedEmail}"`);
+} else {
+  query = query.eq('usuario_id', userId);
+}
+
+const { data: ordenes, error } = await query.order('fecha_creacion', { ascending: false });
+
+if (error) {
+  console.error('Error fetching orders:', error);
+}
 
 const pedidos = ordenes || [];
 
 // Configuración de estados con colores y acciones
 const estadosConfig: Record<string, { color: string; bgColor: string; texto: string; icono: string }> = {
-  'PENDIENTE': { color: 'text-yellow-700', bgColor: 'bg-yellow-100', texto: 'Pendiente', icono: '⏳' },
-  'pendiente': { color: 'text-yellow-700', bgColor: 'bg-yellow-100', texto: 'Pendiente', icono: '⏳' },
-  'PAGADO': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Pagado', icono: '💳' },
-  'pagado': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Pagado', icono: '💳' },
-  'procesando': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Procesando', icono: '📦' },
-  'ENVIADO': { color: 'text-purple-700', bgColor: 'bg-purple-100', texto: 'Enviado', icono: '🚚' },
-  'enviado': { color: 'text-purple-700', bgColor: 'bg-purple-100', texto: 'Enviado', icono: '🚚' },
-  'ENTREGADO': { color: 'text-green-700', bgColor: 'bg-green-100', texto: 'Entregado', icono: '✅' },
-  'entregado': { color: 'text-green-700', bgColor: 'bg-green-100', texto: 'Entregado', icono: '✅' },
-  'CANCELADO': { color: 'text-red-700', bgColor: 'bg-red-100', texto: 'Cancelado', icono: '❌' },
-  'cancelado': { color: 'text-red-700', bgColor: 'bg-red-100', texto: 'Cancelado', icono: '❌' },
+  'PENDIENTE': { color: 'text-yellow-700', bgColor: 'bg-yellow-100', texto: 'Pendiente', icono: '' },
+  'pendiente': { color: 'text-yellow-700', bgColor: 'bg-yellow-100', texto: 'Pendiente', icono: '' },
+  'PAGADO': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Pagado', icono: '' },
+  'pagado': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Pagado', icono: '' },
+  'procesando': { color: 'text-blue-700', bgColor: 'bg-blue-100', texto: 'Procesando', icono: '' },
+  'ENVIADO': { color: 'text-purple-700', bgColor: 'bg-purple-100', texto: 'Enviado', icono: '' },
+  'enviado': { color: 'text-purple-700', bgColor: 'bg-purple-100', texto: 'Enviado', icono: '' },
+  'ENTREGADO': { color: 'text-green-700', bgColor: 'bg-green-100', texto: 'Entregado', icono: '' },
+  'entregado': { color: 'text-green-700', bgColor: 'bg-green-100', texto: 'Entregado', icono: '' },
+  'CANCELADO': { color: 'text-red-700', bgColor: 'bg-red-100', texto: 'Cancelado', icono: '' },
+  'cancelado': { color: 'text-red-700', bgColor: 'bg-red-100', texto: 'Cancelado', icono: '' },
 };
 
 function getEstadoConfig(estado: string) {
-  return estadosConfig[estado] || { color: 'text-gray-700', bgColor: 'bg-gray-100', texto: estado, icono: '📋' };
+  return estadosConfig[estado] || { color: 'text-gray-700', bgColor: 'bg-gray-100', texto: estado, icono: '' };
 }
 
 function formatDate(dateStr: string) {
@@ -107,23 +140,7 @@ function getAcciones(estado: string) {
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar -->
       <aside class="lg:col-span-1">
-        <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-          <h2 class="text-lg font-serif font-bold text-charcoal-900 mb-6">Mi Cuenta</h2>
-          <nav class="space-y-3">
-            <a href="/mi-cuenta/perfil" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              👤 Perfil
-            </a>
-            <a href="/mi-cuenta/pedidos" class="block text-red-600 font-medium text-sm border-l-2 border-red-600 pl-3">
-              📦 Mis Pedidos
-            </a>
-            <a href="/mi-cuenta/direcciones" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              📍 Direcciones
-            </a>
-            <button id="logout-btn" class="block w-full text-left text-charcoal-600 hover:text-red-600 transition-colors text-sm">
-              🚪 Cerrar Sesión
-            </button>
-          </nav>
-        </div>
+        <AccountSidebar active="pedidos" />
       </aside>
 
       <!-- Main Content -->
@@ -172,7 +189,7 @@ function getAcciones(estado: string) {
                         </div>
                         <div>
                           <p class="text-sm text-gray-500">Fecha</p>
-                          <p class="text-sm text-charcoal-900">{formatDate(pedido.creada_en)}</p>
+                          <p class="text-sm text-charcoal-900">{formatDate(pedido.fecha_creacion)}</p>
                         </div>
                         <div>
                           <p class="text-sm text-gray-500">Total</p>
@@ -190,20 +207,27 @@ function getAcciones(estado: string) {
                     <!-- Order Items -->
                     <div class="px-6 py-4">
                       <div class="divide-y divide-gray-100">
-                        {items.slice(0, 3).map((item: any) => (
-                          <div class="flex items-center gap-4 py-3">
-                            <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                              <span class="text-2xl">🔧</span>
+                        {items.slice(0, 3).map((item: any) => {
+                          const productImg = item.productos?.urls_imagenes?.[0] || null;
+                          return (
+                            <div class="flex items-center gap-4 py-3">
+                              <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border border-gray-100">
+                                {productImg ? (
+                                  <img src={productImg} alt={item.productos?.nombre} class="w-full h-full object-cover" />
+                                ) : (
+                                  <span class="text-2xl"></span>
+                                )}
+                              </div>
+                              <div class="flex-1">
+                                <p class="font-medium text-charcoal-900">{item.productos?.nombre || 'Producto'}</p>
+                                <p class="text-sm text-gray-500">
+                                  Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}
+                                </p>
+                              </div>
+                              <p class="font-medium text-charcoal-900">{formatPrice(item.cantidad * item.precio_unitario)}</p>
                             </div>
-                            <div class="flex-1">
-                              <p class="font-medium text-charcoal-900">{item.nombre_producto}</p>
-                              <p class="text-sm text-gray-500">
-                                Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}
-                              </p>
-                            </div>
-                            <p class="font-medium">{formatPrice(item.cantidad * item.precio_unitario)}</p>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {items.length > 3 && (
                           <p class="text-sm text-gray-500 py-2">
                             + {items.length - 3} productos más
@@ -212,12 +236,15 @@ function getAcciones(estado: string) {
                       </div>
                       
                       <!-- Descuento si aplica -->
-                      {pedido.descuento_aplicado > 0 && (
-                        <div class="mt-4 p-3 bg-green-50 rounded-lg flex items-center justify-between">
-                          <span class="text-green-700 text-sm">🎁 Descuento aplicado</span>
-                          <span class="text-green-700 font-medium">-{formatPrice(pedido.descuento_aplicado)}</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const descuento = (pedido.subtotal || 0) + (pedido.gastos_envio || 0) - (pedido.total || 0);
+                        return descuento > 0.01 ? (
+                          <div class="mt-4 p-3 bg-green-50 rounded-lg flex items-center justify-between">
+                            <span class="text-green-700 text-sm">Descuento aplicado</span>
+                            <span class="text-green-700 font-medium">-{formatPrice(descuento)}</span>
+                          </div>
+                        ) : null;
+                      })()}
                       
                       <!-- Número de seguimiento -->
                       {pedido.numero_seguimiento && acciones.puedeSeguimiento && (
@@ -232,7 +259,7 @@ function getAcciones(estado: string) {
                     <!-- Order Actions -->
                     <div class="px-6 py-4 bg-gray-50 flex flex-wrap items-center justify-between gap-4 border-t">
                       <a 
-                        href={`/mi-cuenta/pedido/${pedido.id}`}
+                        href={`/pedido-confirmado?orden=${pedido.id}`}
                         class="text-sm text-red-600 hover:text-red-700 font-medium"
                       >
                         Ver detalles →
@@ -247,7 +274,7 @@ function getAcciones(estado: string) {
                             data-orden-numero={pedido.numero_orden}
                             class="btn-cancelar px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
                           >
-                            ❌ Cancelar Pedido
+                            Cancelar Pedido
                           </button>
                         )}
                         
@@ -260,7 +287,7 @@ function getAcciones(estado: string) {
                             data-orden-total={pedido.total}
                             class="btn-devolver px-4 py-2 text-sm font-medium text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors"
                           >
-                            ↩️ Solicitar Devolución
+                            Solicitar Devolución
                           </button>
                         )}
                         
@@ -272,7 +299,7 @@ function getAcciones(estado: string) {
                             rel="noopener noreferrer"
                             class="px-4 py-2 text-sm font-medium text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
                           >
-                            🚚 Seguir Envío
+                            Seguir Envío
                           </a>
                         )}
                       </div>
@@ -293,7 +320,7 @@ function getAcciones(estado: string) {
       <button class="modal-close">&times;</button>
       <div class="text-center mb-6">
         <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-          <span class="text-3xl">⚠️</span>
+          <span class="text-3xl"></span>
         </div>
         <h3 class="text-xl font-bold text-charcoal-900">¿Cancelar pedido?</h3>
         <p class="text-gray-600 mt-2">Pedido: <span id="cancel-orden-numero" class="font-mono font-bold"></span></p>
@@ -301,7 +328,7 @@ function getAcciones(estado: string) {
       
       <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
         <p class="text-yellow-800 text-sm">
-          <strong>⚠️ Esta acción no se puede deshacer.</strong><br>
+          <strong>Esta acción no se puede deshacer.</strong><br>
           Al cancelar el pedido:
         </p>
         <ul class="text-yellow-700 text-sm mt-2 space-y-1">
@@ -313,7 +340,7 @@ function getAcciones(estado: string) {
       
       <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <p class="text-blue-800 text-sm">
-          <strong>💰 Reembolso:</strong> El importe será devuelto a tu método de pago original en un plazo de <strong>5-7 días hábiles</strong>.
+          <strong>Reembolso:</strong> El importe será devuelto a tu método de pago original en un plazo de <strong>5-7 días hábiles</strong>.
         </p>
       </div>
       
@@ -344,7 +371,7 @@ function getAcciones(estado: string) {
       <div id="devolucion-paso1">
         <div class="text-center mb-6">
           <div class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
-            <span class="text-3xl">↩️</span>
+            <span class="text-3xl"></span>
           </div>
           <h3 class="text-xl font-bold text-charcoal-900">Solicitar Devolución</h3>
           <p class="text-gray-600 mt-2">Pedido: <span id="return-orden-numero" class="font-mono font-bold"></span></p>
@@ -390,7 +417,7 @@ function getAcciones(estado: string) {
       <div id="devolucion-paso2" class="hidden">
         <div class="text-center mb-6">
           <div class="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-            <span class="text-3xl">✅</span>
+            <span class="text-3xl"></span>
           </div>
           <h3 class="text-xl font-bold text-charcoal-900">Solicitud Recibida</h3>
         </div>
@@ -398,7 +425,7 @@ function getAcciones(estado: string) {
         <!-- Instrucciones de envío -->
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
           <h4 class="font-bold text-charcoal-900 mb-3 flex items-center gap-2">
-            <span>📦</span> Instrucciones de Envío
+            <span></span> Instrucciones de Envío
           </h4>
           <p class="text-gray-700 mb-4">
             Por favor, envía los artículos <strong>sin usar</strong> y en su <strong>embalaje original</strong> a:
@@ -418,7 +445,7 @@ function getAcciones(estado: string) {
         <!-- Confirmación email -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p class="text-blue-800 text-sm flex items-start gap-2">
-            <span class="text-xl">📧</span>
+            <span class="text-xl"></span>
             <span>
               <strong>Hemos enviado un correo</strong> a tu email asociado con la etiqueta de devolución imprimible y las instrucciones detalladas.
             </span>
@@ -428,7 +455,7 @@ function getAcciones(estado: string) {
         <!-- Disclaimer financiero -->
         <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
           <p class="text-green-800 text-sm flex items-start gap-2">
-            <span class="text-xl">💰</span>
+            <span class="text-xl"></span>
             <span>
               Una vez recibido y validado el paquete, el reembolso de <strong id="return-total"></strong> se procesará en tu método de pago original en un plazo de <strong>5 a 7 días hábiles</strong>.
             </span>

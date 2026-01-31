@@ -5,6 +5,7 @@
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import AccountSidebar from "@/components/ui/AccountSidebar.astro";
 
 export const prerender = false;
 
@@ -13,7 +14,7 @@ const description = "Gestiona tu información personal";
 
 // Tipos para los datos
 interface Perfil {
-  usuario_id: string;
+  id: string;
   nombre: string;
   apellidos: string;
   telefono: string | null;
@@ -42,11 +43,11 @@ if (!userId) {
 // Cargar datos del usuario
 const supabaseAdmin = getSupabaseAdmin();
 
-// Obtener perfil
+// Obtener perfil (ahora desde tabla usuarios)
 const { data: perfilData } = await supabaseAdmin
-  .from('perfiles_usuario')
+  .from('usuarios')
   .select('*')
-  .eq('usuario_id', userId)
+  .eq('id', userId)
   .single();
 
 const perfil = perfilData as Perfil | null;
@@ -80,35 +81,7 @@ const userEmail = userData?.user?.email || '';
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar -->
       <aside class="lg:col-span-1">
-        <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-          <h2 class="text-lg font-serif font-bold text-charcoal-900 mb-6">Mi Cuenta</h2>
-          <nav class="space-y-3">
-            <a href="/mi-cuenta/perfil" class="block text-red-600 font-medium text-sm border-l-2 border-red-600 bg-red-50 py-2 -ml-6 pl-6 rounded-r">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-                Perfil
-              </span>
-            </a>
-            <a href="/mi-cuenta/pedidos" class="block text-charcoal-600 hover:text-red-600 transition-colors text-sm pl-6">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                </svg>
-                Mis Pedidos
-              </span>
-            </a>
-            <button id="logout-btn" class="block w-full text-left text-charcoal-600 hover:text-red-600 transition-colors text-sm pl-3">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                </svg>
-                Cerrar Sesión
-              </span>
-            </button>
-          </nav>
-        </div>
+        <AccountSidebar active="perfil" />
       </aside>
 
       <!-- Main Content -->
@@ -203,108 +176,7 @@ const userEmail = userData?.user?.email || '';
           </form>
         </div>
 
-        <!-- Sección: Dirección de Envío -->
-        <div class="bg-white rounded-lg shadow-sm p-8">
-          <div class="flex items-center gap-3 mb-6">
-            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-            </div>
-            <div>
-              <h2 class="text-xl font-serif font-bold text-charcoal-900">Dirección de Envío</h2>
-              <p class="text-sm text-charcoal-500">Dirección predeterminada para tus pedidos</p>
-            </div>
-          </div>
 
-          <form id="address-form" class="space-y-6">
-            <div>
-              <label for="direccion" class="block text-sm font-medium text-charcoal-900 mb-2">
-                Dirección Completa <span class="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="direccion"
-                name="direccion"
-                required
-                value={direccion?.direccion || ''}
-                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Calle, número, piso..."
-              />
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label for="ciudad" class="block text-sm font-medium text-charcoal-900 mb-2">
-                  Ciudad <span class="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="ciudad"
-                  name="ciudad"
-                  required
-                  value={direccion?.ciudad || ''}
-                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Madrid"
-                />
-              </div>
-              <div>
-                <label for="provincia" class="block text-sm font-medium text-charcoal-900 mb-2">
-                  Provincia
-                </label>
-                <input
-                  type="text"
-                  id="provincia"
-                  name="provincia"
-                  value={direccion?.provincia || ''}
-                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Madrid"
-                />
-              </div>
-              <div>
-                <label for="codigo_postal" class="block text-sm font-medium text-charcoal-900 mb-2">
-                  Código Postal <span class="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="codigo_postal"
-                  name="codigo_postal"
-                  required
-                  pattern="[0-9]{5}"
-                  value={direccion?.codigo_postal || ''}
-                  class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="28001"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label for="pais" class="block text-sm font-medium text-charcoal-900 mb-2">
-                País
-              </label>
-              <select
-                id="pais"
-                name="pais"
-                class="w-full px-4 py-3 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="España" selected={direccion?.pais === 'España' || !direccion?.pais}>España</option>
-                <option value="Portugal" selected={direccion?.pais === 'Portugal'}>Portugal</option>
-                <option value="Francia" selected={direccion?.pais === 'Francia'}>Francia</option>
-                <option value="Andorra" selected={direccion?.pais === 'Andorra'}>Andorra</option>
-              </select>
-            </div>
-
-            <div class="flex justify-end">
-              <button type="submit" id="save-address-btn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Guardar Dirección
-              </button>
-            </div>
-          </form>
-        </div>
 
         <!-- Sección: Cambiar Contraseña -->
         <div class="bg-white rounded-lg shadow-sm p-8">
@@ -495,40 +367,7 @@ const userEmail = userData?.user?.email || '';
       }
     });
 
-    // Formulario de dirección
-    document.getElementById('address-form')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      setButtonLoading('save-address-btn', true);
 
-      const formData = new FormData(e.target as HTMLFormElement);
-      
-      try {
-        const response = await fetch('/api/perfil/direccion', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            direccion: formData.get('direccion'),
-            ciudad: formData.get('ciudad'),
-            provincia: formData.get('provincia'),
-            codigo_postal: formData.get('codigo_postal'),
-            pais: formData.get('pais')
-          })
-        });
-
-        const result = await response.json();
-        
-        if (response.ok) {
-          showMessage('global-message', '✓ Dirección de envío actualizada correctamente', true);
-        } else {
-          showMessage('global-message', result.error || 'Error al guardar dirección', false);
-        }
-      } catch (error) {
-        showMessage('global-message', 'Error de conexión', false);
-      } finally {
-        setButtonLoading('save-address-btn', false);
-        location.reload();
-      }
-    });
 
     // Formulario de contraseña
     document.getElementById('password-form')?.addEventListener('submit', async (e) => {
@@ -556,8 +395,9 @@ const userEmail = userData?.user?.email || '';
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            currentPassword: formData.get('current_password'),
-            newPassword: formData.get('new_password')
+            contraseniaActual: formData.get('current_password'),
+            contraseniaNueva: formData.get('new_password'),
+            confirmacion: formData.get('confirm_password')
           })
         });
 

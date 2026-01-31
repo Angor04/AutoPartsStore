@@ -176,13 +176,35 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 7. CREAR ORDEN (TRANSACCIÓN ATÓMICA)
     // ==========================================
-    // Usamos una función RPC para garantizar atomicidad
-    // Si no existe, lo hacemos paso a paso con verificación
+
+    // Generar número de orden correlativo global
+    let numeroOrden = 'ORD-000000';
+    try {
+      const { data: ultimaOrden } = await supabaseAdmin
+        .from('ordenes')
+        .select('numero_orden')
+        .ilike('numero_orden', 'ORD-______')
+        .order('numero_orden', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (ultimaOrden && ultimaOrden.numero_orden) {
+        const match = ultimaOrden.numero_orden.match(/ORD-(\d+)/);
+        if (match) {
+          const ultimoNum = parseInt(match[1], 10);
+          const siguienteNum = ultimoNum + 1;
+          numeroOrden = 'ORD-' + String(siguienteNum).padStart(6, '0');
+        }
+      }
+    } catch (e) {
+      console.error('Error generando número de orden correlativo:', e);
+    }
 
     // Crear la orden principal
     const { data: orden, error: errorOrden } = await supabaseAdmin
       .from('ordenes')
       .insert({
+        numero_orden: numeroOrden,
         usuario_id: userId,
         estado: 'PENDIENTE',
         subtotal: subtotal,
@@ -283,7 +305,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 13. RETORNAR ÉXITO
     // ==========================================
-    console.log(`\n✅ ORDEN CREADA: ${orden.numero_orden || orden.id}`);
+    console.log(`\nORDEN CREADA: ${orden.numero_orden || orden.id}`);
     console.log(`   Usuario: ${userId}`);
     console.log(`   Total: €${total.toFixed(2)}`);
     console.log(`   Items: ${itemsConPrecio.length}`);
@@ -293,7 +315,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       JSON.stringify({
         success: true,
         orden_id: orden.id,
-        numero_orden: orden.numero_orden || `ORD-${orden.id}`,
+        numero_orden: orden.numero_orden,
         total: total,
         subtotal: subtotal,
         descuento: descuento,

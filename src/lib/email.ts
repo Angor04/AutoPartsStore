@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 // Log de variables de entorno al iniciar
-console.log('🔍 Email config (Astro env):', {
+console.log('Email config (Astro env):', {
   host: import.meta.env.EMAIL_SMTP_HOST,
   port: import.meta.env.EMAIL_SMTP_PORT,
   user: import.meta.env.EMAIL_USER ? import.meta.env.EMAIL_USER.slice(0, 5) + '***' : 'NO CONFIGURADO',
@@ -24,12 +24,12 @@ const transporter = nodemailer.createTransport({
   try {
     const verified = await transporter.verify();
     if (verified) {
-      console.log('✅ Email service is ready');
+      console.log('Email service is ready');
     } else {
-      console.warn('⚠️ Email service verification failed');
+      console.warn('Email service verification failed');
     }
   } catch (error) {
-    console.error('❌ Email service verification error:', error instanceof Error ? error.message : error);
+    console.error('Email service verification error:', error instanceof Error ? error.message : error);
   }
 })();
 
@@ -44,7 +44,7 @@ interface EmailOptions {
  */
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
   try {
-    console.log('📧 Sending email to:', to, 'Subject:', subject);
+    console.log('Sending email to:', to, 'Subject:', subject);
 
     const result = await transporter.sendMail({
       from: import.meta.env.EMAIL_FROM || import.meta.env.EMAIL_USER,
@@ -53,10 +53,10 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
       html,
     });
 
-    console.log('✅ Email sent successfully:', result.messageId);
+    console.log('Email sent successfully:', result.messageId);
     return true;
   } catch (error) {
-    console.error('❌ Error sending email:', error instanceof Error ? error.message : error);
+    console.error('Error sending email:', error instanceof Error ? error.message : error);
     console.error('Error details:', error);
     return false;
   }
@@ -68,7 +68,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
 export async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">¡Bienvenido a Auto Parts Store! 🚗</h2>
+      <h2 style="color: #333;">¡Bienvenido a Auto Parts Store!</h2>
       <p>Hola <strong>${name}</strong>,</p>
       <p>Gracias por registrarte en nuestra tienda online. Tu cuenta ha sido creada exitosamente.</p>
       <p>Ahora puedes:</p>
@@ -166,7 +166,7 @@ export async function sendOrderConfirmationEmail(
         </div>
 
         <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-          <h4 style="margin: 0 0 10px 0; color: #1e293b;">📌 ¿Qué sigue ahora?</h4>
+          <h4 style="margin: 0 0 10px 0; color: #1e293b;">¿Qué sigue ahora?</h4>
           <p style="margin: 0; font-size: 14px; line-height: 1.5;">
             Te enviaremos otro correo electrónico en cuanto tu pedido salga de nuestro almacén con el número de seguimiento para que puedas rastrearlo en todo momento.
           </p>
@@ -180,7 +180,7 @@ export async function sendOrderConfirmationEmail(
       </div>
       
       <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 20px;">
-        © 2026 Auto Parts Store. Av. de la Innovación, 42. Madrid. <br>
+        © 2026 Auto Parts Store. C. Puerto Serrano, 11540 Sanlúcar de Barrameda, Cádiz. <br>
         Has recibido este correo porque realizaste una compra en nuestra tienda.
       </p>
     </div>
@@ -203,7 +203,7 @@ export async function sendPasswordResetEmail(
 ): Promise<boolean> {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">🔐 Restablecer Contraseña</h2>
+      <h2 style="color: #333;">Restablecer Contraseña</h2>
       <p>Recibimos una solicitud para restablecer tu contraseña.</p>
       <p>Haz clic en el botón de abajo para crear una nueva contraseña:</p>
       <div style="text-align: center; margin: 30px 0;">
@@ -220,7 +220,7 @@ export async function sendPasswordResetEmail(
       <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
         ${resetUrl}
       </p>
-      <p style="color: #d9534f;"><strong>⚠️ Este enlace expira en 1 hora.</strong></p>
+      <p style="color: #d9534f;"><strong>Este enlace expira en 1 hora.</strong></p>
       <p>Si no solicitaste restablecer tu contraseña, puedes ignorar este correo.</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
       <p style="color: #666; font-size: 12px;">
@@ -255,7 +255,7 @@ export async function sendLowStockAlertEmail(
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #d9534f;">⚠️ Alerta de Stock Bajo</h2>
+      <h2 style="color: #d9534f;">Alerta de Stock Bajo</h2>
       <p>Los siguientes productos tienen stock bajo (menos de 10 unidades):</p>
       <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         <thead>
@@ -278,7 +278,7 @@ export async function sendLowStockAlertEmail(
 
   return sendEmail({
     to: adminEmail,
-    subject: '⚠️ Alerta de Stock Bajo - Auto Parts Store',
+    subject: 'Alerta de Stock Bajo - Auto Parts Store',
     html,
   });
 }
@@ -295,7 +295,7 @@ export async function sendContactFormEmail(
 ): Promise<boolean> {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">📧 Nuevo Mensaje de Contacto</h2>
+      <h2 style="color: #333;">Nuevo Mensaje de Contacto</h2>
       <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <p><strong>Nombre:</strong> ${name}</p>
         <p><strong>Correo:</strong> ${email}</p>
@@ -313,6 +313,104 @@ export async function sendContactFormEmail(
   return sendEmail({
     to: adminEmail,
     subject: `Nuevo Mensaje de Contacto de ${name}`,
+    html,
+  });
+}
+
+/**
+ * Envía correo de actualización de estado de pedido
+ */
+export async function sendOrderStatusUpdateEmail(
+  email: string,
+  userName: string,
+  orderNumber: string,
+  newStatus: string
+): Promise<boolean> {
+  const statusLabels: Record<string, string> = {
+    'pendiente': 'Pendiente de pago',
+    'pagado': 'Pagado',
+    'procesando': 'En preparación',
+    'enviado': 'Enviado',
+    'entregado': 'Entregado',
+    'cancelado': 'Cancelado'
+  };
+
+  const statusColors: Record<string, string> = {
+    'pendiente': '#fbbf24',
+    'pagado': '#3b82f6',
+    'procesando': '#3b82f6',
+    'enviado': '#8b5cf6',
+    'entregado': '#10b981',
+    'cancelado': '#ef4444'
+  };
+
+  const readableStatus = statusLabels[newStatus] || newStatus;
+  const statusColor = statusColors[newStatus] || '#6b7280';
+
+  let message = '';
+  switch (newStatus) {
+    case 'enviado':
+      message = 'Tu pedido ha salido de nuestro almacén y está en camino.';
+      break;
+    case 'entregado':
+      message = 'Tu pedido ha sido entregado. ¡Esperamos que lo disfrutes!';
+      break;
+    case 'procesando':
+      message = 'Estamos preparando tu pedido con cuidado.';
+      break;
+    case 'cancelado':
+      message = 'Tu pedido ha sido cancelado. Si ya habías pagado, recibirás el reembolso pronto.';
+      break;
+    default:
+      message = `El estado de tu pedido ha cambiado a: ${readableStatus}`;
+  }
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">Actualización de Estado</h2>
+      <p>Hola <strong>${userName}</strong>,</p>
+      <p>El estado de tu pedido <strong>#${orderNumber}</strong> ha cambiado.</p>
+      
+      <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">Nuevo Estado</p>
+        <span style="
+          display: inline-block;
+          padding: 8px 16px;
+          background-color: ${statusColor}20;
+          color: ${statusColor};
+          border: 1px solid ${statusColor};
+          border-radius: 20px;
+          font-weight: bold;
+          font-size: 16px;
+        ">
+          ${readableStatus}
+        </span>
+      </div>
+
+      <p>${message}</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${import.meta.env.SITE || 'http://localhost:4321'}/mi-cuenta/pedidos" style="
+          background-color: #ef4444;
+          color: white;
+          padding: 12px 30px;
+          text-decoration: none;
+          border-radius: 4px;
+          display: inline-block;
+          font-weight: bold;
+        ">Ver Detalles del Pedido</a>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+      <p style="color: #666; font-size: 12px;">
+        © 2026 Auto Parts Store. Todos los derechos reservados.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Actualización de pedido #${orderNumber} - ${readableStatus}`,
     html,
   });
 }

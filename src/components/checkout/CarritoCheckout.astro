@@ -449,7 +449,7 @@ function formatearPrecio(precio: number): string {
       cuponAplicadoDiv.style.display = 'block';
 
       // Mostrar éxito
-      successDiv.textContent = '✅ Cupón aplicado correctamente';
+      successDiv.textContent = 'Cupón aplicado correctamente';
       successDiv.style.display = 'block';
 
       // Actualizar totales
@@ -464,7 +464,7 @@ function formatearPrecio(precio: number): string {
   }
 
   function mostrarError(mensaje) {
-    errorDiv.textContent = '❌ ' + mensaje;
+    errorDiv.textContent = mensaje;
     errorDiv.style.display = 'block';
   }
 
