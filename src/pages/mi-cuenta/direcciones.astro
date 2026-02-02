@@ -1,0 +1,331 @@
+---
+// src/pages/mi-cuenta/direcciones.astro
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { getSupabaseAdmin } from "@/lib/supabase";
+import AccountSidebar from "@/components/ui/AccountSidebar.astro";
+
+export const prerender = false;
+
+const title = "Mis Direcciones";
+const description = "Gestiona tus direcciones de envío";
+
+// Verificar autenticación
+const userId = Astro.cookies.get('user-id')?.value;
+
+if (!userId) {
+  return Astro.redirect('/auth/login?redirect=/mi-cuenta/direcciones');
+}
+
+const supabaseAdmin = getSupabaseAdmin();
+
+// Cargar direcciones del usuario
+const { data: direcciones } = await supabaseAdmin
+  .from('direcciones_envio')
+  .select('*')
+  .eq('usuario_id', userId)
+  .order('es_principal', { ascending: false })
+  .order('creado_en', { ascending: false });
+
+---
+
+<PublicLayout title={title} description={description}>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-8">
+      <a href="/" class="hover:text-navy-500">Inicio</a>
+      <span>/</span>
+      <span>Mi Cuenta</span>
+      <span>/</span>
+      <span class="text-charcoal-900">Direcciones</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <!-- Sidebar -->
+      <aside class="lg:col-span-1">
+        <AccountSidebar active="direcciones" />
+      </aside>
+
+      <!-- Main Content -->
+      <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-xl font-serif font-bold text-charcoal-900">Mis Direcciones</h2>
+                <p class="text-sm text-charcoal-500">Añade y gestiona tus direcciones de entrega</p>
+              </div>
+            </div>
+            <button 
+              onclick="openModal()"
+              class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Nueva Dirección
+            </button>
+          </div>
+
+          <!-- Lista de direcciones -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {direcciones && direcciones.length > 0 ? (
+              direcciones.map((dir: any) => (
+                <div class={`border rounded-lg p-5 relative transition-all hover:shadow-md flex flex-col justify-between h-full ${dir.es_principal ? 'border-navy-200 bg-navy-50 ring-1 ring-navy-200' : 'border-charcoal-200'}`}>
+                  <div class="flex flex-col gap-2">
+                    <div class="min-h-[26px]">
+                      {dir.es_principal && (
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-100 text-navy-800 border border-navy-200">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                      <p class="font-bold text-charcoal-900 text-lg">{dir.calle || dir.direccion}</p>
+                      <div class="text-charcoal-600 text-sm space-y-0.5">
+                        <p>{dir.ciudad}, {dir.codigo_postal}</p>
+                        <p>{dir.provincia}, {dir.pais}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 pt-4 border-t border-charcoal-100 flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                      <button 
+                        onclick={`editAddress(${JSON.stringify(dir)})`}
+                        class="text-sm font-medium text-charcoal-600 hover:text-navy-700 hover:underline transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <span class="text-charcoal-300">|</span>
+                      <button 
+                        onclick={`deleteAddress('${dir.id}')`}
+                        class="text-sm font-medium text-charcoal-600 hover:text-red-600 hover:underline transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                    
+                    {!dir.es_principal && (
+                      <button 
+                        onclick={`setPrimary(${JSON.stringify(dir)})`}
+                        class="text-sm font-medium text-navy-600 hover:text-navy-800 hover:bg-navy-50 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Hacer Principal
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div class="col-span-full py-12 text-center bg-gray-50 rounded-lg border border-dashed border-charcoal-300">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-8 h-8 text-charcoal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-medium text-charcoal-900 mb-1">No tienes direcciones guardadas</h3>
+                <p class="text-charcoal-500 mb-0">Añade una dirección para agilizar tus compras</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Formulario -->
+  <div id="addressModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <!-- Backdrop -->
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+        <form id="addressForm" class="p-6">
+          <input type="hidden" id="addressId" name="id" />
+          
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-charcoal-900" id="modalTitle">Nueva Dirección</h3>
+            <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label for="direccion" class="block text-sm font-medium text-charcoal-700 mb-1">Dirección *</label>
+              <input type="text" id="direccion" name="direccion" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Calle, número, piso..." />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="codigo_postal" class="block text-sm font-medium text-charcoal-700 mb-1">Código Postal *</label>
+                <input type="text" id="codigo_postal" name="codigo_postal" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" maxlength="5" />
+              </div>
+              <div>
+                <label for="ciudad" class="block text-sm font-medium text-charcoal-700 mb-1">Ciudad *</label>
+                <input type="text" id="ciudad" name="ciudad" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="provincia" class="block text-sm font-medium text-charcoal-700 mb-1">Provincia *</label>
+                <input type="text" id="provincia" name="provincia" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+              </div>
+              <div>
+                <label for="pais" class="block text-sm font-medium text-charcoal-700 mb-1">País</label>
+                <input type="text" id="pais" name="pais" value="España" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500" />
+              </div>
+            </div>
+
+            <div class="flex items-center mt-2">
+              <input type="checkbox" id="es_principal" name="es_principal" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded" />
+              <label for="es_principal" class="ml-2 block text-sm text-charcoal-900">
+                Marcar como dirección principal
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-8 flex justify-end gap-3">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-charcoal-700 hover:bg-gray-50 font-medium">
+              Cancelar
+            </button>
+            <button type="submit" id="saveBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2">
+              Guardar Dirección
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</PublicLayout>
+
+<script is:inline>
+  const modal = document.getElementById('addressModal');
+  const form = document.getElementById('addressForm');
+  const modalTitle = document.getElementById('modalTitle');
+  const saveBtn = document.getElementById('saveBtn');
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    form.reset();
+    document.getElementById('addressId').value = '';
+    modalTitle.textContent = 'Nueva Dirección';
+  }
+
+  function editAddress(data) {
+    modal.classList.remove('hidden');
+    modalTitle.textContent = 'Editar Dirección';
+    
+    document.getElementById('addressId').value = data.id || '';
+    document.getElementById('direccion').value = data.calle || data.direccion || '';
+    document.getElementById('codigo_postal').value = data.codigo_postal || '';
+    document.getElementById('ciudad').value = data.ciudad || '';
+    document.getElementById('provincia').value = data.provincia || '';
+    document.getElementById('es_principal').checked = data.es_principal || false;
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  async function deleteAddress(id) {
+    if (!confirm('¿Estás seguro de eliminar esta dirección?')) return;
+
+    try {
+      const res = await fetch('/api/direcciones/eliminar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Error al eliminar la dirección');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión');
+    }
+  }
+  
+  async function setPrimary(data) {
+    try {
+      const payload = {
+        ...data,
+        es_principal: true,
+        calle: data.calle || data.direccion // Asegurar compatibilidad de campos
+      };
+
+      const res = await fetch('/api/direcciones/guardar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Error al actualizar');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+    }
+  }
+</script>
+
+<script>
+  // Script module for form handling
+  const form = document.getElementById('addressForm');
+  const saveBtn = document.getElementById('saveBtn');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = 'Guardando...';
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    if (document.getElementById('es_principal').checked) {
+      data.es_principal = true;
+    }
+
+    try {
+      const res = await fetch('/api/direcciones/guardar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const json = await res.json();
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert(json.error || 'Error al guardar');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = 'Guardar Dirección';
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = 'Guardar Dirección';
+    }
+  });
+</script>

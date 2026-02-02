@@ -121,9 +121,8 @@ INSTRUCCIONES DE ENVÍO:
 
 Por favor, devuelve los artículos sin usar en su embalaje original a:
 
-Calle de la Moda 123
-Polígono Industrial Metropolitano
-28001 Madrid
+C. Puerto Serrano, 11540
+Sanlúcar de Barrameda, Cádiz
 España
 
 Número de etiqueta de devolución: ${numero_etiqueta}
@@ -142,8 +141,8 @@ procesará en tu método de pago original en un plazo de 5 a 7 días hábiles.
 Cualquier duda, contacta a nuestro equipo de atención al cliente.
 
 Saludos,
-Fashion Store
-support@fashionstore.com
+Auto Parts Store
+soporte@autopartsstore.com
     `);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
@@ -162,7 +161,7 @@ support@fashionstore.com
           estado: 'SOLICITADA'
         },
         instrucciones: {
-          direccion: 'Calle de la Moda 123, Polígono Industrial, 28001 Madrid',
+          direccion: 'C. Puerto Serrano, 11540 Sanlúcar de Barrameda, Cádiz',
           plazo_reembolso: '5-7 días hábiles',
           email_confirmacion: 'Se ha enviado un email con la etiqueta de devolución'
         }
@@ -233,9 +232,9 @@ AL HACER CLIC:
    │ INSTRUCCIONES DE ENVÍO:                 │
    │                                         │
    │ Dirección de retorno:                  │
-   │ Calle de la Moda 123                   │
-   │ Polígono Industrial                    │
-   │ Madrid                                  │
+   │ C. Puerto Serrano, 11540               │
+   │ Sanlúcar de Barrameda                  │
+   │ Cádiz                                   │
    │                                         │
    │ Número de etiqueta:                    │
    │ DEV-1705413000000-ABC123               │

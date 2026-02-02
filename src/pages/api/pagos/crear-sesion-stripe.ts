@@ -200,7 +200,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       },
       success_url: `${import.meta.env.SITE}/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${import.meta.env.SITE}/checkout`,
-      expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 horas
+      expires_at: Math.floor(Date.now() / 1000) + (23 * 60 * 60) // 23 horas (para evitar errores de límite de 24h)
     });
 
     console.log('Sesión de Stripe creada:', session.id);

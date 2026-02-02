@@ -3,49 +3,19 @@
 // Panel de administración de cupones y códigos de descuento
 
 import AdminLayout from '@/layouts/AdminLayout.astro';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
-// Simulación de fetch de cupones (en producción, traerías de la BD)
-const cupones = [
-  {
-    id: '1',
-    codigo: 'DESC10EUR',
-    tipo_descuento: 'cantidad_fija',
-    valor_descuento: 10,
-    uso_unico: false,
-    limite_usos: null,
-    cantidad_minima_compra: 30,
-    fecha_expiracion: '2026-12-31',
-    activo: true,
-    usos_totales: 45
-  },
-  {
-    id: '2',
-    codigo: 'BLACK2026',
-    tipo_descuento: 'porcentaje',
-    valor_descuento: 20,
-    uso_unico: false,
-    limite_usos: 100,
-    cantidad_minima_compra: 0,
-    fecha_expiracion: '2026-01-31',
-    activo: true,
-    usos_totales: 67
-  },
-  {
-    id: '3',
-    codigo: 'FIRSTTIME',
-    tipo_descuento: 'porcentaje',
-    valor_descuento: 15,
-    uso_unico: true,
-    limite_usos: 200,
-    cantidad_minima_compra: 0,
-    fecha_expiracion: '2026-06-30',
-    activo: false,
-    usos_totales: 156
-  }
-];
+// Fetch de cupones reales desde la BD
+const supabase = getSupabaseAdmin();
+const { data: cuponesDb, error } = await supabase
+  .from('cupones')
+  .select('*')
+  .order('creado_en', { ascending: false });
+
+const cupones = cuponesDb || [];
 
 function formatearFecha(fecha: string): string {
+  if (!fecha) return 'Sin fecha';
   return new Date(fecha).toLocaleDateString('es-ES');
 }
 
@@ -76,15 +46,11 @@ function describeTipoDescuento(tipo: string, valor: number): string {
       </div>
       <div class="stat-card">
         <p class="stat-label">Usos Totales</p>
-        <p class="stat-value">{cupones.reduce((sum, c) => sum + c.usos_totales, 0)}</p>
+        <p class="stat-value">{cupones.reduce((sum, c) => sum + (c.usos_totales || 0), 0)}</p>
       </div>
       <div class="stat-card">
-        <p class="stat-label">Descuento Total Dado</p>
-        <p class="stat-value">€1,234.56</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Promedio de Uso</p>
-        <p class="stat-value">{Math.round(cupones.reduce((sum, c) => sum + c.usos_totales, 0) / cupones.length)}</p>
+        <p class="stat-label">Total Cupones</p>
+        <p class="stat-value">{cupones.length}</p>
       </div>
     </div>
 
@@ -103,10 +69,21 @@ function describeTipoDescuento(tipo: string, valor: number): string {
           </tr>
         </thead>
         <tbody>
-          {cupones.map((cupon) => (
+          {cupones.length === 0 ? (
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 32px; color: #666;">
+                No hay cupones creados aún.
+              </td>
+            </tr>
+          ) : cupones.map((cupon) => (
             <tr class={!cupon.activo ? 'inactivo' : ''}>
               <td>
-                <code class="codigo-cupon">{cupon.codigo}</code>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <code class="codigo-cupon">{cupon.codigo}</code>
+                  {cupon.uso_unico_por_usuario && (
+                    <span style="font-size: 10px; color: #d97706; font-weight: 600;">⚠️ 1 uso/cliente</span>
+                  )}
+                </div>
               </td>
               <td>
                 {describeTipoDescuento(cupon.tipo_descuento, cupon.valor_descuento)}
@@ -117,7 +94,7 @@ function describeTipoDescuento(tipo: string, valor: number): string {
               <td>{formatearFecha(cupon.fecha_expiracion)}</td>
               <td>
                 <span class="uso-badge">
-                  {cupon.usos_totales}
+                  {cupon.usos_totales || 0}
                   {cupon.limite_usos && ` / ${cupon.limite_usos}`}
                 </span>
               </td>
@@ -129,15 +106,16 @@ function describeTipoDescuento(tipo: string, valor: number): string {
               <td>
                 <div class="acciones-btn">
                   <button type="button" class="btn-accion btn-editar" 
-                    onclick="abrirModalEditar('{cupon.id}')">
+                    data-cupon={JSON.stringify(cupon)}
+                    onclick="abrirModalEditar(this)">
                     Editar
                   </button>
                   <button type="button" class="btn-accion btn-toggle"
-                    onclick="toggleCupon('{cupon.id}', {cupon.activo})">
+                    onclick={`toggleCupon('${cupon.id}', ${cupon.activo})`}>
                     {cupon.activo ? 'Desactivar' : 'Activar'}
                   </button>
                   <button type="button" class="btn-accion btn-eliminar"
-                    onclick="eliminarCupon('{cupon.id}')">
+                    onclick={`eliminarCupon('${cupon.id}')`}>
                     Eliminar
                   </button>
                 </div>
@@ -215,12 +193,12 @@ function describeTipoDescuento(tipo: string, valor: number): string {
           </div>
 
           <div class="form-group">
-            <label for="limiteUsos">Límite de Usos (dejar en blanco para ilimitado)</label>
+            <label for="limiteUsos">Límite de Usos (Opcional)</label>
             <input
               type="number"
               id="limiteUsos"
               name="limite_usos"
-              placeholder="ej: 100"
+              placeholder="Ilimitado"
               min="1"
             />
           </div>
@@ -245,7 +223,7 @@ function describeTipoDescuento(tipo: string, valor: number): string {
           <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCupon')">
             Cancelar
           </button>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-primary" id="btnGuardar">
             Guardar Cupón
           </button>
         </div>
@@ -581,23 +559,42 @@ function describeTipoDescuento(tipo: string, valor: number): string {
     }
   </style>
 
-  <script>
+  <script is:inline>
     // ============================================================================
     // FUNCIONES MODALES
     // ============================================================================
 
     function abrirModalCrear() {
       document.getElementById('tituloModal').textContent = 'Crear Nuevo Cupón';
-      document.getElementById('formCupon').reset();
-      document.getElementById('formCupon').dataset.id = '';
+      const form = document.getElementById('formCupon');
+      form.reset();
+      delete form.dataset.id;
       document.getElementById('errorForm').style.display = 'none';
       document.getElementById('modalCupon').style.display = 'flex';
+      document.getElementById('codigoCupon').disabled = false;
     }
 
-    function abrirModalEditar(id) {
+    function abrirModalEditar(btn) {
+      const cupon = JSON.parse(btn.dataset.cupon);
+      
       document.getElementById('tituloModal').textContent = 'Editar Cupón';
-      document.getElementById('formCupon').dataset.id = id;
-      // Aquí va la lógica para cargar los datos del cupón
+      const form = document.getElementById('formCupon');
+      form.dataset.id = cupon.id;
+
+      document.getElementById('codigoCupon').value = cupon.codigo;
+      document.getElementById('codigoCupon').disabled = true; // No permitir editar código
+      document.getElementById('tipoDescuento').value = cupon.tipo_descuento;
+      document.getElementById('valorDescuento').value = cupon.valor_descuento;
+      document.getElementById('minimoCompra').value = cupon.cantidad_minima_compra;
+      document.getElementById('usoUnico').checked = cupon.uso_unico_por_usuario;
+      document.getElementById('limiteUsos').value = cupon.limite_usos || '';
+      
+      // Fecha: cortar tiempo si existe
+      let fecha = cupon.fecha_expiracion;
+      if(fecha && fecha.includes('T')) fecha = fecha.split('T')[0];
+      document.getElementById('fechaExpiracion').value = fecha;
+
+      document.getElementById('errorForm').style.display = 'none';
       document.getElementById('modalCupon').style.display = 'flex';
     }
 
@@ -606,63 +603,102 @@ function describeTipoDescuento(tipo: string, valor: number): string {
     }
 
     // ============================================================================
-    // GESTIÓN DE CUPONES
+    // GESTIÓN DE CUPONES (API)
     // ============================================================================
 
     document.getElementById('formCupon').addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const codigo = document.getElementById('codigoCupon').value.toUpperCase();
-      const tipoDescuento = document.getElementById('tipoDescuento').value;
-      const valorDescuento = parseFloat(document.getElementById('valorDescuento').value);
-      const minimoCompra = parseFloat(document.getElementById('minimoCompra').value);
-      const usoUnico = document.getElementById('usoUnico').checked;
-      const limiteUsos = document.getElementById('limiteUsos').value ? 
-        parseInt(document.getElementById('limiteUsos').value) : null;
-      const fechaExpiracion = document.getElementById('fechaExpiracion').value;
-
+      const form = e.target;
+      const id = form.dataset.id; // Si existe ID es edición
+      const btn = document.getElementById('btnGuardar');
       const errorDiv = document.getElementById('errorForm');
 
+      // Obtener valores
+      const data = {
+        codigo: document.getElementById('codigoCupon').value.toUpperCase(),
+        tipo_descuento: document.getElementById('tipoDescuento').value,
+        valor_descuento: parseFloat(document.getElementById('valorDescuento').value),
+        cantidad_minima_compra: parseFloat(document.getElementById('minimoCompra').value) || 0,
+        uso_unico_por_usuario: document.getElementById('usoUnico').checked,
+        limite_usos: document.getElementById('limiteUsos').value ? 
+          parseInt(document.getElementById('limiteUsos').value) : null,
+        fecha_expiracion: document.getElementById('fechaExpiracion').value
+      };
+
       try {
-        // Validaciones básicas
-        if (!codigo || !tipoDescuento || !valorDescuento || !fechaExpiracion) {
-          throw new Error('Por favor completa todos los campos requeridos');
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        let url = '/api/admin/cupones';
+        let method = 'POST';
+
+        if (id) {
+          url = `/api/admin/cupones/${id}`;
+          method = 'PUT';
         }
 
-        // Aquí iría la llamada a la API para guardar el cupón
-        // Por ahora, solo mostramos un mensaje de éxito
-        alert(`Cupón ${codigo} guardado correctamente`);
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Error al guardar');
+        }
+
+        alert('Cupón guardado correctamente');
         cerrarModal('modalCupon');
-        
-        // Recargar página para ver cambios
-        setTimeout(() => location.reload(), 500);
+        location.reload();
 
       } catch (error) {
-        errorDiv.textContent = 'Error: ' + error.message;
+        errorDiv.textContent = error.message;
         errorDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Cupón';
       }
     });
 
-    function toggleCupon(id, activo) {
-      const accion = activo ? 'desactivar' : 'activar';
-      if (confirm(`¿Seguro que quieres ${accion} este cupón?`)) {
-        alert(`Cupón ${accion} correctamente`);
-        location.reload();
+    async function toggleCupon(id, activo) {
+      if (!confirm(`¿Deseas ${activo ? 'desactivar' : 'activar'} este cupón?`)) return;
+
+      try {
+        const response = await fetch(`/api/admin/cupones/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activo: !activo })
+        });
+        
+        if (response.ok) location.reload();
+        else alert('Error al cambiar estado');
+
+      } catch (e) {
+        alert('Error de conexión');
       }
     }
 
-    function eliminarCupon(id) {
-      if (confirm('¿Seguro que quieres eliminar este cupón? Esta acción no se puede deshacer.')) {
-        alert('Cupón eliminado correctamente');
-        location.reload();
+    async function eliminarCupon(id) {
+      if (!confirm('¿Seguro que deseas eliminar este cupón? No se podrá recuperar.')) return;
+
+      try {
+        const response = await fetch(`/api/admin/cupones/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) location.reload();
+        else alert('Error al eliminar cupón');
+
+      } catch (e) {
+        alert('Error de conexión');
       }
     }
 
-    // Cerrar modal al clickear fuera
+    // Cerrar clickeando fuera
     document.getElementById('modalCupon')?.addEventListener('click', (e) => {
-      if (e.target.id === 'modalCupon') {
-        cerrarModal('modalCupon');
-      }
+      if (e.target.id === 'modalCupon') cerrarModal('modalCupon');
     });
   </script>
 </AdminLayout>

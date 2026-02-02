@@ -148,11 +148,11 @@ function formatDate(fecha: string | undefined): string {
             <p class="text-sm text-charcoal-500 mb-1">Estado</p>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
               class:list={{
-                'bg-green-100 text-green-800': orden.estado_pago === 'COMPLETADO',
-                'bg-yellow-100 text-yellow-800': orden.estado_pago === 'PENDIENTE',
-                'bg-red-100 text-red-800': orden.estado_pago === 'FALLIDO'
+                'bg-green-100 text-green-800': orden.estado === 'PAGADO' || orden.estado === 'COMPLETADO',
+                'bg-yellow-100 text-yellow-800': orden.estado === 'PENDIENTE',
+                'bg-red-100 text-red-800': orden.estado === 'CANCELADO'
               }}>
-              {orden.estado_pago}
+              {orden.estado}
             </span>
           </div>
           <div>
@@ -265,7 +265,15 @@ function formatDate(fecha: string | undefined): string {
           >
             Ver Mis Pedidos
           </a>
-        ) : null}
+        ) : (
+          /* Botón para invitados */
+          <a 
+            href={`/estado-pedido?orden=${orden.numero_orden}&email=${orden.email}`}
+            class="px-8 py-3 bg-navy-500 text-white font-semibold rounded-lg hover:bg-navy-600 transition-colors text-center"
+          >
+            Ver Estado del Pedido
+          </a>
+        )}
         <a 
           href="/productos" 
           class="px-8 py-3 bg-white border border-charcoal-300 text-charcoal-700 font-semibold rounded-lg hover:bg-charcoal-50 transition-colors text-center"

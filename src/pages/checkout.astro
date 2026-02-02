@@ -10,8 +10,15 @@ const title = "Finalizar Compra";
 const description = "Completa tu pedido de forma segura";
 
 // Verificar autenticación
-const userId = Astro.cookies.get('user-id')?.value;
-const userEmail = Astro.cookies.get('user-email')?.value;
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+let userId = Astro.cookies.get('user-id')?.value; 
+let userEmail = Astro.cookies.get('user-email')?.value;
+
+// Si no hay token de acceso, forzar modo invitado
+if (!accessToken) {
+  userId = undefined;
+  userEmail = undefined;
+}
 
 // Cargar datos si el usuario está logueado
 const supabaseAdmin = getSupabaseAdmin();
@@ -70,7 +77,7 @@ if (userId) {
     </div>
 
     <form id="checkoutForm">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-screen">
         <!-- Formulario de envío -->
         <div class="lg:col-span-2 space-y-6">
           
@@ -235,10 +242,11 @@ if (userId) {
           </div>
         </div>
 
-        <!-- Resumen del pedido (sticky) -->
+        <!-- Resumen del pedido (estático) -->
         <div class="lg:col-span-1">
-          <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-            <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4">Resumen del Pedido</h2>
+          <div class="space-y-4">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+              <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4">Resumen del Pedido</h2>
             
             <!-- Lista de productos -->
             <div id="productosLista" class="space-y-3 mb-4 max-h-64 overflow-y-auto">
@@ -276,9 +284,12 @@ if (userId) {
             <button 
               type="submit" 
               id="btnPagar"
-              class="w-full mt-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors disabled:bg-charcoal-300 disabled:cursor-not-allowed"
+              class="w-full mt-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors disabled:bg-charcoal-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Confirmar Pedido
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              <span>Confirmar Pedido</span>
             </button>
 
             <!-- Mensaje de estado -->
@@ -554,7 +565,7 @@ if (userId) {
     }
     
     btnPagar.disabled = true;
-    btnPagar.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Preparando pago...';
+    btnPagar.innerHTML = '<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> <span>Preparando pago...</span>';
     
     estadoMensaje.className = 'mt-4 p-3 rounded-lg text-center bg-blue-50 text-blue-700';
     estadoMensaje.textContent = 'Redirigiendo a Stripe para procesar el pago...';
