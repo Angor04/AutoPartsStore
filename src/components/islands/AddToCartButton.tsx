@@ -30,8 +30,34 @@ export default function AddToCartButton({
   // Asegurar que items es un array
   const itemsArray = Array.isArray(items) ? items : [];
   const currentQuantity = getItemQuantity(productId, itemsArray);
-  const maxAddable = Math.max(0, stock - currentQuantity);
+
+  // Estado local para el stock, inicializado con el prop pero actualizable
+  const [currentStock, setCurrentStock] = useState(stock);
+
+  const maxAddable = Math.max(0, currentStock - currentQuantity);
   const isInStock = maxAddable > 0;
+
+  React.useEffect(() => {
+    // Suscribirse a eventos de actualización de stock (del polling script)
+    const handleStockUpdate = (e: CustomEvent) => {
+      const updatedStocks = e.detail?.stock;
+      if (updatedStocks && updatedStocks[productId]) {
+        const newStock = updatedStocks[productId].stock;
+        if (newStock !== currentStock) {
+          setCurrentStock(newStock);
+          // Si el stock baja, asegurar que la cantidad seleccionada no sea mayor
+          if (quantity > newStock) {
+            setQuantity(Math.max(1, newStock));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('stock-updated', handleStockUpdate as EventListener);
+    return () => {
+      window.removeEventListener('stock-updated', handleStockUpdate as EventListener);
+    };
+  }, [productId, currentStock, quantity]);
 
   // No normalizar precio, usar tal cual viene de la base de datos (precio_original)
   // Requisito: precio único fuente de verdad.
@@ -70,6 +96,12 @@ export default function AddToCartButton({
 
       if (!response.ok) {
         setMessage(data.error || 'No hay suficiente stock');
+
+        // Si el servidor nos devuelve el stock real, actualizamos inmediatamente
+        if (data.producto && typeof data.producto.stockDisponible === 'number') {
+          setCurrentStock(data.producto.stockDisponible);
+        }
+
         // Forzar actualización global por si el stock cambió
         if (typeof window !== 'undefined' && 'forzarActualizacionStock' in window) {
           (window as any).forzarActualizacionStock();
@@ -81,13 +113,17 @@ export default function AddToCartButton({
 
       const finalPrice = Number(price);
 
+      // Actualizar stock local con lo que devuelve el servidor
+      const stockRestante = data.producto?.stockDisponible ?? stock;
+      setCurrentStock(stockRestante);
+
       const cartItem: CartItem = {
         product_id: String(productId),
         quantity,
         precio: finalPrice,
         nombre: productName,
         urls_imagenes: [imageUrl],
-        stock: data.producto?.stockDisponible ?? stock // Usar el nuevo stock devuelto
+        stock: stockRestante
       };
 
       console.log("Agregando al carrito validado:", cartItem);
