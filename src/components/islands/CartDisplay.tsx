@@ -125,21 +125,20 @@ export default function CartDisplay() {
       return;
     }
 
-    if (item && newQuantity < item.quantity) {
-      // Si disminuye la cantidad, restaurar la diferencia
-      const diff = item.quantity - newQuantity;
-      if (diff > 0) {
-        await restoreStock(productId, diff);
-      }
-    }
+    if (!item) return;
 
     if (newQuantity > 0) {
+      // Caso: Actualizamos cantidad (pero sigue habiendo al menos 1)
+      if (newQuantity < item.quantity) {
+        // Si estamos disminuyendo, restauramos SOLO la diferencia
+        const diff = item.quantity - newQuantity;
+        await restoreStock(productId, diff);
+      }
       updateCartItem(productId, newQuantity);
     } else {
-      // Si llega a 0, ya lo manejamos en handleRemove (o aquí, pero handleRemove es más limpio para UI)
-      // Pero como updateCartItem(0) llama a remove internamente, debemos asegurar la restauración antes
-      // Si newQuantity es 0, item.quantity es lo que se restaurará.
-      if (item) await restoreStock(productId, item.quantity);
+      // Caso: La cantidad llega a 0 -> Eliminación
+      // Restauramos la cantidad TOTAL que tenía el item antes de eliminarlo
+      await restoreStock(productId, item.quantity);
       removeFromCart(productId);
     }
   };
