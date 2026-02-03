@@ -81,6 +81,18 @@ export default function CartDisplay() {
 
   const total = cartItems.reduce((sum, item) => sum + (item.precio * item.quantity), 0);
 
+  const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
+
+  // Helper para manejar estado de procesamiento
+  const setProcessing = (productId: string, isProcessing: boolean) => {
+    setProcessingItems(prev => {
+      const newSet = new Set(prev);
+      if (isProcessing) newSet.add(productId);
+      else newSet.delete(productId);
+      return newSet;
+    });
+  };
+
   // Función helper para restaurar stock
   const restoreStock = async (productId: string, quantity: number) => {
     try {
@@ -100,14 +112,23 @@ export default function CartDisplay() {
   };
 
   const handleRemove = async (productId: string) => {
-    const item = cartItems.find(i => i.product_id === productId);
-    if (item && item.quantity > 0) {
-      await restoreStock(productId, item.quantity);
+    if (processingItems.has(productId)) return;
+    setProcessing(productId, true);
+
+    try {
+      const item = cartItems.find(i => i.product_id === productId);
+      if (item && item.quantity > 0) {
+        await restoreStock(productId, item.quantity);
+      }
+      removeFromCart(productId);
+    } finally {
+      setProcessing(productId, false);
     }
-    removeFromCart(productId);
   };
 
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
+    if (processingItems.has(productId)) return;
+
     const item = cartItems.find(i => i.product_id === productId);
     const maxStock = item?.stock || 0;
 
@@ -126,20 +147,25 @@ export default function CartDisplay() {
     }
 
     if (!item) return;
+    setProcessing(productId, true);
 
-    if (newQuantity > 0) {
-      // Caso: Actualizamos cantidad (pero sigue habiendo al menos 1)
-      if (newQuantity < item.quantity) {
-        // Si estamos disminuyendo, restauramos SOLO la diferencia
-        const diff = item.quantity - newQuantity;
-        await restoreStock(productId, diff);
+    try {
+      if (newQuantity > 0) {
+        // Caso: Actualizamos cantidad (pero sigue habiendo al menos 1)
+        if (newQuantity < item.quantity) {
+          // Si estamos disminuyendo, restauramos SOLO la diferencia
+          const diff = item.quantity - newQuantity;
+          await restoreStock(productId, diff);
+        }
+        updateCartItem(productId, newQuantity);
+      } else {
+        // Caso: La cantidad llega a 0 -> Eliminación
+        // Restauramos la cantidad TOTAL que tenía el item antes de eliminarlo
+        await restoreStock(productId, item.quantity);
+        removeFromCart(productId);
       }
-      updateCartItem(productId, newQuantity);
-    } else {
-      // Caso: La cantidad llega a 0 -> Eliminación
-      // Restauramos la cantidad TOTAL que tenía el item antes de eliminarlo
-      await restoreStock(productId, item.quantity);
-      removeFromCart(productId);
+    } finally {
+      setProcessing(productId, false);
     }
   };
 
@@ -154,7 +180,7 @@ export default function CartDisplay() {
   return (
     <div className="space-y-4">
       {cartItems.map((item) => (
-        <div key={item.product_id} className="flex gap-4 pb-4 border-b border-charcoal-100">
+        <div key={item.product_id} className={`flex gap-4 pb-4 border-b border-charcoal-100 ${processingItems.has(item.product_id) ? 'opacity-50 pointer-events-none' : ''}`}>
           {/* Imagen */}
           <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
             {item.urls_imagenes?.[0] ? (
@@ -185,17 +211,18 @@ export default function CartDisplay() {
                 onClick={() => handleQuantityChange(item.product_id, item.quantity - 1)}
                 className="p-1 hover:bg-charcoal-100 rounded transition-colors"
                 aria-label="Disminuir cantidad"
+                disabled={processingItems.has(item.product_id)}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </button>
               <span className="px-2 py-1 bg-charcoal-100 rounded text-sm font-medium w-8 text-center">
-                {item.quantity}
+                {processingItems.has(item.product_id) ? '...' : item.quantity}
               </span>
               <button
                 onClick={() => handleQuantityChange(item.product_id, item.quantity + 1)}
-                disabled={item.quantity >= (item.stock || 0)}
+                disabled={item.quantity >= (item.stock || 0) || processingItems.has(item.product_id)}
                 className="p-1 hover:bg-charcoal-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Aumentar cantidad"
               >
@@ -219,6 +246,7 @@ export default function CartDisplay() {
             onClick={() => handleRemove(item.product_id)}
             className="text-red-600 hover:text-red-700 transition-colors pt-1"
             aria-label="Eliminar del carrito"
+            disabled={processingItems.has(item.product_id)}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
