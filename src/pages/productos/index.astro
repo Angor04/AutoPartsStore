@@ -4,10 +4,11 @@
 
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import ProductCard from "@/components/product/ProductCard.astro";
-import { getProducts, getCategories } from "@/lib/supabase";
+import { getProducts, getCategories, searchProducts } from "@/lib/supabase";
 import type { Product, Category } from "@/types/index";
 
-const productos: Product[] = await getProducts();
+const query = Astro.url.searchParams.get('q');
+const productos: Product[] = query ? await searchProducts(query) : await getProducts();
 const categorias: Category[] = await getCategories();
 
 console.log("Productos cargados:", productos.length);
@@ -29,7 +30,7 @@ const description = "Catálogo completo de recambios y piezas para coches";
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar Filters -->
       <aside class="lg:col-span-1">
-        <div class="bg-white rounded-lg p-6 shadow-sm sticky top-24 border border-charcoal-200">
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-charcoal-200">
           <h3 class="text-lg font-bold text-charcoal-900 mb-6">Categorías</h3>
 
           <!-- Categories Filter -->
@@ -56,7 +57,7 @@ const description = "Catálogo completo de recambios y piezas para coches";
       </aside>
 
       <!-- Products Grid -->
-      <div class="lg:col-span-3">
+      <div class="lg:col-span-3 min-h-screen">
         {productos && productos.length > 0 ? (
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {productos.map((product) => (
@@ -79,3 +80,11 @@ const description = "Catálogo completo de recambios y piezas para coches";
     </div>
   </div>
 </PublicLayout>
+
+<script is:inline define:vars={{ productos }}>
+  window.addEventListener('load', () => {
+    if (window.registrarProductosParaSync) {
+      window.registrarProductosParaSync(productos);
+    }
+  });
+</script>

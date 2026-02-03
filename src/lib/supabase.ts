@@ -91,6 +91,25 @@ export async function getProducts(): Promise<Product[]> {
   }
 }
 
+export async function searchProducts(query: string): Promise<Product[]> {
+  try {
+    const { data, error } = await supabaseClient
+      .from('productos')
+      .select('*')
+      .or(`nombre.ilike.${query}%,nombre.ilike.% ${query}%`);
+
+    if (error) {
+      console.error('Error searching products:', error);
+      return [];
+    }
+
+    return (data as Product[]) || [];
+  } catch (err) {
+    console.error('Exception searching products:', err);
+    return [];
+  }
+}
+
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { data, error } = await supabaseClient
     .from('productos')

@@ -63,7 +63,7 @@ const productLink = `/productos/${product.id}`;
           <p class="text-sm font-bold text-red-600">{priceDisplay}</p>
         )}
       </div>
-      <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70 stock-display">
+      <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70 stock-badge" data-product-id={product.id}>
         {product.stock > 0 ? `${product.stock} disp.` : "Sin stock"}
       </p>
     </div>

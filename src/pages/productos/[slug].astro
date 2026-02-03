@@ -190,3 +190,12 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
     object-fit: cover;
   }
 </style>
+</style>
+
+<script is:inline define:vars={{ producto }}>
+  window.addEventListener('load', () => {
+    if (window.registrarProductosParaSync) {
+      window.registrarProductosParaSync([producto]);
+    }
+  });
+</script>

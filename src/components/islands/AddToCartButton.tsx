@@ -54,46 +54,55 @@ export default function AddToCartButton({
 
   const validateAndAddToCart = async () => {
     try {
-      setMessage('Verificando disponibilidad...');
+      setMessage('Procesando...');
 
-      // Llamar RPC para verificar stock en BD
-      const { available, currentStock, error: availError } =
-        await checkProductAvailability(productId, quantity);
+      // Llamar a la API de validación y actualización atómica
+      const response = await fetch('/api/add-to-cart-validated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId,
+          cantidad: quantity
+        })
+      });
 
-      if (!available) {
-        setMessage(
-          `Stock insuficiente. Disponible: ${currentStock} ${currentStock === 1 ? 'unidad' : 'unidades'}`
-        );
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.error || 'No hay suficiente stock');
+        // Forzar actualización global por si el stock cambió
+        if (typeof window !== 'undefined' && 'forzarActualizacionStock' in window) {
+          (window as any).forzarActualizacionStock();
+        }
         return;
       }
 
-      // Stock verificado, agregar al carrito
-      // Requisito: NO aplicar ningún cálculo, división ni conversión.
+      // Éxito: El stock ya se descontó en el servidor
+
       const finalPrice = Number(price);
-      console.log(`Precio final para el carrito: ${finalPrice}€`);
 
       const cartItem: CartItem = {
         product_id: String(productId),
         quantity,
-        precio: finalPrice, // Usar precio directo de la BD
+        precio: finalPrice,
         nombre: productName,
         urls_imagenes: [imageUrl],
-        stock, // Guardar el stock disponible
+        stock: data.producto?.stockDisponible ?? stock // Usar el nuevo stock devuelto
       };
 
-      console.log("Agregando al carrito:", cartItem);
+      console.log("Agregando al carrito validado:", cartItem);
       addToCart(cartItem);
+
       setIsAdded(true);
       setMessage(`${quantity} ${quantity === 1 ? 'artículo' : 'artículos'} añadido al carrito`);
 
       // Disparar evento para actualizar el carrito en todos lados
       if (typeof window !== 'undefined') {
-        console.log("Disparando evento cartUpdated");
         window.dispatchEvent(new CustomEvent('cartUpdated'));
-
-        // Log del sessionStorage
-        const stored = sessionStorage.getItem('autopartsstore-cart');
-        console.log("Contenido del sessionStorage:", stored);
+        // Actualizar stock globalmente
+        if ('actualizarStockEnTiempoReal' in window) {
+          (window as any).actualizarStockEnTiempoReal();
+        }
       }
 
       setTimeout(() => {
@@ -101,9 +110,10 @@ export default function AddToCartButton({
         setMessage('');
         setQuantity(1);
       }, 2000);
+
     } catch (err) {
       console.error('Error al agregar al carrito:', err);
-      setMessage('Error al verificar stock. Intenta de nuevo.');
+      setMessage('Error de conexión. Intenta de nuevo.');
     }
   };
 
@@ -188,10 +198,10 @@ export default function AddToCartButton({
         onClick={handleAddToCart}
         disabled={!isInStock}
         className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${isAdded
-            ? 'bg-green-500 text-white'
-            : isInStock
-              ? 'bg-navy-500 text-white hover:bg-navy-600 active:bg-navy-700'
-              : 'bg-charcoal-300 text-charcoal-600 cursor-not-allowed'
+          ? 'bg-green-500 text-white'
+          : isInStock
+            ? 'bg-navy-500 text-white hover:bg-navy-600 active:bg-navy-700'
+            : 'bg-charcoal-300 text-charcoal-600 cursor-not-allowed'
           }`}
       >
         {isInStock ? (

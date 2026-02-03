@@ -37,7 +37,7 @@ const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCa
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar Filters -->
       <aside class="lg:col-span-1">
-        <div class="bg-white rounded-lg p-6 shadow-sm sticky top-24 border border-charcoal-200">
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-charcoal-200">
           <h3 class="text-lg font-bold text-charcoal-900 mb-6">Categorías</h3>
 
           <!-- Categories Filter -->
@@ -64,7 +64,7 @@ const description = `Descubre nuestra colección de ${categoria.nombre.toLowerCa
       </aside>
 
       <!-- Products Grid -->
-      <div class="lg:col-span-3">
+      <div class="lg:col-span-3 min-h-screen">
         {productos && productos.length > 0 ? (
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {productos.map((product) => (
