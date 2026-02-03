@@ -9,26 +9,26 @@ import type { CartItem } from '@/types';
 // Función para actualizar el resumen en el DOM
 function updateSummaryDOM(cartItems: CartItem[]) {
   if (typeof window === 'undefined') return;
-  
+
   const itemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const subtotal = cartItems.reduce((sum, item) => sum + ((item.precio || 0) * (item.quantity || 0)), 0);
-  
+
   // Actualizar contador
   const itemCountEl = document.getElementById('item-count');
   if (itemCountEl) {
     itemCountEl.textContent = `${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`;
   }
-  
+
   // Formatear precio
-  const formattedPrice = subtotal.toLocaleString('es-ES', { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 2 
+  const formattedPrice = subtotal.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }) + ' €';
-  
+
   // Actualizar subtotal y total
   const subtotalEl = document.getElementById('subtotal');
   const totalEl = document.getElementById('total');
-  
+
   if (subtotalEl) subtotalEl.textContent = formattedPrice;
   if (totalEl) totalEl.textContent = formattedPrice;
 }
@@ -49,16 +49,16 @@ export default function CartDisplay() {
         console.error('Error cargando carrito:', err);
         setMounted(true);
       });
-      
+
       // Escuchar evento de limpieza de carrito
       const handleCartCleared = () => {
         console.log('🛒 CartDisplay: Evento cart-cleared recibido, limpiando...');
         setCartItems([]);
         updateSummaryDOM([]);
       };
-      
+
       window.addEventListener('cart-cleared', handleCartCleared);
-      
+
       return () => {
         window.removeEventListener('cart-cleared', handleCartCleared);
       };
@@ -81,14 +81,36 @@ export default function CartDisplay() {
 
   const total = cartItems.reduce((sum, item) => sum + (item.precio * item.quantity), 0);
 
-  const handleRemove = (productId: string) => {
+  // Función helper para restaurar stock
+  const restoreStock = async (productId: string, quantity: number) => {
+    try {
+      await fetch('/api/restore-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, cantidad: quantity })
+      });
+
+      // Forzar actualización de stock en tiempo real
+      if (typeof window !== 'undefined' && (window as any).forzarActualizacionStock) {
+        (window as any).forzarActualizacionStock();
+      }
+    } catch (err) {
+      console.error('Error restaurando stock:', err);
+    }
+  };
+
+  const handleRemove = async (productId: string) => {
+    const item = cartItems.find(i => i.product_id === productId);
+    if (item && item.quantity > 0) {
+      await restoreStock(productId, item.quantity);
+    }
     removeFromCart(productId);
   };
 
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
+  const handleQuantityChange = async (productId: string, newQuantity: number) => {
     const item = cartItems.find(i => i.product_id === productId);
     const maxStock = item?.stock || 0;
-    
+
     if (newQuantity > maxStock) {
       setMessages(prev => ({
         ...prev,
@@ -102,10 +124,22 @@ export default function CartDisplay() {
       }, 2000);
       return;
     }
-    
+
+    if (item && newQuantity < item.quantity) {
+      // Si disminuye la cantidad, restaurar la diferencia
+      const diff = item.quantity - newQuantity;
+      if (diff > 0) {
+        await restoreStock(productId, diff);
+      }
+    }
+
     if (newQuantity > 0) {
       updateCartItem(productId, newQuantity);
     } else {
+      // Si llega a 0, ya lo manejamos en handleRemove (o aquí, pero handleRemove es más limpio para UI)
+      // Pero como updateCartItem(0) llama a remove internamente, debemos asegurar la restauración antes
+      // Si newQuantity es 0, item.quantity es lo que se restaurará.
+      if (item) await restoreStock(productId, item.quantity);
       removeFromCart(productId);
     }
   };
@@ -145,7 +179,7 @@ export default function CartDisplay() {
               {item.nombre}
             </h4>
             <p className="text-red-600 font-semibold mb-2">{formatPrice(item.precio)}</p>
-            
+
             {/* Cantidad */}
             <div className="flex items-center gap-2 mb-2">
               <button
