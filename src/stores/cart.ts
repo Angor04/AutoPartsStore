@@ -99,7 +99,13 @@ export function addToCart(item: CartItem) {
     // Si el producto ya existe, incrementa la cantidad y ACTUALIZA el precio (por si ha cambiado o estaba mal)
     updated = currentItems.map((i) =>
       String(i.product_id) === String(item.product_id)
-        ? { ...i, quantity: i.quantity + item.quantity, precio: item.precio, subtotal: (i.quantity + item.quantity) * item.precio }
+        ? {
+          ...i,
+          quantity: i.quantity + item.quantity,
+          precio: item.precio,
+          stock: item.stock, // Actualizamos el stock con la información más reciente
+          subtotal: (i.quantity + item.quantity) * item.precio
+        }
         : i
     );
   } else {

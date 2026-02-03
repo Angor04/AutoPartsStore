@@ -39,8 +39,8 @@ export default function CartDisplay() {
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
 
-  // Derivar cartItems directamente del store, asegurando que es un array
-  const cartItems = Array.isArray(items) ? items : [];
+  // Derivar cartItems directamente del store, asegurando que es un array y filtrando items inválidos
+  const cartItems = (Array.isArray(items) ? items : []).filter(item => item && item.product_id);
 
   useEffect(() => {
     // Al montar, cargar el carrito
@@ -74,6 +74,37 @@ export default function CartDisplay() {
     // Actualizar el resumen del carrito en el DOM cuando cambian los items
     updateSummaryDOM(cartItems);
   }, [items]);
+
+  useEffect(() => {
+    // Actualizar el stock en el store cuando llegue evento de tiempo real
+    const handleStockUpdate = (e: CustomEvent) => {
+      const updatedStocks = e.detail?.stock;
+      if (!updatedStocks) return;
+
+      const currentItems = cartStore.get();
+      let hasChanges = false;
+
+      const newItems = currentItems.map(item => {
+        if (updatedStocks[item.product_id]) {
+          const newStock = updatedStocks[item.product_id].stock;
+          if (item.stock !== newStock) {
+            hasChanges = true;
+            return { ...item, stock: newStock };
+          }
+        }
+        return item;
+      });
+
+      if (hasChanges) {
+        cartStore.set(newItems);
+      }
+    };
+
+    window.addEventListener('stock-updated', handleStockUpdate as EventListener);
+    return () => {
+      window.removeEventListener('stock-updated', handleStockUpdate as EventListener);
+    };
+  }, []);
 
   if (!mounted) {
     return <div className="text-center text-charcoal-500 py-8">Cargando carrito...</div>;
@@ -255,7 +286,7 @@ export default function CartDisplay() {
               </span>
               <button
                 onClick={() => handleQuantityChange(item.product_id, item.quantity + 1)}
-                disabled={item.quantity >= (item.stock || 0) || processingItems.has(item.product_id)}
+                disabled={(item.stock || 0) <= 0 || processingItems.has(item.product_id)}
                 className="p-1 hover:bg-charcoal-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Aumentar cantidad"
               >
@@ -287,7 +318,6 @@ export default function CartDisplay() {
           </button>
         </div>
       ))}
-
       {/* Total */}
       <div className="pt-4 border-t border-charcoal-200">
         <div className="flex justify-between items-center">
