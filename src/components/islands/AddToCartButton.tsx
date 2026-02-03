@@ -34,7 +34,10 @@ export default function AddToCartButton({
   // Estado local para el stock, inicializado con el prop pero actualizable
   const [currentStock, setCurrentStock] = useState(stock);
 
-  const maxAddable = Math.max(0, currentStock - currentQuantity);
+  // El stock que viene de la BD (y se actualiza en tiempo real) YA tiene descontado lo que hay en el carrito
+  // porque usamos add-to-cart-validated que resta el stock en la BD.
+  // Por tanto, maxAddable es simplemente el stock actual.
+  const maxAddable = currentStock;
   const isInStock = maxAddable > 0;
 
   React.useEffect(() => {

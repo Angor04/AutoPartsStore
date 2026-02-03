@@ -35,9 +35,12 @@ function updateSummaryDOM(cartItems: CartItem[]) {
 
 export default function CartDisplay() {
   const items = useStore(cartStore);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [mounted, setMounted] = useState(false);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
+
+  // Derivar cartItems directamente del store, asegurando que es un array
+  const cartItems = Array.isArray(items) ? items : [];
 
   useEffect(() => {
     // Al montar, cargar el carrito
@@ -52,9 +55,9 @@ export default function CartDisplay() {
 
       // Escuchar evento de limpieza de carrito
       const handleCartCleared = () => {
-        console.log('🛒 CartDisplay: Evento cart-cleared recibido, limpiando...');
-        setCartItems([]);
-        updateSummaryDOM([]);
+        // En este caso, ya que usamos el store, el update del store triggereará el re-render.
+        // Solo necesitamos limpiar el DOM si es necesario, pero updateSummaryDOM lo hará cuando items cambie.
+        console.log('🛒 CartDisplay: Evento cart-cleared recibido');
       };
 
       window.addEventListener('cart-cleared', handleCartCleared);
@@ -68,11 +71,8 @@ export default function CartDisplay() {
   }, []);
 
   useEffect(() => {
-    // Cuando cambian los items en el store, actualizar el state local y el DOM
-    const currentItems = Array.isArray(items) ? items : [];
-    setCartItems(currentItems);
-    // Actualizar el resumen del carrito en el DOM
-    updateSummaryDOM(currentItems);
+    // Actualizar el resumen del carrito en el DOM cuando cambian los items
+    updateSummaryDOM(cartItems);
   }, [items]);
 
   if (!mounted) {
@@ -81,7 +81,7 @@ export default function CartDisplay() {
 
   const total = cartItems.reduce((sum, item) => sum + (item.precio * item.quantity), 0);
 
-  const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
+
 
   // Helper para manejar estado de procesamiento
   const setProcessing = (productId: string, isProcessing: boolean) => {
@@ -111,6 +111,40 @@ export default function CartDisplay() {
     }
   };
 
+  // Helper para consumir stock (al incrementar cantidad)
+  const consumeStock = async (productId: string, quantity: number): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/add-to-cart-validated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, cantidad: quantity })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessages(prev => ({
+          ...prev,
+          [productId]: data.error || 'No hay stock suficiente'
+        }));
+        setTimeout(() => {
+          setMessages(prev => ({ ...prev, [productId]: '' }));
+        }, 3000);
+        return false;
+      }
+
+      // Forzar actualización de stock en tiempo real
+      if (typeof window !== 'undefined' && 'forzarActualizacionStock' in window) {
+        (window as any).forzarActualizacionStock();
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error consumiendo stock:', err);
+      return false;
+    }
+  };
+
   const handleRemove = async (productId: string) => {
     if (processingItems.has(productId)) return;
     setProcessing(productId, true);
@@ -132,35 +166,34 @@ export default function CartDisplay() {
     const item = cartItems.find(i => i.product_id === productId);
     const maxStock = item?.stock || 0;
 
-    if (newQuantity > maxStock) {
-      setMessages(prev => ({
-        ...prev,
-        [productId]: `No puedes añadir más de ${maxStock} unidades`
-      }));
-      setTimeout(() => {
-        setMessages(prev => ({
-          ...prev,
-          [productId]: ''
-        }));
-      }, 2000);
-      return;
-    }
+    // Nota: maxStock aquí es el stock que viene del store/API. 
+    // Como ya hemos consumido stock al añadir al carrito, este "stock" podría ser lo que queda en DB.
+    // Sin embargo, para validación UI rápida, podemos chequear.
+    // La validación real se hará en el servidor con consumeStock.
 
     if (!item) return;
     setProcessing(productId, true);
 
     try {
       if (newQuantity > 0) {
-        // Caso: Actualizamos cantidad (pero sigue habiendo al menos 1)
         if (newQuantity < item.quantity) {
-          // Si estamos disminuyendo, restauramos SOLO la diferencia
+          // DISMINUYENDO: Restaurar stock
           const diff = item.quantity - newQuantity;
           await restoreStock(productId, diff);
+          updateCartItem(productId, newQuantity);
+        } else if (newQuantity > item.quantity) {
+          // AUMENTANDO: Consumir stock en BD
+          const diff = newQuantity - item.quantity;
+          const success = await consumeStock(productId, diff);
+          if (success) {
+            updateCartItem(productId, newQuantity);
+          }
+        } else {
+          // Misma cantidad (raro pero posible)
+          updateCartItem(productId, newQuantity);
         }
-        updateCartItem(productId, newQuantity);
       } else {
-        // Caso: La cantidad llega a 0 -> Eliminación
-        // Restauramos la cantidad TOTAL que tenía el item antes de eliminarlo
+        // ELIMINANDO (cantidad 0)
         await restoreStock(productId, item.quantity);
         removeFromCart(productId);
       }
