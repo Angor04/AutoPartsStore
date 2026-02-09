@@ -16,6 +16,7 @@ export const GET: APIRoute = async ({ request }) => {
     const { data, error } = await supabaseClient
         .from('productos')
         .select('id, nombre, precio, urls_imagenes')
+        .eq('activo', true)
         .or(`nombre.ilike.${query}%,nombre.ilike.% ${query}%`)
         .limit(8);
 

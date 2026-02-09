@@ -2,6 +2,8 @@
 // src/pages/productos/index.astro
 // Listado de productos
 
+export const prerender = false;
+
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import ProductCard from "@/components/product/ProductCard.astro";
 import { getProducts, getCategories, searchProducts } from "@/lib/supabase";

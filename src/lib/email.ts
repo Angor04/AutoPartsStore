@@ -329,19 +329,20 @@ export async function sendOrderStatusUpdateEmail(
   const statusLabels: Record<string, string> = {
     'pendiente': 'Pendiente de pago',
     'pagado': 'Pagado',
-    'procesando': 'En preparación',
-    'enviado': 'Enviado',
+    'procesando': 'En proceso',
     'entregado': 'Entregado',
-    'cancelado': 'Cancelado'
+    'cancelado': 'Cancelado',
+    'cancelada': 'Cancelado' // Compatibility
   };
 
   const statusColors: Record<string, string> = {
     'pendiente': '#fbbf24',
     'pagado': '#3b82f6',
-    'procesando': '#3b82f6',
+    'procesando': '#f59e0b', // Changed to orange/amber for 'En proceso'
     'enviado': '#8b5cf6',
     'entregado': '#10b981',
-    'cancelado': '#ef4444'
+    'cancelado': '#ef4444',
+    'cancelada': '#ef4444'
   };
 
   const readableStatus = statusLabels[newStatus] || newStatus;

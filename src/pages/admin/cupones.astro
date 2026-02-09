@@ -22,9 +22,8 @@ function formatearFecha(fecha: string): string {
 function describeTipoDescuento(tipo: string, valor: number): string {
   if (tipo === 'porcentaje') {
     return `${valor}% de descuento`;
-  } else {
-    return `€${valor.toFixed(2)} fijo`;
   }
+  return `${valor.toFixed(2)} € fijo`;
 }
 ---
 
@@ -89,7 +88,7 @@ function describeTipoDescuento(tipo: string, valor: number): string {
                 {describeTipoDescuento(cupon.tipo_descuento, cupon.valor_descuento)}
               </td>
               <td>
-                {cupon.cantidad_minima_compra > 0 ? `€${cupon.cantidad_minima_compra}` : 'Sin mínimo'}
+                {cupon.cantidad_minima_compra > 0 ? `${cupon.cantidad_minima_compra} €` : 'Sin mínimo'}
               </td>
               <td>{formatearFecha(cupon.fecha_expiracion)}</td>
               <td>

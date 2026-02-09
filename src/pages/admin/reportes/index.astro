@@ -15,7 +15,7 @@ const supabaseAdmin = getSupabaseAdmin();
 const { data: ordenesData } = await supabaseAdmin
   .from('ordenes')
   .select('*')
-  .order('created_at', { ascending: false });
+  .order('creado_en', { ascending: false });
 
 const { data: productosData } = await supabaseAdmin
   .from('productos')
@@ -31,11 +31,15 @@ const ventasCompletadas = ordenes?.filter((o: Order) => o.estado === 'completada
 const productoTotal = productos?.length || 0;
 
 // Productos más vendidos
-const productosMasVendidos = productos?.slice(0, 5).map((p: Product) => ({
-  nombre: p.nombre,
-  precio: p.precio,
-  stock: p.stock || 0
-})) || [];
+// Productos con más stock
+const productosMasStock = productos
+  ?.sort((a, b) => (b.stock || 0) - (a.stock || 0))
+  .slice(0, 5)
+  .map((p: Product) => ({
+    nombre: p.nombre,
+    precio: p.precio,
+    stock: p.stock || 0
+  })) || [];
 ---
 
 <AdminLayout title="Reportes" description="Análisis y gráficas del negocio">
@@ -74,12 +78,12 @@ const productosMasVendidos = productos?.slice(0, 5).map((p: Product) => ({
           </tr>
         </thead>
         <tbody>
-          {productosMasVendidos.length === 0 ? (
+          {productosMasStock.length === 0 ? (
             <tr>
               <td colspan="3" style="text-align: center; padding: 40px; color: #999;">No hay productos</td>
             </tr>
           ) : (
-            productosMasVendidos.map(p => (
+            productosMasStock.map(p => (
               <tr style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 12px; font-weight: 600;">{p.nombre}</td>
                 <td style="padding: 12px;">{formatPrice(p.precio)}</td>

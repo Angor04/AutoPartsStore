@@ -10,7 +10,7 @@ const message = Astro.url.searchParams.get('message');
 const error = Astro.url.searchParams.get('error');
 ---
 
-<BaseLayout title="Admin Login" description="Acceso al panel de administración">
+<BaseLayout title="Admin Login" description="Acceso al panel de administraci&oacute;n">
   <style>
     .login-wrapper {
       min-height: 100vh;
@@ -135,7 +135,7 @@ const error = Astro.url.searchParams.get('error');
     <div class="login-card">
       <div class="login-header">
         <h1>Acceso Admin</h1>
-        <p>Panel de Administración</p>
+        <p>Panel de Administraci&oacute;n</p>
       </div>
 
       {error && <div class="error">{error}</div>}
@@ -155,7 +155,7 @@ const error = Astro.url.searchParams.get('error');
         </div>
 
         <div class="form-group">
-          <label for="password">Contraseña</label>
+          <label for="password">Contrase&ntilde;a</label>
           <input
             type="password"
             id="password"
@@ -166,7 +166,7 @@ const error = Astro.url.searchParams.get('error');
           />
         </div>
 
-        <button type="submit" class="submit-btn">Iniciar Sesión</button>
+        <button type="submit" class="submit-btn">Iniciar Sesi&oacute;n</button>
       </form>
 
       <div class="footer-text">

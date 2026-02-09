@@ -12,7 +12,7 @@ export const POST: APIRoute = async ({ request }) => {
     const { nombre, descripcion, precio_original, precio, stock, categoria_id, urls_imagenes } = body;
 
     // Validaciones
-    if (!nombre || !precio || !stock) {
+    if (!nombre || precio === undefined || stock === undefined) {
       return new Response(
         JSON.stringify({ error: 'Nombre, precio y stock son requeridos' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }

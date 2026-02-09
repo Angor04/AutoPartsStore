@@ -12,18 +12,29 @@ import type { Order } from "@/types";
 const supabaseAdmin = getSupabaseAdmin();
 
 // Obtener todas las órdenes
-const { data: ordenesData } = await supabaseAdmin
+const { data: ordenesData, error: ordersError } = await supabaseAdmin
   .from('ordenes')
   .select('*')
-  .order('created_at', { ascending: false });
+  .order('fecha_creacion', { ascending: false });
+
+if (ordersError) {
+    console.error('Error fetching orders:', ordersError);
+} else {
+    console.log(`Fetched ${ordenesData?.length} orders.`);
+    if (ordenesData && ordenesData.length > 0) {
+        console.log('First order keys:', Object.keys(ordenesData[0]));
+    }
+}
 
 const ordenes = (ordenesData as Order[] | null) || [];
+const debugError = ordersError ? JSON.stringify(ordersError) : null;
 
 // Estadísticas
 const totalOrdenes = ordenes?.length || 0;
-const ordenesCompletas = ordenes?.filter((o: Order) => o.estado === 'completada').length || 0;
-const ordenesPendientes = ordenes?.filter((o: Order) => o.estado === 'pendiente').length || 0;
-const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada').length || 0;
+const ordenesCompletas = ordenes?.filter((o: Order) => o.estado?.toLowerCase() === 'entregado' || o.estado?.toLowerCase() === 'completada').length || 0;
+const ordenesPendientes = ordenes?.filter((o: Order) => o.estado?.toLowerCase() === 'pendiente').length || 0;
+const ordenesEnProceso = ordenes?.filter((o: Order) => ['pagado', 'procesando', 'enviado', 'en proceso'].includes(o.estado?.toLowerCase())).length || 0;
+const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().includes('cancelad')).length || 0;
 ---
 
 <AdminLayout title="Gestión de Órdenes" description="Visualiza y administra todas las órdenes">
@@ -42,12 +53,19 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
     .badge-pendiente { background: #fef3c7; color: #92400e; }
     .badge-completada { background: #dcfce7; color: #166534; }
     .badge-cancelada { background: #fee2e2; color: #991b1b; }
+    .badge-info { background: #e0f2fe; color: #0369a1; } /* Blue/Info for active states */
     
     .select-estado { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; }
   </style>
 
   <div style="margin-bottom: 32px;">
-    <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin-bottom: 24px;">Órdenes</h2>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+        <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0;">Órdenes</h2>
+        <div id="connection-status" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; background: white; padding: 6px 12px; border-radius: 20px; border: 1px solid #e5e7eb;">
+            <span id="status-dot" style="width: 8px; height: 8px; background-color: #fbbf24; border-radius: 50%; display: inline-block;"></span>
+            <span id="status-text">Conectando...</span>
+        </div>
+    </div>
 
     <!-- Estadísticas -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
@@ -59,13 +77,17 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
         <div class="stat-number">{ordenesPendientes}</div>
         <div class="stat-label">Pendientes</div>
       </div>
+      <div class="stat-card" style="border-left-color: #3b82f6;">
+        <div class="stat-number">{ordenesEnProceso}</div>
+        <div class="stat-label">En Proceso</div>
+      </div>
       <div class="stat-card" style="border-left-color: #34d399;">
         <div class="stat-number">{ordenesCompletas}</div>
-        <div class="stat-label">Completadas</div>
+        <div class="stat-label">Entregados</div>
       </div>
       <div class="stat-card" style="border-left-color: #f87171;">
         <div class="stat-number">{ordenesCanceladas}</div>
-        <div class="stat-label">Canceladas</div>
+        <div class="stat-label">Cancelados</div>
       </div>
     </div>
 
@@ -74,7 +96,7 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
       <table>
         <thead>
           <tr>
-            <th>ID</th>
+            <th>Nº Pedido</th>
             <th>Cliente</th>
             <th>Email</th>
             <th>Total</th>
@@ -87,33 +109,65 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
           {!ordenes || ordenes.length === 0 ? (
             <tr>
               <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
-                No hay órdenes registradas
+                No hay órdenes registradas.
+                {debugError && <div style="color: red; margin-top: 10px; font-size: 12px;">Error: {debugError}</div>}
               </td>
             </tr>
           ) : (
             ordenes.map(orden => {
-              const estado = orden.estado || 'pendiente';
-              const badgeClass = estado === 'completada' ? 'badge-completada' : 
-                                estado === 'cancelada' ? 'badge-cancelada' : 'badge-pendiente';
+              const estado = (orden.estado || 'pendiente').toLowerCase();
+              // Logic for badges
+              let badgeClass = 'badge-info';
+              if (estado === 'entregado' || estado === 'completada') badgeClass = 'badge-completada';
+              else if (estado.includes('cancelad')) badgeClass = 'badge-cancelada';
+              else if (estado === 'pendiente') badgeClass = 'badge-pendiente';
+              
+              let readableEstado = estado === 'procesando' ? 'En proceso' : estado.charAt(0).toUpperCase() + estado.slice(1);
+              if (estado === 'cancelada' || estado === 'cancelado') readableEstado = 'Cancelado';
+
               return (
-                <tr>
-                  <td style="font-weight: 600; color: #1a1a1a;">#{orden.id?.toString().slice(0, 8)}</td>
-                  <td>{orden.nombre || 'N/A'}</td>
-                  <td style="color: #0369a1;">{orden.email || 'N/A'}</td>
+                <tr id={`order-${orden.id}`}>
+                  <td style="font-weight: 600; color: #1a1a1a;">
+                      {orden.numero_orden || `ORD-${orden.id}`}
+                  </td>
+                  <td>
+                      {(() => {
+                          const envio = orden.direccion_envio as any;
+                          if (orden.nombre) return orden.nombre;
+                          if (envio?.nombre) {
+                              return `${envio.nombre} ${envio.apellidos || ''}`.trim();
+                          }
+                          return 'Cliente Invitado';
+                      })()}
+                  </td>
+                  <td style="color: #0369a1;">
+                      {orden.email || orden.email_cliente || (orden.direccion_envio as any)?.email || 'N/A'}
+                  </td>
                   <td style="font-weight: 600;">{formatPrice(orden.total || 0)}</td>
                   <td>
                     <span class={`badge ${badgeClass}`}>
-                      {estado.charAt(0).toUpperCase() + estado.slice(1)}
+                      {readableEstado}
                     </span>
                   </td>
                   <td style="font-size: 13px; color: #999;">
-                    {new Date(orden.created_at).toLocaleDateString('es-ES')}
+                    {(() => {
+                      const dateStr = orden.fecha_creacion || orden.creado_en || orden.created_at;
+                      if (!dateStr) return 'Fecha desconocida';
+                      const safeDateStr = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+                      return new Date(safeDateStr).toLocaleString('es-ES', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                        timeZone: 'Europe/Madrid'
+                      });
+                    })()}
                   </td>
                   <td>
-                    <select class="select-estado" onchange="cambiarEstado('{orden.id}', this.value)">
+                    <select class="select-estado" onchange={`cambiarEstado('${orden.id}', this.value)`}>
                       <option value="pendiente" selected={estado === 'pendiente'}>Pendiente</option>
-                      <option value="completada" selected={estado === 'completada'}>Completada</option>
-                      <option value="cancelada" selected={estado === 'cancelada'}>Cancelada</option>
+                      <option value="pagado" selected={estado === 'pagado'}>Pagado</option>
+                      <option value="procesando" selected={estado === 'procesando'}>En proceso</option>
+                      <option value="enviado" selected={estado === 'enviado'}>Enviado</option>
+                      <option value="entregado" selected={estado === 'entregado'}>Entregado</option>
+                      <option value="cancelado" selected={estado === 'cancelada' || estado === 'cancelado'}>Cancelado</option>
                     </select>
                   </td>
                 </tr>
@@ -125,9 +179,186 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
     </div>
   </div>
 
-  <script>
-    async function cambiarEstado(ordenId: string, nuevoEstado: string): Promise<void> {
+  <script define:vars={{ 
+    SUPABASE_URL: import.meta.env.PUBLIC_SUPABASE_URL, 
+    SUPABASE_ANON_KEY: import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+    USER_TOKEN: Astro.cookies.get('sb-auth-token')?.value
+  }}>
+    import { createClient } from '@supabase/supabase-js';
+
+    // Función para formatear precio (duplicada de utilidades para uso en cliente)
+    const formatPrice = (amount) => {
+      return new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2
+      }).format(amount);
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'Fecha desconocida';
+        const safeDateStr = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+        return new Date(safeDateStr).toLocaleString('es-ES', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+            timeZone: 'Europe/Madrid'
+        });
+    };
+
+    // Inicializar cliente con token de admin
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && USER_TOKEN) {
+        const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${USER_TOKEN}`
+                }
+            },
+            auth: {
+                persistSession: false
+            }
+        });
+
+        console.log('[Orders] Initializing Realtime subscription...');
+
+        client
+            .channel('admin-orders-list')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes' }, async (payload) => {
+                console.log('[Orders] Change received:', payload);
+                
+                // Opción 1: Recargar la página para obtener los datos más frescos y ordenados (ordenados por servidor)
+                // Es la opción más robusta para asegurar que "aparezca más arriba" respetando el sort del servidor.
+                // location.reload(); 
+
+                // Opción 2: Manipulación del DOM para UX más suave (INSERT)
+                if (payload.eventType === 'INSERT') {
+                    const newOrder = payload.new;
+                    const tbody = document.querySelector('tbody');
+                    
+                    // Si estaba vacío, quitar el mensaje de "No hay órdenes"
+                    const emptyRow = tbody.querySelector('td[colspan="7"]');
+                    if (emptyRow) {
+                        tbody.innerHTML = '';
+                    }
+
+                    const row = document.createElement('tr');
+                    // Add ID to row for updates
+                    row.id = `order-${newOrder.id}`;
+                    
+                    row.innerHTML = `
+                      <td style="font-weight: 600; color: #1a1a1a;">${newOrder.numero_orden || 'ORD-' + newOrder.id}</td>
+                      <td>${nombreCliente}</td>
+                      <td style="color: #0369a1;">${emailCliente}</td>
+                      <td style="font-weight: 600;">${formatPrice(newOrder.total)}</td>
+                      <td><span class="badge ${getBadgeClass(newOrder.estado || 'pendiente')}">${formatEstado(newOrder.estado || 'pendiente')}</span></td>
+                      <td style="font-size: 13px; color: #999;">${formatDate(newOrder.fecha_creacion || newOrder.creado_en || newOrder.created_at)}</td>
+                      <td>
+                        <select class="select-estado" onchange="cambiarEstado('${newOrder.id}', this.value)">
+                          <option value="pendiente" ${newOrder.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                          <option value="pagado" ${newOrder.estado === 'pagado' ? 'selected' : ''}>Pagado</option>
+                          <option value="procesando" ${newOrder.estado === 'procesando' ? 'selected' : ''}>En proceso</option>
+                          <option value="enviado" ${newOrder.estado === 'enviado' ? 'selected' : ''}>Enviado</option>
+                          <option value="entregado" ${newOrder.estado === 'entregado' ? 'selected' : ''}>Entregado</option>
+                          <option value="cancelado" ${(newOrder.estado === 'cancelada' || newOrder.estado === 'cancelado') ? 'selected' : ''}>Cancelado</option>
+                        </select>
+                      </td>
+                    `;
+                    
+                    // Highlight effect
+                    row.style.backgroundColor = '#ecfdf5';
+                    row.style.transition = 'background-color 2s';
+                    
+                    // Insert at top
+                    tbody.insertBefore(row, tbody.firstChild);
+
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 2000);
+
+                } else if (payload.eventType === 'UPDATE') {
+                    const updatedOrder = payload.new;
+                    const row = document.getElementById(`order-${updatedOrder.id}`);
+                    if (row) {
+                        // Update Badge
+                        const badge = row.querySelector('.badge');
+                        if (badge) {
+                            badge.className = `badge ${getBadgeClass(updatedOrder.estado)}`;
+                            badge.textContent = formatEstado(updatedOrder.estado);
+                        }
+
+                        // Update Select if it wasn't the initiator (optional, but good for sync)
+                        const select = row.querySelector('select');
+                        if (select && select.value !== updatedOrder.estado && updatedOrder.estado) {
+                             // Only update if different to avoid interfering with user interaction?? 
+                             // Actually user interaction triggers DB update, so this will come back. 
+                             // We should update it to ensure consistency.
+                             // But for 'cancelado' vs 'cancelada' normalization handle carefully.
+                             const val = updatedOrder.estado.toLowerCase().startsWith('cancelad') ? 'cancelado' : updatedOrder.estado.toLowerCase();
+                             select.value = val;
+                        }
+                        
+                        // Highlight update
+                        row.style.backgroundColor = '#eff6ff'; // Blue tint
+                        setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                     const row = document.getElementById(`order-${payload.old.id}`);
+                     if (row) {
+                         row.style.opacity = '0.5';
+                         setTimeout(() => row.remove(), 500);
+                     }
+                }
+            })
+            })
+            .subscribe((status) => {
+                console.log('[Orders] Subscription status:', status);
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+                
+                if (dot && text) {
+                    if (status === 'SUBSCRIBED') {
+                        dot.style.backgroundColor = '#10b981'; // Green
+                        text.textContent = 'En tiempo real';
+                    } else if (status === 'CHANNEL_ERROR') {
+                        dot.style.backgroundColor = '#ef4444'; // Red
+                        text.textContent = 'Error de conexión';
+                    } else if (status === 'TIMED_OUT') {
+                        dot.style.backgroundColor = '#f59e0b'; // Amber
+                        text.textContent = 'Reconectando...';
+                    } else {
+                        dot.style.backgroundColor = '#9ca3af'; // Gray
+                        text.textContent = status;
+                    }
+                }
+            });
+    }
+
+    // Helper functions for client-side rendering
+    function getBadgeClass(estado) {
+        const lower = (estado || '').toLowerCase();
+        if (lower === 'entregado' || lower === 'completada') return 'badge-completada';
+        if (lower.includes('cancelad')) return 'badge-cancelada';
+        if (lower === 'pendiente') return 'badge-pendiente';
+        return 'badge-info';
+    }
+
+    function formatEstado(estado) {
+        const lower = (estado || '').toLowerCase();
+        if (lower === 'procesando') return 'En proceso';
+        if (lower.includes('cancelad')) return 'Cancelado';
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }
+    
+    (window as any).cambiarEstado = async function(ordenId: string, nuevoEstado: string): Promise<void> {
       try {
+        // Optimistic UI update (optional, gives "instant" feel before DB confirmation)
+        const row = document.getElementById(`order-${ordenId}`);
+        if (row) {
+            const badge = row.querySelector('.badge');
+            if (badge) {
+                badge.textContent = 'Actualizando...';
+                badge.style.opacity = '0.7';
+            }
+        }
+
         const formData = new FormData();
         formData.append('id', ordenId);
         formData.append('estado', nuevoEstado);
@@ -138,14 +369,29 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado === 'cancelada'
         });
 
         if (response.ok) {
-          location.reload();
+          // No reload! Let Realtime handle the final consistency, 
+          // or manually update here if Realtime is slow.
+          // For now, let's trust Realtime or just settle the UI state locally too.
+          if (row) {
+               const badge = row.querySelector('.badge');
+               if (badge) {
+                   badge.className = `badge ${getBadgeClass(nuevoEstado)}`;
+                   badge.textContent = formatEstado(nuevoEstado);
+                   badge.style.opacity = '1';
+               }
+          }
+          console.log('Estado actualizado correctamente');
         } else {
           const error = await response.json() as Record<string, string>;
           alert('Error: ' + (error.error || 'Error desconocido'));
+          // Revert optimistic update?
+          location.reload(); 
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('Error changing status:', error);
         alert('Error: ' + errorMessage);
+        location.reload();
       }
-    }
+    };
   </script>

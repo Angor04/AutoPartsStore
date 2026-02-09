@@ -8,7 +8,7 @@ import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getProducts, getCategories } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
-const products = await getProducts();
+const products = await getProducts(true);
 const categories = await getCategories();
 
 // Crear mapa de categorías para búsqueda rápida
@@ -17,16 +17,75 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
 
 <AdminLayout>
   <style>
+    /* Toggle Switch CSS */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    .switch input { 
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      -webkit-transition: .4s;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #10b981;
+    }
+    input:focus + .slider {
+      box-shadow: 0 0 1px #10b981;
+    }
+    input:checked + .slider:before {
+      -webkit-transform: translateX(24px);
+      -ms-transform: translateX(24px);
+      transform: translateX(24px);
+    }
+    
+    /* Modal & General Styles */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal.show { display: flex; }
-    .modal-content { background: white; border-radius: 8px; padding: 30px; width: 90%; max-width: 500px; }
-    .modal-header { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #1a1a1a; }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
-    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-    .form-group textarea { resize: vertical; min-height: 80px; }
-    .form-actions { display: flex; gap: 10px; margin-top: 20px; }
-    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .modal-content { background: white; border-radius: 8px; padding: 30px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { font-size: 20px; font-weight: bold; margin-bottom: 24px; color: #1a1a1a; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-group { margin-bottom: 0; }
+    .form-group.full-width { grid-column: span 2; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; transition: border-color 0.2s; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+    
+    .form-actions { display: flex; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; justify-content: flex-end; }
+    
+    .image-upload-area { border: 2px dashed #d1d5db; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #f9fafb; }
+    .image-upload-area:hover { border-color: #667eea; background: #f0f4ff; }
+    .preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; }
+    .preview-item { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; }
+    
+    .btn { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s; }
     .btn-primary { background: #667eea; color: white; }
     .btn-primary:hover { background: #764ba2; }
     .btn-secondary { background: #e5e7eb; color: #1a1a1a; }
@@ -34,7 +93,7 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
     .btn-danger { background: #ef4444; color: white; padding: 6px 12px; font-size: 13px; }
     .btn-danger:hover { background: #dc2626; }
     .btn-sm { padding: 6px 12px; font-size: 13px; }
-    
+
     table { width: 100%; border-collapse: collapse; }
     thead { background: #f9fafb; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
@@ -50,6 +109,81 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
   </style>
 
   <div style="margin-bottom: 32px;">
+    <!-- ... header ... (no changes here) -->
+    
+    <!-- (Modal de producto omitido, no cambia) -->
+
+    <!-- Modal para gestionar ofertas (NUEVO DISEÑO) -->
+    <div id="offersModal" class="modal">
+      <div class="modal-content" style="max-width: 800px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="flex-shrink: 0;">Gestionar Ofertas</div>
+        
+        <!-- Controls Header -->
+        <!-- Controls Header -->
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; flex-shrink: 0;">
+          <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between;">
+            <div>
+              <p style="color: #64748b; margin: 0; font-size: 14px;">
+                Desde aquí puedes ver qué productos tienen oferta activa y restaurar su precio original.
+                <br>Para crear una nueva oferta, utiliza el botón "Editar" de cada producto.
+              </p>
+            </div>
+            <div>
+              <button class="btn" style="background: #e2e8f0; color: #475569;" onclick="toggleAllOffers(false)">Restaurar Todos (Quitar Ofertas)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Product List -->
+        <div style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="position: sticky; top: 0; background: white; z-index: 10;">
+              <tr style="background: #f1f5f9;">
+                <th style="padding: 12px 16px; text-align: left;">Producto</th>
+                <th style="padding: 12px 16px; text-align: right;">Precio Original</th>
+                <th style="padding: 12px 16px; text-align: right;">Estado / Precio Actual</th>
+                <th style="padding: 12px 16px; text-align: center;">Oferta Activa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(product => {
+                const hasOffer = !!product.precio_original;
+                return (
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 12px 16px; font-weight: 500; color: #1e293b;">{product.nombre}</td>
+                    <td style="padding: 12px 16px; text-align: right; color: #64748b;">
+                      {formatPrice(product.precio_original || product.precio)}
+                    </td>
+                    <td style="padding: 12px 16px; text-align: right;">
+                      <span id={`price-display-${product.id}`} style={`font-weight: 700; ${hasOffer ? 'color: #dc2626;' : 'color: #1e293b;'}`}>
+                        {formatPrice(product.precio)}
+                      </span>
+                    </td>
+                    <td style="padding: 12px 16px; text-align: center;">
+                      <label class="switch">
+                        <input type="checkbox" 
+                               onchange="toggleProductOffer(this, ${product.id}, ${product.precio_original || product.precio})"
+                               ${hasOffer ? 'checked' : ''}>
+                        <span class="slider"></span>
+                      </label>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="form-actions" style="margin-top: 20px; flex-shrink: 0;">
+          <button type="button" class="btn btn-secondary" onclick="closeOffersModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+
+
+  <div style="margin-bottom: 32px;">
+    <!-- ... header ... -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
       <div>
         <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0;">Productos</h2>
@@ -68,116 +202,86 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
         <form id="productForm" onsubmit="handleSubmit(event)">
           <input type="hidden" id="productId" name="id">
           
-          <div class="form-group">
-            <label>Nombre *</label>
-            <input type="text" id="nombre" name="nombre" required>
-          </div>
-
-          <div class="form-group">
-            <label>Descripción</label>
-            <textarea id="descripcion" name="descripcion"></textarea>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div class="form-group">
-              <label>Precio Original *</label>
-              <input type="number" id="precio_original" name="precio_original" step="0.01" min="0">
+          <div class="form-grid">
+            <!-- Nombre: Ancho completo -->
+            <div class="form-group full-width">
+              <label>Nombre del Producto *</label>
+              <input type="text" id="nombre" name="nombre" required placeholder="Ej: Filtro de Aceite Premium">
             </div>
 
-            <div class="form-group">
-              <label>Precio (con descuento)</label>
-              <input type="number" id="precio" name="precio" step="0.01" min="0" required>
+            <!-- Descripción: Ancho completo -->
+            <div class="form-group full-width">
+              <label>Descripción</label>
+              <textarea id="descripcion" name="descripcion" placeholder="Detalles técnicos, compatibilidad, etc."></textarea>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label>Stock *</label>
-            <input type="number" id="stock" name="stock" min="0" required>
-          </div>
+            <!-- Precio Original -->
+            <div class="form-group">
+              <label>Precio Original (€) *</label>
+              <input type="number" id="precio_original" name="precio_original" step="0.01" min="0" placeholder="0.00">
+            </div>
 
-          <div class="form-group">
-            <label>Categoría</label>
-            <select id="categoria_id" name="categoria_id">
-              <option value="">Sin categoría</option>
-              {categories.map(cat => (
-                <option value={cat.id}>{cat.nombre}</option>
-              ))}
-            </select>
-          </div>
+            <!-- Precio Oferta -->
+            <div class="form-group">
+              <label>Precio Final/Oferta (€) *</label>
+              <input type="number" id="precio" name="precio" step="0.01" min="0" required placeholder="0.00">
+            </div>
 
-          <div class="form-group">
-            <label>URLs de Imágenes (separadas por coma)</label>
-            <input type="text" id="urls_imagenes" name="urls_imagenes" placeholder="https://... , https://...">
+            <!-- Stock -->
+            <div class="form-group">
+              <label>Stock Disponible *</label>
+              <input type="number" id="stock" name="stock" min="0" required placeholder="0">
+            </div>
+
+            <!-- Categoría -->
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="categoria_id" name="categoria_id">
+                <option value="">Seleccionar categoría...</option>
+                {categories.map(cat => (
+                  <option value={cat.id}>{cat.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            <!-- Imágenes: Ancho completo -->
+            <div class="form-group full-width">
+              <label style="margin-bottom: 8px; display: block;">Imágenes del Producto</label>
+              
+              <!-- Contenedor unificado para previews -->
+              <div id="unifiedPreview" class="preview-container" style="margin-bottom: 15px;"></div>
+
+              <!-- Input Oculto Persistent -->
+              <input type="hidden" id="urls_imagenes" name="urls_imagenes">
+
+              <!-- Area de Subida -->
+              <div class="image-upload-area" onclick="document.getElementById('imageInput').click()">
+                <div style="color: #6b7280;">
+                  <svg style="width: 40px; height: 40px; margin: 0 auto 10px; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <p style="font-weight: 500; color: #374151;">Haz clic para subir imágenes</p>
+                  <p style="font-size: 12px;">o arrastra archivos aquí</p>
+                </div>
+                <input type="file" id="imageInput" multiple accept="image/*" style="display: none;" onchange="handleImageSelect(this)">
+              </div>
+              
+              <div id="uploadStatus" style="display: none; margin-top: 10px; padding: 10px; background: #e0f2fe; color: #0284c7; border-radius: 4px; font-size: 13px; text-align: center;">
+                <span class="spinner" style="display: inline-block; width: 12px; height: 12px; border: 2px solid #0284c7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px;"></span>
+                Subiendo imágenes...
+              </div>
+            </div>
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Guardar</button>
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+             <button type="submit" class="btn btn-primary">Guardar Producto</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Modal para gestionar ofertas -->
-    <div id="offersModal" class="modal">
-      <div class="modal-content" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
-        <div class="modal-header">Gestionar Ofertas</div>
-        
-        <div style="margin-bottom: 20px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-            <div class="form-group">
-              <label>Precio Original</label>
-              <input type="number" id="offerPriceOriginal" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-            </div>
-            <div class="form-group">
-              <label>Precio con Descuento</label>
-              <input type="number" id="offerPrice" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-            </div>
-          </div>
 
-          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="btn btn-primary" onclick="applyAllOffers()">Aplicar a TODOS</button>
-            <button class="btn" style="background: #8b5cf6; color: white;" onclick="applySelectedOffers()">Aplicar a Seleccionados</button>
-            <button class="btn btn-secondary" onclick="clearAllOffers()">Limpiar Todo</button>
-          </div>
-        </div>
-
-        <!-- Tabla de productos para seleccionar -->
-        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
-          <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-weight: 600;">Selecciona productos:</h3>
-          <div style="border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
-            <table style="width: 100%; font-size: 13px;">
-              <thead>
-                <tr style="background: #f9fafb;">
-                  <th style="padding: 10px;">
-                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="cursor: pointer;">
-                  </th>
-                  <th style="padding: 10px; text-align: left;">Producto</th>
-                  <th style="padding: 10px; text-align: right;">Precio Original</th>
-                  <th style="padding: 10px; text-align: right;">Precio Actual</th>
-                </tr>
-              </thead>
-              <tbody id="productsOffersList">
-                {products.map(product => (
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 10px; text-align: center;">
-                      <input type="checkbox" class="product-checkbox" value={product.id} style="cursor: pointer;">
-                    </td>
-                    <td style="padding: 10px;">{product.nombre}</td>
-                    <td style="padding: 10px; text-align: right;">{formatPrice(product.precio_original || product.precio)}</td>
-                    <td style="padding: 10px; text-align: right; color: #dc2626;">{formatPrice(product.precio)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="form-actions" style="margin-top: 20px;">
-          <button type="button" class="btn btn-secondary" onclick="closeOffersModal()">Cerrar</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Tabla de productos -->
     <div style="background: white; border-radius: 8px; overflow: hidden;">
@@ -188,13 +292,14 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
             <th>Categoría</th>
             <th>Precio</th>
             <th>Stock</th>
+            <th>Estado</th> <!-- Nuevo -->
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           {products.length === 0 ? (
             <tr>
-              <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+              <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
                 No hay productos. <button onclick="openModal()" style="color: #667eea; text-decoration: underline; background: none; border: none; cursor: pointer;">Crear el primero</button>
               </td>
             </tr>
@@ -212,6 +317,19 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
                   ) : (
                     <span class="badge badge-stock">{product.stock} unidades</span>
                   )}
+                </td>
+                <td>
+                   <div style="display: flex; align-items: center; gap: 8px;">
+                     <label class="switch">
+                        <input type="checkbox" 
+                               checked={product.activo ?? true}
+                               onchange={`toggleProductStatus(this, ${product.id})`}>
+                        <span class="slider"></span>
+                     </label>
+                     <span style="font-size: 12px; color: #666;" id={`status-text-${product.id}`}>
+                       {product.activo !== false ? 'Activo' : 'Inactivo'}
+                     </span>
+                   </div>
                 </td>
                 <td>
                   <div class="actions">
@@ -256,149 +374,184 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       if (modal) modal.classList.remove('show');
     };
 
-    (window as any).toggleSelectAll = function(): void {
-      const selectAllElem = document.getElementById('selectAll') as HTMLInputElement | null;
-      if (!selectAllElem) return;
-      
-      const selectAll = selectAllElem.checked;
-      document.querySelectorAll('.product-checkbox').forEach((cb: Element) => {
-        if (cb instanceof HTMLInputElement) cb.checked = selectAll;
-      });
+
+    // --- GESTIÓN DE ESTADO (ACTIVO/INACTIVO) ---
+    (window as any).toggleProductStatus = async function(checkbox: HTMLInputElement, productId: number) {
+        const newStatus = checkbox.checked;
+        const previousStatus = !newStatus; // Por si falla, volver al anterior
+
+        try {
+            const response = await fetch('/api/admin/productos/estado', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: productId,
+                    activo: newStatus
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Error al actualizar estado');
+            }
+            
+            // Opcional: Mostrar toast de éxito
+            console.log(`Producto ${productId} ahora está ${newStatus ? 'activo' : 'inactivo'}`);
+            
+            const statusText = document.getElementById(`status-text-${productId}`);
+            if (statusText) {
+                statusText.textContent = newStatus ? 'Activo' : 'Inactivo';
+            }
+
+        } catch (err: any) {
+            console.error(err);
+            alert('Error: ' + err.message);
+            checkbox.checked = previousStatus; // Revertir cambio visual
+        }
     };
 
-    function getSelectedProducts(): number[] {
-      const selected: number[] = [];
-      document.querySelectorAll('.product-checkbox:checked').forEach((cb: Element) => {
-        if (cb instanceof HTMLInputElement && cb.value) {
-          selected.push(parseInt(cb.value));
-        }
+
+    // --- GESTIÓN DE OFERTAS CON TOGGLES ---
+
+    // Función auxiliar para llamar a la API
+    async function updateOfferApi(productIds: number[], action: 'set' | 'restore', price?: number, originalPrice?: number) {
+      const response = await fetch('/api/admin/productos/ofertas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productIds,
+          action,
+          precio: price,
+          precioOriginal: originalPrice
+        })
       });
-      return selected;
+      return response.ok;
     }
 
-    (window as any).applyAllOffers = async function(): Promise<void> {
-      try {
-        // Obtener todos los IDs de productos
-        const allProducts: number[] = [];
-        document.querySelectorAll('.product-checkbox').forEach((cb: Element) => {
-          if (cb instanceof HTMLInputElement && cb.value) {
-            allProducts.push(parseInt(cb.value));
+    (window as any).toggleProductOffer = async function(checkbox: HTMLInputElement, productId: number, currentOriginalPrice: number) {
+      const priceDisplay = document.getElementById(`price-display-${productId}`);
+      
+      if (checkbox.checked) {
+        // INTENTO DE ACTIVAR OFERTA
+        // El usuario ha indicado que los precios se gestionan desde "Editar".
+        // Por tanto, desde aquí no permitimos crear oferta (requeriría inputs).
+        alert('Para crear una oferta, por favor utiliza el botón "Editar" del producto y define el Precio Final y el Precio Original.');
+        checkbox.checked = false; // Revertir visualmente
+        return;
+
+      } else {
+        // DESACTIVAR (RESTAURAR)
+        const success = await updateOfferApi([productId], 'restore');
+        
+        if (success) {
+          if (priceDisplay) {
+            priceDisplay.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(currentOriginalPrice);
+            priceDisplay.style.color = '#1e293b'; // Normal
           }
-        });
-
-        if (allProducts.length === 0) {
-          alert('No hay productos en la lista');
-          return;
-        }
-
-        const precioOriginalElem = document.getElementById('offerPriceOriginal') as HTMLInputElement | null;
-        const precioElem = document.getElementById('offerPrice') as HTMLInputElement | null;
-        
-        if (!precioOriginalElem || !precioElem) {
-          alert('Error: No se encontraron los campos de precio');
-          return;
-        }
-        
-        const precioOriginal = (precioOriginalElem.value || '').trim();
-        const precio = (precioElem.value || '').trim();
-
-        // Validar que al menos un precio está presente
-        if (!precioOriginal && !precio) {
-          alert('Por favor ingresa al menos un precio');
-          return;
-        }
-
-        await applyOffers(allProducts);
-      } catch (err) {
-        console.error('Error in applyAllOffers:', err);
-      }
-    };
-
-    (window as any).applySelectedOffers = async function(): Promise<void> {
-      const selected = getSelectedProducts();
-
-      if (selected.length === 0) {
-        alert('Debes seleccionar al menos un producto');
-        return;
-      }
-
-      const precioOriginalElem = document.getElementById('offerPriceOriginal') as HTMLInputElement | null;
-      const precioElem = document.getElementById('offerPrice') as HTMLInputElement | null;
-      
-      if (!precioOriginalElem || !precioElem) return;
-      
-      const precioOriginal = precioOriginalElem.value;
-      const precio = precioElem.value;
-
-      if (!precioOriginal && !precio) {
-        alert('Debes ingresar al menos un precio');
-        return;
-      }
-
-      await applyOffers(selected);
-    };
-
-    async function applyOffers(productIds: number[]): Promise<void> {
-      const precioOriginalElem = document.getElementById('offerPriceOriginal') as HTMLInputElement | null;
-      const precioElem = document.getElementById('offerPrice') as HTMLInputElement | null;
-      
-      if (!precioOriginalElem || !precioElem) return;
-      
-      const precioOriginal = precioOriginalElem.value;
-      const precio = precioElem.value;
-
-      try {
-        const response = await fetch('/api/admin/productos/ofertas', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productIds,
-            precioOriginal: precioOriginal ? parseFloat(precioOriginal) : undefined,
-            precio: precio ? parseFloat(precio) : undefined
-          })
-        });
-
-        if (response.ok) {
-          alert('Ofertas aplicadas correctamente');
-          location.reload();
         } else {
-          const error = await response.json() as Record<string, string>;
-          alert('Error: ' + (error.error || 'Error desconocido'));
+          alert('Error al restaurar el precio');
+          checkbox.checked = true;
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        alert('Error: ' + errorMessage);
       }
-    }
+    };
 
-    (window as any).clearAllOffers = async function(): Promise<void> {
-      if (!confirm('¿Estás seguro de que quieres limpiar todas las ofertas? Esto restaurará los precios originales.')) return;
+    (window as any).toggleAllOffers = async function(enable: boolean) {
+      // SOLO SOPORTA DESACTIVAR (RESTORE)
+      if (enable) {
+        alert("La activación masiva requiere configuración individual de precios. Por favor hazlo uno a uno o usa 'Restaurar Todos'.");
+        return;
+      }
 
-      const allProducts: number[] = [];
-      document.querySelectorAll('.product-checkbox').forEach((cb: Element) => {
-        if (cb instanceof HTMLInputElement && cb.value) {
-          allProducts.push(parseInt(cb.value));
+      // Buscar todos los toggles que no estén en el estado deseado
+      const allSwitches = document.querySelectorAll('.switch input[type="checkbox"]');
+      const productsToUpdate: { id: number, originalPrice: number }[] = [];
+      const switchesToToggle: HTMLInputElement[] = [];
+
+      allSwitches.forEach((el) => {
+        const checkbox = el as HTMLInputElement;
+        // Obtenemos los datos del onclick string... un poco hacky pero funciona con el renderizado actual
+        // Mejor: parsear el html o usar atributos data.
+        // Vamos a asumir que el cambio visual lo haremos recargando o uno a uno.
+        // Para simplificar y asegurar consistencia, haremos un reload tras el bulk update.
+        
+        // Si queremos activar y no está activado
+        if (enable && !checkbox.checked) {
+            // Extraer ID y precio original de los atributos del evento onchange que renderizamos
+            // onchange="toggleProductOffer(this, 123, 45.00)"
+            const match = checkbox.getAttribute('onchange')?.match(/toggleProductOffer\(this,\s*(\d+),\s*([0-9.]+)\)/);
+            if (match) {
+                productsToUpdate.push({ id: parseInt(match[1]), originalPrice: parseFloat(match[2]) });
+                switchesToToggle.push(checkbox);
+            }
+        }
+        // Si queremos desactivar y está activado
+        else if (!enable && checkbox.checked) {
+             const match = checkbox.getAttribute('onchange')?.match(/toggleProductOffer\(this,\s*(\d+),\s*([0-9.]+)\)/);
+            if (match) {
+                productsToUpdate.push({ id: parseInt(match[1]), originalPrice: parseFloat(match[2]) });
+                switchesToToggle.push(checkbox);
+            }
         }
       });
 
-      try {
-        const response = await fetch('/api/admin/productos/ofertas', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productIds: allProducts,
-            precio: undefined
-          })
-        });
-
-        if (response.ok) {
-          alert('Ofertas eliminadas');
-          location.reload();
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        alert('Error: ' + errorMessage);
+      if (productsToUpdate.length === 0) {
+        alert('No hay productos para actualizar en esa dirección.');
+        return;
       }
+
+      const ids = productsToUpdate.map(p => p.id);
+      
+      let success;
+      if (enable) {
+        // En bulk 'set', el precio original puede variar por producto... 
+        // Nuestra API 'ofertas.ts' acepta UN solo precioOriginal para todos.
+        // Esto es un problema para 'set' masivo si los precios originales son distintos.
+        // Si la API no soporta precioOriginal por array, tenemos que usar el precio actual de cada uno.
+        // Solución rápida: Iterar llamadas o modificar API. 
+        // Dado que 'set' masivo suele ser para poner todo a 19.99, el precio original de cada uno debe preservarse.
+        // Modificaré la API para que si precioOriginal NO se envía en 'set', use el precio actual de la DB como original.
+        // Pero espera, toggleProductOffer envía el precio visual.
+        
+        // REVISIÓN: La API actual en 'set' usa setea precio_original = precioOriginal (param). 
+        // Si enviamos un solo valor, todos tendrán el mismo "original". Eso está MAL si eran diferentes.
+        // Para 'Activar Todo', lo ideal es hacerlo uno a uno en el frontend para asegurar integridad, visualizando el proceso.
+        
+        if (!confirm(`¿Seguro que quieres poner ${ids.length} productos a ${offerPrice}€?`)) return;
+
+        for (let i = 0; i < productsToUpdate.length; i++) {
+            const p = productsToUpdate[i];
+            const chk = switchesToToggle[i];
+            chk.checked = true; // Visual optimista
+            await (window as any).toggleProductOffer(chk, p.id, p.originalPrice);
+        }
+        alert('Proceso completado.');
+
+      } else {
+        // Restaurar masivo
+        if (!confirm(`¿Restaurar precios originales de ${ids.length} productos?`)) return;
+        
+        const response = await fetch('/api/admin/productos/ofertas', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productIds: ids, action: 'restore' })
+        });
+        
+        if (response.ok) {
+            location.reload(); // Recargar para ver los precios originales correctos
+        } else {
+            alert('Error en restauración masiva');
+        }
+      }
+    };
+
+    (window as any).openOffersModal = function(): void {
+      const modal = document.getElementById('offersModal');
+      if (modal) modal.classList.add('show');
+    };
+
+    (window as any).closeOffersModal = function(): void {
+      const modal = document.getElementById('offersModal');
+      if (modal) modal.classList.remove('show');
     };
 
     (window as any).editProduct = function(productJson: string | Record<string, any>): void {
@@ -411,10 +564,17 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       const precioElem = document.getElementById('precio') as HTMLInputElement | null;
       const stockElem = document.getElementById('stock') as HTMLInputElement | null;
       const categoriaElem = document.getElementById('categoria_id') as HTMLInputElement | null;
+      
       const urlsImagenesElem = document.getElementById('urls_imagenes') as HTMLInputElement | null;
       const modalTitle = document.getElementById('modalTitle');
       const productModal = document.getElementById('productModal');
       
+      // Reseteo de previews
+      const imageInput = document.getElementById('imageInput') as HTMLInputElement | null;
+      if (imageInput) imageInput.value = '';
+      const unifiedPreview = document.getElementById('unifiedPreview');
+      if (unifiedPreview) unifiedPreview.innerHTML = '';
+
       if (productIdElem) productIdElem.value = product.id;
       if (nombreElem) nombreElem.value = product.nombre || '';
       if (descripcionElem) descripcionElem.value = product.descripcion || '';
@@ -422,37 +582,110 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       if (precioElem) precioElem.value = product.precio || '';
       if (stockElem) stockElem.value = product.stock || '';
       if (categoriaElem) categoriaElem.value = product.categoria_id || '';
-      if (urlsImagenesElem) urlsImagenesElem.value = (product.urls_imagenes || []).join(', ');
+      
+      const currentUrls = product.urls_imagenes || [];
+      if (urlsImagenesElem) urlsImagenesElem.value = currentUrls.join(', ');
+      
+      // Mostrar imágenes existentes
+      if (unifiedPreview && currentUrls.length > 0) {
+        currentUrls.forEach((url: string) => {
+          const img = document.createElement('img');
+          img.src = url;
+          img.className = 'preview-item';
+          img.setAttribute('data-type', 'existing');
+          unifiedPreview.appendChild(img);
+        });
+      }
+
       if (modalTitle) modalTitle.textContent = 'Editar Producto';
       if (productModal) productModal.classList.add('show');
+    };
+
+    // Manejo de selección de imágenes
+    (window as any).handleImageSelect = function(input: HTMLInputElement): void {
+      const unifiedPreview = document.getElementById('unifiedPreview');
+      if (!unifiedPreview || !input.files) return;
+
+      // Limpiar solo las nuevas para no borrar las que vienen de DB
+      const newImages = unifiedPreview.querySelectorAll('[data-type="new"]');
+      newImages.forEach(img => img.remove());
+
+      Array.from(input.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.createElement('img');
+          img.src = e.target?.result as string;
+          img.className = 'preview-item';
+          img.setAttribute('data-type', 'new');
+          unifiedPreview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
     };
 
     (window as any).handleSubmit = async function(e: Event): Promise<void> {
       e.preventDefault();
       const productIdElem = document.getElementById('productId') as HTMLInputElement | null;
       const productFormElem = document.getElementById('productForm');
+      const uploadStatus = document.getElementById('uploadStatus');
+      const imageInput = document.getElementById('imageInput') as HTMLInputElement | null;
       
       if (!productIdElem || !productFormElem || !(productFormElem instanceof HTMLFormElement)) return;
       
       const id = productIdElem.value;
       const formData = new FormData(productFormElem);
 
-      // Procesar URLs de imágenes
+      // 1. Subir imágenes si hay seleccionadas
+      let uploadedUrls: string[] = [];
+      if (imageInput && imageInput.files && imageInput.files.length > 0) {
+        if (uploadStatus) uploadStatus.style.display = 'block';
+        
+        try {
+          // Subir secuencialmente para no saturar
+          for (const file of Array.from(imageInput.files)) {
+            const uploadData = new FormData();
+            uploadData.append('file', file);
+
+            const res = await fetch('/api/admin/upload-image', {
+              method: 'POST',
+              body: uploadData
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.secure_url) {
+                uploadedUrls.push(data.secure_url);
+              }
+            } else {
+              console.error('Error subiendo imagen');
+            }
+          }
+        } catch (err) {
+          console.error('Error subiendo imágenes:', err);
+          alert('Error al subir imágenes. Se intentará guardar las URLs manuales.');
+        } finally {
+          if (uploadStatus) uploadStatus.style.display = 'none';
+        }
+      }
+
+      // Procesar URLs texto y combinarlas con las subidas
       const urlsStr = String(formData.get('urls_imagenes') || '');
-      const urls = urlsStr
+      const manualUrls = urlsStr
         .split(',')
         .map(url => url.trim())
         .filter(url => url.length > 0);
+      
+      const allUrls = [...manualUrls, ...uploadedUrls];
 
       // Crear objeto con los datos correctos
       const body = {
         nombre: formData.get('nombre'),
         descripcion: formData.get('descripcion'),
-        precio_original: parseFloat(String(formData.get('precioOriginal'))),
+        precio_original: parseFloat(String(formData.get('precio_original'))),
         precio: parseFloat(String(formData.get('precio'))),
         stock: parseInt(String(formData.get('stock'))),
-        categoria_id: parseInt(String(formData.get('categoria'))),
-        urls_imagenes: urls
+        categoria_id: parseInt(String(formData.get('categoria_id'))),
+        urls_imagenes: allUrls
       };
 
       if (id) {

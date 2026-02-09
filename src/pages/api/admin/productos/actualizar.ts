@@ -23,7 +23,7 @@ export const PUT: APIRoute = async (context) => {
     if (descripcion !== undefined) updateData.descripcion = descripcion || null;
     if (precio) updateData.precio = parseFloat(precio);
     if (precio_original !== undefined) updateData.precio_original = precio_original ? parseFloat(precio_original) : null;
-    if (stock !== undefined) updateData.stock = stock ? parseInt(stock) : undefined;
+    if (stock !== undefined && stock !== null) updateData.stock = parseInt(String(stock));
     if (categoria_id !== undefined) updateData.categoria_id = categoria_id ? parseInt(categoria_id) : null;
     if (urls_imagenes) updateData.urls_imagenes = urls_imagenes;
 

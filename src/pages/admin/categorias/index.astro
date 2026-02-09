@@ -88,19 +88,19 @@ const categories = await getCategories();
   </div>
 
   <script>
-    function openModal(): void {
+    (window as any).openModal = function(): void {
       const modal = document.getElementById('categoryModal');
       const form = document.getElementById('categoryForm');
       if (modal) modal.classList.add('show');
       if (form && form instanceof HTMLFormElement) form.reset();
-    }
+    };
 
-    function closeModal(): void {
+    (window as any).closeModal = function(): void {
       const modal = document.getElementById('categoryModal');
       if (modal) modal.classList.remove('show');
-    }
+    };
 
-    async function handleSubmit(e: Event): Promise<void> {
+    (window as any).handleSubmit = async function(e: Event): Promise<void> {
       e.preventDefault();
       const formElement = document.getElementById('categoryForm');
       if (!formElement || !(formElement instanceof HTMLFormElement)) return;
@@ -123,9 +123,9 @@ const categories = await getCategories();
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         alert('Error: ' + errorMessage);
       }
-    }
+    };
 
-    async function deleteCategory(id: string): Promise<void> {
+    (window as any).deleteCategory = async function(id: string): Promise<void> {
       if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
 
       try {
@@ -143,12 +143,12 @@ const categories = await getCategories();
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         alert('Error: ' + errorMessage);
       }
-    }
+    };
 
     const categoryModal = document.getElementById('categoryModal');
     if (categoryModal) {
       categoryModal.addEventListener('click', function(e: Event) {
-        if (e.target === this) closeModal();
+        if (e.target === this) (window as any).closeModal();
       });
     }
   </script>

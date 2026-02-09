@@ -61,6 +61,7 @@ export interface Product {
   marca?: string;
   sku?: string;
   especificaciones?: Record<string, string>;
+  activo?: boolean; // Added for product visibility toggle
 }
 
 export type ProductInsert = Omit<Product, 'id' | 'creado_en' | 'actualizado_en'>;
@@ -74,7 +75,7 @@ export interface Order {
   email: string;
   nombre?: string;
   telefono?: string;
-  estado: 'PENDIENTE' | 'PAGADO' | 'ENVIADO' | 'ENTREGADO' | 'CANCELADO' | 'pendiente' | 'completada' | 'cancelada';
+  estado: 'PENDIENTE' | 'PAGADO' | 'ENVIADO' | 'ENTREGADO' | 'CANCELADO' | 'pendiente' | 'completada' | 'cancelada' | 'cancelado';
   estado_pago: 'PENDIENTE' | 'COMPLETADO' | 'FALLIDO' | 'REEMBOLSADO';
   subtotal: number;
   impuestos?: number;
@@ -93,6 +94,8 @@ export interface Order {
   solicitud_devolucion_id?: string;
   created_at: string;
   updated_at: string;
+  creado_en: string;     // Matches DB
+  actualizado_en: string; // Matches DB
 }
 
 export interface OrderItem {

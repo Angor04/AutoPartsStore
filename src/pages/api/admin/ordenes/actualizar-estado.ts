@@ -20,10 +20,35 @@ export const PUT: APIRoute = async (context) => {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 1. Actualizar estado
+    // 1. Obtener orden actual para verificar estado anterior
+    const { data: currentOrder, error: fetchError } = await (supabaseAdmin as any)
+      .from('ordenes')
+      .select('estado')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !currentOrder) {
+      return new Response(
+        JSON.stringify({ error: fetchError?.message || 'Orden no encontrada' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Si el estado es el mismo, no hacer nada
+    if (currentOrder.estado === estado) {
+      return new Response(
+        JSON.stringify({ success: true, message: 'El estado no ha cambiado' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Actualizar estado
     const { data: ordenData, error } = await (supabaseAdmin as any)
       .from('ordenes')
-      .update({ estado })
+      .update({
+        estado,
+        actualizado_en: new Date().toISOString()
+      })
       .eq('id', id)
       .select('*, usuario_id, email, numero_orden, nombre')
       .single();
@@ -35,7 +60,7 @@ export const PUT: APIRoute = async (context) => {
       );
     }
 
-    // 2. Lógica de envío de email con verificación de preferencias
+    // 3. Lógica de envío de email con verificación de preferencias
     try {
       const { email, usuario_id, numero_orden, nombre } = ordenData;
 
@@ -58,7 +83,7 @@ export const PUT: APIRoute = async (context) => {
       // Si es invitado (usuario_id null), shouldSendEmail se mantiene true (transaccional)
 
       if (shouldSendEmail && email) {
-        console.log(`Enviando actualización de estado (${estado}) a ${email}`);
+        console.log(`Estado cambiado de ${currentOrder.estado} a ${estado}. Enviando email a ${email}`);
         await sendOrderStatusUpdateEmail(
           email,
           nombre || 'Cliente',

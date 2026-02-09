@@ -3,9 +3,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database, Product, Category, Order } from '@/types';
 
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = import.meta.env?.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env?.PUBLIC_SUPABASE_ANON_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_KEY = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Missing Supabase environment variables');
@@ -73,11 +73,17 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
   return (data as Category) || null;
 }
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(includeInactive = false): Promise<Product[]> {
   try {
-    const { data, error } = await supabaseClient
-      .from('productos')
-      .select('*');
+    let query = supabaseClient.from('productos').select('*');
+
+    // Si no se pide explícitamente incluir inactivos, filtrar solo activos
+    // Nota: RLS ya debería encargarse, pero esto es doble seguridad y clarificación
+    if (!includeInactive) {
+      query = query.eq('activo', true);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching products:', error);
@@ -96,6 +102,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
     const { data, error } = await supabaseClient
       .from('productos')
       .select('*')
+      .eq('activo', true) // Solo buscar productos activos
       .or(`nombre.ilike.${query}%,nombre.ilike.% ${query}%`);
 
     if (error) {
@@ -130,6 +137,7 @@ export async function getProductsByCategory(categoryId: number | string): Promis
     const { data, error } = await supabaseClient
       .from('productos')
       .select('*')
+      .eq('activo', true)
       .eq('categoria_id', categoryId);
 
     if (error) {
@@ -149,6 +157,7 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
     const { data, error } = await supabaseClient
       .from('productos')
       .select('*')
+      .eq('activo', true)
       .eq('destacado', true)
       .limit(limit);
 

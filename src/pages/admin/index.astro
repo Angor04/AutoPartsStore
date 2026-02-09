@@ -8,6 +8,7 @@ import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getProducts } from "@/lib/supabase";
 import { formatNumber } from "@/lib/utils";
 import { getLowStockAlerts } from "@/lib/stockManagement";
+import DashboardCharts from "@/components/admin/DashboardCharts";
 
 // Obtener productos para calcular estadísticas
 const productos = await getProducts();
@@ -32,21 +33,46 @@ const valorInventario = productos.reduce((sum, p) => {
   return sum + (precioBase * (p.stock || 0));
 }, 0);
 
-// Descuento total en el inventario
-const descuentoTotal = productos.reduce((sum, p) => {
-  if (p.precio_original && p.precio_original > p.precio) {
-    const descuento = (p.precio_original - p.precio) * (p.stock || 0);
-    return sum + descuento;
-  }
-  return sum;
-}, 0);
+// DATOS NUEVOS: Ingresos de hoy y Últimas órdenes
+import { getSupabaseAdmin } from "@/lib/supabase";
+const supabaseAdmin = getSupabaseAdmin();
+
+// 1. Ingresos de Hoy
+const startOfToday = new Date();
+startOfToday.setHours(0,0,0,0);
+const endOfToday = new Date();
+endOfToday.setHours(23,59,59,999);
+
+const { data: ordenesHoy } = await supabaseAdmin
+  .from('ordenes')
+  .select('total')
+  .gte('creado_en', startOfToday.toISOString())
+  .lte('creado_en', endOfToday.toISOString())
+  .neq('estado', 'cancelada');
+
+const ingresosHoy = ordenesHoy?.reduce((sum, orden) => sum + (orden.total || 0), 0) || 0;
+
+// 2. Últimas 5 Órdenes
+const { data: ultimasOrdenesData } = await supabaseAdmin
+  .from('ordenes')
+  .select('*')
+  .order('creado_en', { ascending: false })
+  .limit(5);
+
+const ultimasOrdenes = ultimasOrdenesData || [];
 ---
 
 <AdminLayout title="Dashboard" description="Resumen general del negocio">
-  <!-- Header -->
-  <div style="margin-bottom: 32px;">
-    <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a;">Bienvenido al Panel de Control</h2>
-    <p style="color: #666; margin-top: 8px;">Aquí tienes un resumen de tu negocio</p>
+  <!-- Header con Valor Inventario Destacado -->
+  <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0;">Panel de Control</h2>
+      <p style="color: #666; margin: 4px 0 0 0;">Resumen general de tu negocio</p>
+    </div>
+    <div style="text-align: right;">
+      <p style="color: #666; font-size: 14px; margin: 0;">Valor Total del Inventario</p>
+      <h3 style="font-size: 36px; font-weight: bold; color: #4f46e5; margin: 4px 0 0 0;">{formatNumber(valorInventario)} €</h3>
+    </div>
   </div>
 
   <!-- Alertas de Bajo Stock (si hay) -->
@@ -101,26 +127,85 @@ const descuentoTotal = productos.reduce((sum, p) => {
       <p style="color: #dc2626; font-size: 12px; margin-top: 12px;">Requieren reabastecimiento</p>
     </div>
 
-    <!-- Widget: Valor Inventario -->
+    <!-- Widget: Ingresos de Hoy -->
     <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <div style="display: flex; justify-content: space-between; align-items: start;">
         <div>
-          <p style="color: #888; font-size: 14px;">Valor Inventario (sin descuentos)</p>
-          <h3 style="font-size: 32px; font-weight: bold; color: #1a1a1a; margin-top: 8px;">${formatNumber(valorInventario)}</h3>
+          <p style="color: #888; font-size: 14px;">Ingresos de Hoy</p>
+          <h3 style="font-size: 32px; font-weight: bold; color: #10b981; margin-top: 8px;">{formatNumber(ingresosHoy)} €</h3>
         </div>
       </div>
-      <p style="color: #0ea5e9; font-size: 12px; margin-top: 12px;">Valor total del stock</p>
+      <p style="color: #10b981; font-size: 12px; margin-top: 12px;">Ventas realizadas hoy</p>
     </div>
+  </div>
 
-    <!-- Widget: Descuento Total -->
-    <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <div>
-          <p style="color: #888; font-size: 14px;">Descuento en Inventario</p>
-          <h3 style="font-size: 32px; font-weight: bold; color: #dc2626; margin-top: 8px;">${formatNumber(descuentoTotal)}</h3>
-        </div>
-      </div>
-      <p style="color: #dc2626; font-size: 12px; margin-top: 12px;">Dinero en ofertas del stock</p>
+  <!-- Gráficas de Ventas -->
+  <DashboardCharts client:load />
+
+  <!-- Últimas Órdenes -->
+  <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 18px; font-weight: bold; color: #1a1a1a; margin: 0;">Últimas Órdenes</h3>
+      <a href="/admin/ordenes" style="color: #4f46e5; text-decoration: none; font-size: 14px; font-weight: 500;">Ver todas &rarr;</a>
+    </div>
+    
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid #e5e7eb;">
+            <th style="text-align: left; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Nº Pedido</th>
+            <th style="text-align: left; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Cliente</th>
+            <th style="text-align: right; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Total</th>
+            <th style="text-align: center; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Estado</th>
+            <th style="text-align: right; padding: 12px; color: #666; font-weight: 600; font-size: 14px;">Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ultimasOrdenes.length === 0 ? (
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 24px; color: #999;">No hay órdenes recientes</td>
+            </tr>
+          ) : (
+            ultimasOrdenes.map((orden: any) => {
+               const estado = (orden.estado || 'pendiente').toLowerCase();
+               let bg = '#e0f2fe'; let color = '#0369a1'; // Default Info/Blue
+
+               if (estado === 'entregado' || estado === 'completada') { bg = '#dcfce7'; color = '#166534'; }
+               else if (estado.includes('cancelad')) { bg = '#fee2e2'; color = '#991b1b'; }
+               else if (estado === 'pendiente') { bg = '#fef3c7'; color = '#92400e'; }
+               else if (estado === 'procesando' || estado === 'en proceso') { bg = '#fef3c7'; color = '#d97706'; } // Orange
+
+               let readableEstado = estado === 'procesando' ? 'En proceso' : estado.charAt(0).toUpperCase() + estado.slice(1);
+               if (estado === 'cancelada' || estado === 'cancelado') readableEstado = 'Cancelado';
+
+               return (
+              <tr style="border-bottom: 1px solid #e5e7eb; hover:background: #f9fafb;">
+                <td style="padding: 12px; color: #1a1a1a; font-weight: 600;">#{orden.numero_orden || orden.id.toString().slice(0, 8)}</td>
+                <td style="padding: 12px; color: #1a1a1a;">
+                  <div style="font-weight: 500;">{orden.nombre || 'N/A'}</div>
+                  <div style="font-size: 12px; color: #666;">{orden.email}</div>
+                </td>
+                <td style="padding: 12px; text-align: right; font-weight: 600; color: #1a1a1a;">{formatNumber(orden.total)} €</td>
+                <td style="padding: 12px; text-align: center;">
+                  <span style={`display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: ${bg}; color: ${color};`}>
+                    {readableEstado}
+                  </span>
+                </td>
+                <td style="padding: 12px; text-align: right; color: #666; font-size: 13px;">
+                  {(() => {
+                    const dateStr = orden.actualizado_en || orden.creado_en;
+                    const safeDateStr = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+                    return new Date(safeDateStr).toLocaleString('es-ES', {
+                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                      timeZone: 'Europe/Madrid'
+                    });
+                  })()}
+                </td>
+              </tr>
+            )})
+          )}
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -149,7 +234,7 @@ const descuentoTotal = productos.reduce((sum, p) => {
                 }`}>
                   {producto.stock} {producto.stock === 1 ? 'unidad' : 'unidades'}
                 </td>
-                <td style="text-align: right; padding: 12px; color: #1a1a1a;">€{(producto.precio || 0).toFixed(2)}</td>
+                <td style="text-align: right; padding: 12px; color: #1a1a1a;">{(producto.precio || 0).toFixed(2)} €</td>
               </tr>
             ))}
           </tbody>

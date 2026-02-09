@@ -53,6 +53,26 @@ export default function SearchBar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [wrapperRef]);
 
+    // Real-time updates for visibility
+    useEffect(() => {
+        const handleVisibilityChange = (event: CustomEvent) => {
+            const { id, visible } = event.detail;
+            console.log('[SearchBar] Visibility change:', id, visible);
+
+            if (!visible) {
+                setResults(prev => prev.filter(p => p.id !== id));
+            } else {
+                // Determine if we should re-fetch to include it? 
+                // Only if query matches? 
+                // For now, simple re-trigger next debounce if query exists
+                // Or just ignore "show" since hiding is the priority.
+            }
+        };
+
+        window.addEventListener('product-visibility-change', handleVisibilityChange as any);
+        return () => window.removeEventListener('product-visibility-change', handleVisibilityChange as any);
+    }, []);
+
     return (
         <div ref={wrapperRef} className="flex-1 max-w-2xl mx-8 relative">
             <form action="/productos" method="get" className="relative">

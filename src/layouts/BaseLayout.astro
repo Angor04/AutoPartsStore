@@ -55,5 +55,103 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   </head>
   <body>
     <slot />
+    
+    <script>
+      import { createClient } from '@supabase/supabase-js';
+
+      const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+      const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+      if (SUPABASE_URL && SUPABASE_KEY) {
+        console.log('[Realtime] Initializing client...');
+        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const channel = client
+          .channel('public:productos')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'productos' },
+            (payload) => {
+              console.log('[Realtime] Change received:', payload);
+              const { eventType, new: newRecord, old: oldRecord } = payload;
+              
+              // Helper to find cards
+              const findCards = (id) => {
+                  if (!id) return [];
+                  // Try both just in case, though attribute is string
+                  return document.querySelectorAll(`[data-product-id="${id}"]`);
+              };
+
+              // Helper to hide product
+              const hideProduct = (id) => {
+                const cards = findCards(id);
+                console.log(`[Realtime] Hiding ${cards.length} cards for ID: ${id}`);
+                cards.forEach((card) => {
+                  if (card instanceof HTMLElement) {
+                    card.style.display = 'none';
+                    card.style.opacity = '0.5'; 
+                  }
+                });
+                
+                // Dispatch event for other components (SearchBar)
+                window.dispatchEvent(new CustomEvent('product-visibility-change', { 
+                    detail: { id: id, visible: false } 
+                }));
+
+                // Detail Page Redirect if on that page
+                if (window.location.pathname.includes(`/productos/${id}`)) {
+                    if (window.location.pathname.endsWith(`/${id}`)) {
+                         alert('Este producto ya no está disponible.');
+                         window.location.href = '/productos';
+                    }
+                }
+              };
+
+              // Helper to show product
+              const showProduct = (id) => {
+                 const cards = findCards(id);
+                 console.log(`[Realtime] Showing ${cards.length} cards for ID: ${id}`);
+                 cards.forEach((card) => {
+                    if (card instanceof HTMLElement) {
+                       card.style.display = '';
+                       card.style.opacity = '1';
+                    }
+                 });
+                 
+                 // Dispatch event
+                 window.dispatchEvent(new CustomEvent('product-visibility-change', { 
+                    detail: { id: id, visible: true } 
+                 }));
+              };
+
+              if (eventType === 'DELETE') {
+                  // RLS hidden or deleted
+                  if (oldRecord && oldRecord.id) {
+                      hideProduct(oldRecord.id);
+                  }
+              } 
+              else if (eventType === 'INSERT') {
+                  // RLS visible or created
+                  if (newRecord && newRecord.id) {
+                      showProduct(newRecord.id);
+                  }
+              }
+              else if (eventType === 'UPDATE') {
+                  if (newRecord) {
+                       // Explicit check on 'activo' if visible
+                       if (newRecord.activo === false) {
+                           hideProduct(newRecord.id);
+                       } else {
+                           showProduct(newRecord.id);
+                       }
+                  }
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log('[Realtime] Status:', status);
+          });
+      }
+    </script>
   </body>
 </html>
