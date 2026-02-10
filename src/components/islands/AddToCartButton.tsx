@@ -227,8 +227,11 @@ export default function AddToCartButton({
 
       {/* Stock Info */}
       {isInStock && (
-        <p className="text-xs text-charcoal-500">
-          Disponible: {maxAddable} {maxAddable === 1 ? 'unidad' : 'unidades'}
+        <p className={`text-xs font-medium ${maxAddable <= 5 ? 'text-amber-600' : 'text-green-600'}`}>
+          {maxAddable > 5
+            ? 'Disponible'
+            : `¡Solo quedan ${maxAddable}!`
+          }
         </p>
       )}
 

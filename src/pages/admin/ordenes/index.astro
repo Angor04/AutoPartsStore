@@ -58,7 +58,7 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
     .select-estado { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; }
   </style>
 
-  <div style="margin-bottom: 32px;">
+  <div id="orders-container" data-user-token={Astro.cookies.get('sb-auth-token')?.value} style="margin-bottom: 32px;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
         <h2 style="font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0;">Órdenes</h2>
         <div id="connection-status" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; background: white; padding: 6px 12px; border-radius: 20px; border: 1px solid #e5e7eb;">
@@ -161,7 +161,7 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                     })()}
                   </td>
                   <td>
-                    <select class="select-estado" onchange={`cambiarEstado('${orden.id}', this.value)`}>
+                    <select class="select-estado" onchange={`window.cambiarEstado('${orden.id}', this.value)`}>
                       <option value="pendiente" selected={estado === 'pendiente'}>Pendiente</option>
                       <option value="pagado" selected={estado === 'pagado'}>Pagado</option>
                       <option value="procesando" selected={estado === 'procesando'}>En proceso</option>
@@ -179,14 +179,10 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
     </div>
   </div>
 
-  <script define:vars={{ 
-    SUPABASE_URL: import.meta.env.PUBLIC_SUPABASE_URL, 
-    SUPABASE_ANON_KEY: import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
-    USER_TOKEN: Astro.cookies.get('sb-auth-token')?.value
-  }}>
+  <script>
     import { createClient } from '@supabase/supabase-js';
 
-    // Función para formatear precio (duplicada de utilidades para uso en cliente)
+    // Helper functions
     const formatPrice = (amount) => {
       return new Intl.NumberFormat('es-ES', {
         style: 'currency',
@@ -204,7 +200,72 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
         });
     };
 
-    // Inicializar cliente con token de admin
+    function getBadgeClass(estado) {
+        const lower = (estado || '').toLowerCase();
+        if (lower === 'entregado' || lower === 'completada') return 'badge-completada';
+        if (lower.includes('cancelad')) return 'badge-cancelada';
+        if (lower === 'pendiente') return 'badge-pendiente';
+        return 'badge-info';
+    }
+
+    function formatEstado(estado) {
+        const lower = (estado || '').toLowerCase();
+        if (lower === 'procesando') return 'En proceso';
+        if (lower.includes('cancelad')) return 'Cancelado';
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }
+
+    // Initialize logic on page load
+    const container = document.getElementById('orders-container');
+    const USER_TOKEN = container?.dataset.userToken;
+    const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+    // Make global for inline onclick handlers if needed, 
+    // BUT better to attach event listeners programmatically or attach to window
+    window.cambiarEstado = async function(ordenId, nuevoEstado) {
+      try {
+        const row = document.getElementById(`order-${ordenId}`);
+        if (row) {
+            const badge = row.querySelector('.badge');
+            if (badge) {
+                badge.textContent = 'Actualizando...';
+                badge.style.opacity = '0.7';
+            }
+        }
+
+        const formData = new FormData();
+        formData.append('id', ordenId);
+        formData.append('estado', nuevoEstado);
+
+        const response = await fetch('/api/admin/ordenes/actualizar-estado', {
+          method: 'PUT',
+          body: formData
+        });
+
+        if (response.ok) {
+          if (row) {
+               const badge = row.querySelector('.badge');
+               if (badge) {
+                   badge.className = `badge ${getBadgeClass(nuevoEstado)}`;
+                   badge.textContent = formatEstado(nuevoEstado);
+                   badge.style.opacity = '1';
+               }
+          }
+          console.log('Estado actualizado correctamente');
+        } else {
+          const error = await response.json();
+          alert('Error: ' + (error.error || 'Error desconocido'));
+          location.reload(); 
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('Error changing status:', error);
+        alert('Error: ' + errorMessage);
+        location.reload();
+      }
+    };
+
     if (SUPABASE_URL && SUPABASE_ANON_KEY && USER_TOKEN) {
         const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             global: {
@@ -233,8 +294,8 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                     const newOrder = payload.new;
                     const tbody = document.querySelector('tbody');
                     
-                    // Si estaba vacío, quitar el mensaje de "No hay órdenes"
-                    const emptyRow = tbody.querySelector('td[colspan="7"]');
+                    // If empty, remove "No orders" message
+                    const emptyRow = tbody?.querySelector('td[colspan="7"]');
                     if (emptyRow) {
                         tbody.innerHTML = '';
                     }
@@ -243,15 +304,19 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                     // Add ID to row for updates
                     row.id = `order-${newOrder.id}`;
                     
+                    // Helpers for display
+                    const nombre = newOrder.nombre || (newOrder.direccion_envio?.nombre ? `${newOrder.direccion_envio.nombre} ${newOrder.direccion_envio.apellidos || ''}` : 'Cliente Invitado');
+                    const email = newOrder.email || newOrder.email_cliente || newOrder.direccion_envio?.email || 'N/A';
+                    
                     row.innerHTML = `
                       <td style="font-weight: 600; color: #1a1a1a;">${newOrder.numero_orden || 'ORD-' + newOrder.id}</td>
-                      <td>${nombreCliente}</td>
-                      <td style="color: #0369a1;">${emailCliente}</td>
+                      <td>${nombre}</td>
+                      <td style="color: #0369a1;">${email}</td>
                       <td style="font-weight: 600;">${formatPrice(newOrder.total)}</td>
                       <td><span class="badge ${getBadgeClass(newOrder.estado || 'pendiente')}">${formatEstado(newOrder.estado || 'pendiente')}</span></td>
                       <td style="font-size: 13px; color: #999;">${formatDate(newOrder.fecha_creacion || newOrder.creado_en || newOrder.created_at)}</td>
                       <td>
-                        <select class="select-estado" onchange="cambiarEstado('${newOrder.id}', this.value)">
+                        <select class="select-estado" onchange="window.cambiarEstado('${newOrder.id}', this.value)">
                           <option value="pendiente" ${newOrder.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
                           <option value="pagado" ${newOrder.estado === 'pagado' ? 'selected' : ''}>Pagado</option>
                           <option value="procesando" ${newOrder.estado === 'procesando' ? 'selected' : ''}>En proceso</option>
@@ -267,7 +332,7 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                     row.style.transition = 'background-color 2s';
                     
                     // Insert at top
-                    tbody.insertBefore(row, tbody.firstChild);
+                    tbody?.insertBefore(row, tbody.firstChild);
 
                     setTimeout(() => {
                         row.style.backgroundColor = '';
@@ -286,13 +351,12 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
 
                         // Update Select if it wasn't the initiator (optional, but good for sync)
                         const select = row.querySelector('select');
-                        if (select && select.value !== updatedOrder.estado && updatedOrder.estado) {
-                             // Only update if different to avoid interfering with user interaction?? 
-                             // Actually user interaction triggers DB update, so this will come back. 
-                             // We should update it to ensure consistency.
-                             // But for 'cancelado' vs 'cancelada' normalization handle carefully.
+                        if (select && updatedOrder.estado) {
+                             // Normalize 'cancelada' to 'cancelado' for select value comparison
                              const val = updatedOrder.estado.toLowerCase().startsWith('cancelad') ? 'cancelado' : updatedOrder.estado.toLowerCase();
-                             select.value = val;
+                             if (select.value !== val) {
+                                select.value = val;
+                             }
                         }
                         
                         // Highlight update
@@ -306,7 +370,6 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                          setTimeout(() => row.remove(), 500);
                      }
                 }
-            })
             })
             .subscribe((status) => {
                 console.log('[Orders] Subscription status:', status);
@@ -330,68 +393,4 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                 }
             });
     }
-
-    // Helper functions for client-side rendering
-    function getBadgeClass(estado) {
-        const lower = (estado || '').toLowerCase();
-        if (lower === 'entregado' || lower === 'completada') return 'badge-completada';
-        if (lower.includes('cancelad')) return 'badge-cancelada';
-        if (lower === 'pendiente') return 'badge-pendiente';
-        return 'badge-info';
-    }
-
-    function formatEstado(estado) {
-        const lower = (estado || '').toLowerCase();
-        if (lower === 'procesando') return 'En proceso';
-        if (lower.includes('cancelad')) return 'Cancelado';
-        return lower.charAt(0).toUpperCase() + lower.slice(1);
-    }
-    
-    (window as any).cambiarEstado = async function(ordenId: string, nuevoEstado: string): Promise<void> {
-      try {
-        // Optimistic UI update (optional, gives "instant" feel before DB confirmation)
-        const row = document.getElementById(`order-${ordenId}`);
-        if (row) {
-            const badge = row.querySelector('.badge');
-            if (badge) {
-                badge.textContent = 'Actualizando...';
-                badge.style.opacity = '0.7';
-            }
-        }
-
-        const formData = new FormData();
-        formData.append('id', ordenId);
-        formData.append('estado', nuevoEstado);
-
-        const response = await fetch('/api/admin/ordenes/actualizar-estado', {
-          method: 'PUT',
-          body: formData
-        });
-
-        if (response.ok) {
-          // No reload! Let Realtime handle the final consistency, 
-          // or manually update here if Realtime is slow.
-          // For now, let's trust Realtime or just settle the UI state locally too.
-          if (row) {
-               const badge = row.querySelector('.badge');
-               if (badge) {
-                   badge.className = `badge ${getBadgeClass(nuevoEstado)}`;
-                   badge.textContent = formatEstado(nuevoEstado);
-                   badge.style.opacity = '1';
-               }
-          }
-          console.log('Estado actualizado correctamente');
-        } else {
-          const error = await response.json() as Record<string, string>;
-          alert('Error: ' + (error.error || 'Error desconocido'));
-          // Revert optimistic update?
-          location.reload(); 
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        console.error('Error changing status:', error);
-        alert('Error: ' + errorMessage);
-        location.reload();
-      }
-    };
   </script>

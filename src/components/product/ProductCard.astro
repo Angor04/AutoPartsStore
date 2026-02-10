@@ -72,7 +72,10 @@ const productLink = `/productos/${product.id}`;
         )}
       </div>
       <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70 stock-badge" data-product-id={product.id}>
-        {product.stock > 0 ? `${product.stock} disp.` : "Sin stock"}
+        {product.stock > 5 
+          ? "Disponible" 
+          : (product.stock > 0 ? `¡Solo quedan ${product.stock}!` : "Agotado")
+        }
       </p>
     </div>
 
@@ -98,9 +101,15 @@ const productLink = `/productos/${product.id}`;
       const reserved = (productId && stockReserved[productId]) || 0;
       const available = Math.max(0, originalStock - reserved);
       
-      const stockDisplay = card.querySelector('.stock-display');
+          const stockDisplay = card.querySelector('.stock-badge');
       if (stockDisplay) {
-        stockDisplay.textContent = available > 0 ? `${available} disp.` : 'Sin stock';
+        if (available <= 0) {
+            stockDisplay.textContent = 'Agotado';
+        } else if (available <= 5) {
+            stockDisplay.textContent = `¡Solo quedan ${available}!`;
+        } else {
+            stockDisplay.textContent = 'Disponible';
+        }
       }
     });
   });

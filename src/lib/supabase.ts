@@ -18,25 +18,24 @@ export const supabaseClient = createClient<Database>(
 );
 
 // Cliente para operaciones de servidor con permisos de admin
-let supabaseAdmin: any = null;
-
+// NOTA: No usamos singleton para evitar problemas de caché con env vars en desarrollo
 export const getSupabaseAdmin = () => {
-  if (!supabaseAdmin) {
-    if (!SUPABASE_SERVICE_KEY) {
-      throw new Error('Missing Supabase service key for admin operations');
-    }
-    supabaseAdmin = createClient<Database>(
-      SUPABASE_URL,
-      SUPABASE_SERVICE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+  const serviceKey = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceKey) {
+    throw new Error('Missing Supabase service key for admin operations');
   }
-  return supabaseAdmin;
+
+  return createClient<Database>(
+    SUPABASE_URL,
+    serviceKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 };
 
 // Funciones de utilidad para operaciones comunes

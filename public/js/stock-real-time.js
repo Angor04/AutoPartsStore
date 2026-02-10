@@ -116,13 +116,13 @@ function actualizarBadgeUI(id, stock) {
             el.className = 'stock-badge badge-agotado';
             el.style.backgroundColor = '#fee2e2';
             el.style.color = '#991b1b';
-        } else if (stock < 5) {
+        } else if (stock <= 5) {
             el.textContent = `¡Solo quedan ${stock}!`;
             el.className = 'stock-badge badge-bajo';
             el.style.backgroundColor = '#fef3c7';
             el.style.color = '#92400e';
         } else {
-            el.textContent = 'En Stock';
+            el.textContent = 'Disponible';
             el.className = 'stock-badge badge-stock';
             el.style.backgroundColor = '#dcfce7';
             el.style.color = '#166534';
