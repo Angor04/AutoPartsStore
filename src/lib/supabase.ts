@@ -3,31 +3,40 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database, Product, Category, Order } from '@/types';
 
-const SUPABASE_URL = import.meta.env?.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env?.PUBLIC_SUPABASE_ANON_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_KEY = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const getEnv = (key: string) => {
+  if (import.meta.env && import.meta.env[key]) {
+    return import.meta.env[key];
+  }
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key];
+  }
+  return undefined;
+};
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing Supabase environment variables');
-}
+const SUPABASE_URL = getEnv('PUBLIC_SUPABASE_URL');
+const SUPABASE_ANON_KEY = getEnv('PUBLIC_SUPABASE_ANON_KEY');
 
 // Cliente para operaciones públicas (lectura de productos)
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('Missing Supabase environment variables');
+}
+
 export const supabaseClient = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
+  SUPABASE_URL || '',
+  SUPABASE_ANON_KEY || ''
 );
 
 // Cliente para operaciones de servidor con permisos de admin
 // NOTA: No usamos singleton para evitar problemas de caché con env vars en desarrollo
 export const getSupabaseAdmin = () => {
-  const serviceKey = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!serviceKey) {
     throw new Error('Missing Supabase service key for admin operations');
   }
 
   return createClient<Database>(
-    SUPABASE_URL,
+    SUPABASE_URL || '',
     serviceKey,
     {
       auth: {

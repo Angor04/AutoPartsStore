@@ -7,9 +7,9 @@ export const prerender = false;
 import PublicLayout from "@/layouts/PublicLayout.astro";
 import AddToCartButton from "@/components/islands/AddToCartButton.tsx";
 import ProductCard from "@/components/product/ProductCard.astro";
-import { getProducts } from "@/lib/supabase";
+import { getProducts, getCategories } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
-import type { Product } from "@/types/index";
+import type { Product, Category } from "@/types/index";
 
 const slug = Astro.params.slug;
 const productos: Product[] = await getProducts();
@@ -34,6 +34,10 @@ if (!producto) {
   return new Response("Producto no encontrado", { status: 404 });
 }
 
+// Obtener la categoría del producto
+const categorias: Category[] = await getCategories();
+const categoriaProducto = categorias.find((c) => c.id === producto!.categoria_id);
+
 // Obtener productos relacionados (misma categoría, excluyendo el actual)
 const productosRelacionados: Product[] = productos
   .filter((p) => p.categoria_id === producto!.categoria_id && p.id !== producto!.id)
@@ -52,7 +56,9 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
     <nav class="flex gap-2 mb-8 text-sm text-charcoal-600">
       <a href="/" class="hover:text-red-600">Inicio</a>
       <span>/</span>
-      <a href="/productos" class="hover:text-red-600">Productos</a>
+      <a href={categoriaProducto ? `/categoria/${categoriaProducto.slug}` : "/productos"} class="hover:text-red-600">
+        {categoriaProducto ? categoriaProducto.nombre : "Productos"}
+      </a>
       <span>/</span>
       <span class="text-charcoal-900 font-medium">{producto.nombre}</span>
     </nav>

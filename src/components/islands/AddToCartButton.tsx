@@ -151,7 +151,6 @@ export default function AddToCartButton({
       }, 2000);
 
     } catch (err) {
-      console.error('Error al agregar al carrito:', err);
       setMessage('Error de conexión. Intenta de nuevo.');
     }
   };
@@ -230,7 +229,7 @@ export default function AddToCartButton({
         <p className={`text-xs font-medium ${maxAddable <= 5 ? 'text-amber-600' : 'text-green-600'}`}>
           {maxAddable > 5
             ? 'Disponible'
-            : `¡Solo quedan ${maxAddable}!`
+            : `¡Solo ${maxAddable === 1 ? 'queda' : 'quedan'} ${maxAddable}!`
           }
         </p>
       )}

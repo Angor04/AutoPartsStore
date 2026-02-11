@@ -47,6 +47,8 @@ let query = supabaseAdmin
     gastos_envio,
     fecha_creacion,
     fecha_cancelacion,
+    fecha_entrega,
+    actualizado_en,
     numero_seguimiento,
     direccion_envio,
     email,
@@ -78,6 +80,27 @@ if (error) {
 }
 
 const pedidos = ordenes || [];
+
+// Obtener solicitudes de devolución existentes del usuario
+const { data: devolucionesExistentes } = await supabaseAdmin
+  .from('solicitudes_devolucion')
+  .select('orden_id, estado')
+  .eq('usuario_id', userId);
+
+const devolucionesMap = new Map<string, string>();
+if (devolucionesExistentes) {
+  devolucionesExistentes.forEach((d: any) => {
+    devolucionesMap.set(d.orden_id, d.estado);
+  });
+}
+
+// Función para verificar si está dentro de los 14 días de entrega
+function dentroDeVentanaDevolucion(pedido: any): boolean {
+  const fechaEntrega = pedido.fecha_entrega || pedido.actualizado_en;
+  if (!fechaEntrega) return false;
+  const dias = Math.floor((Date.now() - new Date(fechaEntrega).getTime()) / (1000 * 60 * 60 * 24));
+  return dias <= 14;
+}
 
 // Configuración de estados con colores y acciones
 const estadosConfig: Record<string, { color: string; bgColor: string; texto: string; icono: string }> = {
@@ -116,11 +139,16 @@ function formatPrice(price: number) {
 }
 
 // Determinar qué acciones están disponibles según el estado
-function getAcciones(estado: string) {
-  const estadoUpper = estado.toUpperCase();
+function getAcciones(pedido: any) {
+  const estadoUpper = (pedido.estado || '').toUpperCase();
+  const tieneDevolucion = devolucionesMap.has(pedido.id);
+  const enVentana = dentroDeVentanaDevolucion(pedido);
   return {
     puedeCancelar: estadoUpper === 'PAGADO',
-    puedeDevolver: estadoUpper === 'ENTREGADO',
+    puedeDevolver: estadoUpper === 'ENTREGADO' && !tieneDevolucion && enVentana,
+    tieneDevolucion: tieneDevolucion,
+    estadoDevolucion: devolucionesMap.get(pedido.id) || null,
+    fueraDeVentana: estadoUpper === 'ENTREGADO' && !tieneDevolucion && !enVentana,
     puedeSeguimiento: estadoUpper === 'ENVIADO' || estadoUpper === 'ENTREGADO',
   };
 }
@@ -184,7 +212,7 @@ function getAcciones(estado: string) {
             <div class="space-y-6">
               {pedidos.map((pedido: any) => {
                 const config = getEstadoConfig(pedido.estado);
-                const acciones = getAcciones(pedido.estado);
+                const acciones = getAcciones(pedido);
                 const items = pedido.ordenes_items || [];
                 
                 return (
@@ -287,7 +315,7 @@ function getAcciones(estado: string) {
                           </button>
                         )}
                         
-                        {/* Botón Devolución - Solo para ENTREGADO */}
+                        {/* Botón Devolución - Solo para ENTREGADO sin devolución previa y dentro de ventana */}
                         {acciones.puedeDevolver && (
                           <button
                             data-action="devolver"
@@ -298,6 +326,20 @@ function getAcciones(estado: string) {
                           >
                             Solicitar Devolución
                           </button>
+                        )}
+                        
+                        {/* Badge si ya tiene devolución */}
+                        {acciones.tieneDevolucion && (
+                          <span class="px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                            Devolución {acciones.estadoDevolucion === 'SOLICITADA' ? 'solicitada' : acciones.estadoDevolucion === 'ACEPTADA' ? 'aceptada' : acciones.estadoDevolucion === 'COMPLETADA' ? 'completada' : acciones.estadoDevolucion?.toLowerCase()}
+                          </span>
+                        )}
+                        
+                        {/* Mensaje si el plazo expiró */}
+                        {acciones.fueraDeVentana && (
+                          <span class="px-4 py-2 text-sm text-gray-500 italic">
+                            Plazo de devolución expirado
+                          </span>
                         )}
                         
                         {/* Botón Seguimiento - Para ENVIADO */}

@@ -72,7 +72,7 @@ export const PUT: APIRoute = async (context) => {
           .from('usuarios')
           .select('notificaciones_pedidos')
           .eq('id', usuario_id)
-          .single();
+          .single() as any;
 
         // Si tiene perfil y explícitamente desactivó notificaciones, no enviar
         if (usuario && usuario.notificaciones_pedidos === false) {
@@ -88,7 +88,8 @@ export const PUT: APIRoute = async (context) => {
           email,
           nombre || 'Cliente',
           numero_orden || id.slice(0, 8),
-          estado
+          estado,
+          !usuario_id // isGuest: true cuando no hay usuario_id
         );
       }
 

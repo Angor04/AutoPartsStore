@@ -324,7 +324,8 @@ export async function sendOrderStatusUpdateEmail(
   email: string,
   userName: string,
   orderNumber: string,
-  newStatus: string
+  newStatus: string,
+  isGuest: boolean = false
 ): Promise<boolean> {
   const statusLabels: Record<string, string> = {
     'pendiente': 'Pendiente de pago',
@@ -391,7 +392,7 @@ export async function sendOrderStatusUpdateEmail(
       <p>${message}</p>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${import.meta.env.SITE || 'http://localhost:4321'}/mi-cuenta/pedidos" style="
+        <a href="${import.meta.env.SITE || 'http://localhost:4321'}${isGuest ? `/estado-pedido?orden=${orderNumber}&email=${email}` : '/mi-cuenta/pedidos'}" style="
           background-color: #ef4444;
           color: white;
           padding: 12px 30px;
@@ -412,6 +413,222 @@ export async function sendOrderStatusUpdateEmail(
   return sendEmail({
     to: email,
     subject: `Actualización de pedido #${orderNumber} - ${readableStatus}`,
+    html,
+  });
+}
+
+/**
+ * Envía correo de confirmación de solicitud de devolución
+ */
+export async function sendReturnRequestEmail(
+  email: string,
+  orderNumber: string,
+  returnLabel: string,
+  totalAmount: number
+): Promise<boolean> {
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <div style="background-color: #1e293b; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Solicitud de Devolución</h1>
+        <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 14px;">Pedido #${orderNumber}</p>
+      </div>
+      
+      <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #1e293b; margin-top: 0;">Hemos recibido tu solicitud</h2>
+        <p style="line-height: 1.6;">Tu solicitud de devolución para el pedido <strong>#${orderNumber}</strong> ha sido registrada correctamente.</p>
+        
+        <!-- Estado -->
+        <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">Estado de la solicitud</p>
+          <span style="
+            display: inline-block;
+            padding: 8px 20px;
+            background-color: #fef3c720;
+            color: #d97706;
+            border: 1px solid #d97706;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 16px;
+          ">
+            Solicitada
+          </span>
+        </div>
+
+        <!-- Etiqueta de devolución -->
+        <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <h3 style="margin: 0 0 10px 0; color: #c2410c; font-size: 16px;">Etiqueta de Devolución</h3>
+          <p style="margin: 0; font-family: monospace; font-size: 18px; font-weight: bold; color: #1e293b; background: #fff; padding: 10px; border-radius: 4px; text-align: center;">
+            ${returnLabel}
+          </p>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #9a3412;">Incluye este número dentro del paquete de devolución.</p>
+        </div>
+
+        <!-- Instrucciones de envío -->
+        <div style="background-color: #f1f5f9; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #1e293b;">Dirección de Envío</h4>
+          <p style="margin: 0; line-height: 1.8; font-size: 14px;">
+            <strong>AutoParts Store - Devoluciones</strong><br>
+            C. Puerto Serrano, 11540<br>
+            Sanlúcar de Barrameda, Cádiz<br>
+            España
+          </p>
+        </div>
+
+        <!-- Instrucciones -->
+        <div style="margin: 20px 0;">
+          <h4 style="color: #1e293b; margin-bottom: 10px;">Instrucciones importantes:</h4>
+          <ul style="padding-left: 20px; line-height: 1.8; font-size: 14px; color: #475569;">
+            <li>Devuelve los artículos <strong>sin usar</strong> en su <strong>embalaje original</strong></li>
+            <li>Incluye el número de etiqueta dentro del paquete</li>
+            <li>Utiliza un servicio de mensajería con seguimiento</li>
+            <li>Conserva el recibo de envío para tu referencia</li>
+          </ul>
+        </div>
+
+        <!-- Reembolso -->
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #166534;">Información de Reembolso</h4>
+          <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.6;">
+            Una vez recibido y validado el paquete, el reembolso de <strong>€${totalAmount.toFixed(2)}</strong> se procesará en tu método de pago original en un plazo de <strong>5 a 7 días hábiles</strong>.
+          </p>
+        </div>
+
+
+
+        <div style="text-align: center; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+          <p style="font-size: 14px; color: #64748b;">¿Tienes alguna pregunta?</p>
+          <p style="font-size: 14px; color: #64748b;">Responde a este email o contáctanos a través de nuestra web.</p>
+          <p style="margin-top: 20px; font-weight: bold; color: #1e293b;">Auto Parts Store</p>
+        </div>
+      </div>
+      
+      <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 20px;">
+        © 2026 Auto Parts Store. C. Puerto Serrano, 11540 Sanlúcar de Barrameda, Cádiz. <br>
+        Has recibido este correo porque solicitaste una devolución en nuestra tienda.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Solicitud de Devolución - Pedido #${orderNumber}`,
+    html,
+  });
+}
+
+/**
+ * Envía email de actualización de estado de devolución (admin → cliente)
+ */
+export async function sendReturnStatusUpdateEmail(
+  email: string,
+  orderNumber: string,
+  newStatus: string,
+  returnLabel: string,
+  refundAmount?: number,
+  motivoRechazo?: string
+): Promise<boolean> {
+  const statusUpper = newStatus.toUpperCase();
+
+  // Configuración por estado
+  const statusConfig: Record<string, { color: string; bg: string; border: string; label: string; icon: string; message: string }> = {
+    'APROBADA': {
+      color: '#166534', bg: '#f0fdf4', border: '#bbf7d0', label: 'Aprobada', icon: '',
+      message: `Tu solicitud de devolución ha sido <strong>aprobada</strong>. Por favor, envía el producto a la dirección indicada más abajo.`
+    },
+    'RECHAZADA': {
+      color: '#991b1b', bg: '#fef2f2', border: '#fecaca', label: 'Rechazada', icon: '',
+      message: `Lamentamos informarte que tu solicitud de devolución ha sido <strong>rechazada</strong>. Si tienes alguna duda, no dudes en contactarnos.`
+    },
+    'PRODUCTO_RECIBIDO': {
+      color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', label: 'Producto Recibido', icon: '',
+      message: `Hemos <strong>recibido tu producto</strong>. Estamos procediendo a revisarlo. Te notificaremos cuando el reembolso se procese.`
+    },
+    'REEMBOLSADA': {
+      color: '#166534', bg: '#f0fdf4', border: '#bbf7d0', label: 'Reembolsada', icon: '',
+      message: refundAmount
+        ? `Tu reembolso de <strong>€${refundAmount.toFixed(2)}</strong> ha sido procesado. Lo recibirás en tu método de pago original en un plazo de <strong>5 a 7 días hábiles</strong>.`
+        : `Tu reembolso ha sido procesado. Lo recibirás en tu método de pago original en un plazo de <strong>5 a 7 días hábiles</strong>.`
+    },
+  };
+
+  const config = statusConfig[statusUpper] || {
+    color: '#374151', bg: '#f9fafb', border: '#e5e7eb', label: newStatus, icon: '',
+    message: `El estado de tu devolución ha sido actualizado a: <strong>${newStatus}</strong>.`
+  };
+
+  const showShippingAddress = statusUpper === 'APROBADA';
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <div style="background-color: #1e293b; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Actualización de Devolución</h1>
+        <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 14px;">Pedido #${orderNumber}</p>
+      </div>
+      
+      <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+        
+        <!-- Estado -->
+        <div style="background-color: ${config.bg}; border: 1px solid ${config.border}; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+          <h2 style="color: ${config.color}; margin: 10px 0 5px 0; font-size: 20px;">${config.label}</h2>
+          <p style="color: ${config.color}; margin: 0; font-size: 14px;">Etiqueta: <strong>${returnLabel}</strong></p>
+        </div>
+
+        <!-- Mensaje -->
+        <p style="line-height: 1.6; font-size: 15px; margin-bottom: 20px;">${config.message}</p>
+
+        ${statusUpper === 'RECHAZADA' && motivoRechazo ? `
+        <!-- Motivo del rechazo -->
+        <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px 20px; border-radius: 0 8px 8px 0; margin: 0 0 20px 0;">
+          <p style="margin: 0 0 5px 0; font-weight: 600; color: #991b1b; font-size: 14px;">Motivo del rechazo:</p>
+          <p style="margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.5;">${motivoRechazo}</p>
+        </div>
+        ` : ''}
+
+        ${showShippingAddress ? `
+        <!-- Dirección de envío (solo para APROBADA) -->
+        <div style="background-color: #f1f5f9; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #1e293b;">Envía el producto a:</h4>
+          <p style="margin: 0; line-height: 1.8; font-size: 14px;">
+            <strong>AutoParts Store - Devoluciones</strong><br>
+            C. Puerto Serrano, 11540<br>
+            Sanlúcar de Barrameda, Cádiz<br>
+            España
+          </p>
+        </div>
+        <div style="margin: 20px 0;">
+          <h4 style="color: #1e293b; margin-bottom: 10px;">Instrucciones:</h4>
+          <ul style="padding-left: 20px; line-height: 1.8; font-size: 14px; color: #475569;">
+            <li>Incluye la etiqueta <strong>${returnLabel}</strong> dentro del paquete</li>
+            <li>Devuelve los artículos <strong>sin usar</strong> en su <strong>embalaje original</strong></li>
+            <li>Utiliza un servicio de mensajería con seguimiento</li>
+          </ul>
+        </div>
+        ` : ''}
+
+
+
+        <div style="text-align: center; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+          <p style="font-size: 14px; color: #64748b;">¿Tienes alguna pregunta? Responde a este email.</p>
+          <p style="margin-top: 15px; font-weight: bold; color: #1e293b;">Auto Parts Store</p>
+        </div>
+      </div>
+      
+      <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 20px;">
+        © 2026 Auto Parts Store. C. Puerto Serrano, 11540 Sanlúcar de Barrameda, Cádiz.
+      </p>
+    </div>
+  `;
+
+  const subjectMap: Record<string, string> = {
+    'APROBADA': `Devolución Aprobada - Pedido #${orderNumber}`,
+    'RECHAZADA': `Devolución Rechazada - Pedido #${orderNumber}`,
+    'PRODUCTO_RECIBIDO': `Producto Recibido - Devolución #${orderNumber}`,
+    'REEMBOLSADA': `Reembolso Procesado - Pedido #${orderNumber}`,
+  };
+
+  return sendEmail({
+    to: email,
+    subject: subjectMap[statusUpper] || `Actualización Devolución - Pedido #${orderNumber}`,
     html,
   });
 }

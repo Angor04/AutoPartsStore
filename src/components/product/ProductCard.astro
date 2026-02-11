@@ -74,7 +74,7 @@ const productLink = `/productos/${product.id}`;
       <p class="text-xs text-charcoal-600 mt-0.5 text-opacity-70 stock-badge" data-product-id={product.id}>
         {product.stock > 5 
           ? "Disponible" 
-          : (product.stock > 0 ? `¡Solo quedan ${product.stock}!` : "Agotado")
+          : (product.stock > 0 ? `¡Solo ${product.stock === 1 ? 'queda' : 'quedan'} ${product.stock}!` : "Agotado")
         }
       </p>
     </div>
@@ -106,7 +106,7 @@ const productLink = `/productos/${product.id}`;
         if (available <= 0) {
             stockDisplay.textContent = 'Agotado';
         } else if (available <= 5) {
-            stockDisplay.textContent = `¡Solo quedan ${available}!`;
+            stockDisplay.textContent = `¡Solo ${available === 1 ? 'queda' : 'quedan'} ${available}!`;
         } else {
             stockDisplay.textContent = 'Disponible';
         }

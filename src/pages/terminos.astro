@@ -1,0 +1,132 @@
+---
+// src/pages/terminos.astro
+import PublicLayout from "@/layouts/PublicLayout.astro";
+
+const title = "Términos y Condiciones";
+const description = "Términos y condiciones de uso de AutoPartsStore.";
+---
+
+<PublicLayout title={title} description={description}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-2">Términos y Condiciones</h1>
+    <p class="text-sm text-charcoal-500 mb-10">Última actualización: 11 de febrero de 2026</p>
+
+    <div class="prose prose-charcoal max-w-none space-y-10 text-charcoal-700 text-sm leading-relaxed">
+
+      <!-- 1 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">1. Información General</h2>
+        <p>
+          El presente sitio web <strong>autopartsstore.com</strong> (en adelante, "la Tienda") es propiedad de AutoPartsStore, 
+          con domicilio en C. Puerto Serrano, 11540, Sanlúcar de Barrameda, Cádiz, España.
+        </p>
+        <p class="mt-2">
+          El acceso y uso de este sitio web implica la aceptación plena y sin reservas de los presentes Términos y Condiciones. 
+          Si no está de acuerdo con alguno de ellos, le rogamos que no utilice la Tienda.
+        </p>
+      </section>
+
+      <!-- 2 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">2. Productos y Precios</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Los productos ofrecidos son recambios y piezas para automóviles destinados al mercado español.</li>
+          <li>Los precios mostrados incluyen IVA y están expresados en euros (€).</li>
+          <li>AutoPartsStore se reserva el derecho de modificar los precios sin previo aviso. El precio aplicable será el vigente en el momento de la compra.</li>
+          <li>Las imágenes de los productos son orientativas y pueden variar ligeramente respecto al producto real.</li>
+        </ul>
+      </section>
+
+      <!-- 3 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">3. Proceso de Compra</h2>
+        <ol class="list-decimal pl-5 space-y-1">
+          <li>El usuario selecciona los productos deseados y los añade al carrito de compra.</li>
+          <li>Completa el formulario de envío con sus datos personales y dirección de entrega.</li>
+          <li>Revisa el resumen del pedido y procede al pago a través de la pasarela segura Stripe.</li>
+          <li>Tras confirmarse el pago, recibirá un correo electrónico con la confirmación del pedido.</li>
+        </ol>
+        <p class="mt-2">
+          El contrato de compraventa se considera formalizado en el momento en que se confirma el pago satisfactoriamente.
+        </p>
+      </section>
+
+      <!-- 4 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">4. Envíos</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Los envíos se realizan exclusivamente a direcciones dentro de España peninsular.</li>
+          <li>El coste de envío es de <strong>5,99 €</strong>. Los pedidos superiores a <strong>50,00 €</strong> tienen envío gratuito.</li>
+          <li>El plazo de entrega estimado es de 3 a 7 días laborables desde la confirmación del pedido.</li>
+          <li>AutoPartsStore no se responsabiliza de retrasos ocasionados por causas de fuerza mayor o incidencias del transportista.</li>
+        </ul>
+      </section>
+
+      <!-- 5 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">5. Devoluciones</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>El cliente dispone de un plazo de <strong>14 días naturales</strong> desde la recepción del producto para solicitar una devolución.</li>
+          <li>El producto debe encontrarse en su estado y embalaje original, sin haber sido utilizado ni manipulado.</li>
+          <li>Para iniciar una devolución, el cliente deberá acceder a la página de estado de pedido e indicar el motivo.</li>
+          <li>Una vez aprobada la devolución, se proporcionará una etiqueta de envío por correo electrónico.</li>
+          <li>El reembolso se realizará por el mismo método de pago utilizado en la compra, en un plazo máximo de 14 días desde la recepción del producto devuelto.</li>
+        </ul>
+      </section>
+
+      <!-- 6 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">6. Garantía</h2>
+        <p>
+          Todos los productos vendidos a través de la Tienda cuentan con la garantía legal de conformidad de <strong>3 años</strong> 
+          establecida por la legislación española vigente (Real Decreto Legislativo 1/2007). En caso de defecto de conformidad, 
+          el cliente podrá solicitar la reparación, sustitución, rebaja del precio o resolución del contrato.
+        </p>
+      </section>
+
+      <!-- 7 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">7. Responsabilidad</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>AutoPartsStore no se responsabiliza del uso incorrecto de los productos adquiridos ni de daños derivados de una instalación inadecuada.</li>
+          <li>Se recomienda que la instalación de las piezas sea realizada por un profesional cualificado.</li>
+          <li>La Tienda no garantiza la disponibilidad ininterrumpida del sitio web ni la ausencia de errores técnicos.</li>
+        </ul>
+      </section>
+
+      <!-- 8 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">8. Propiedad Intelectual</h2>
+        <p>
+          Todos los contenidos del sitio web (textos, imágenes, logotipos, diseño gráfico, código fuente) son propiedad de AutoPartsStore 
+          o de sus proveedores y están protegidos por la legislación vigente en materia de propiedad intelectual e industrial. 
+          Queda prohibida su reproducción, distribución o modificación sin autorización expresa.
+        </p>
+      </section>
+
+      <!-- 9 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">9. Legislación Aplicable</h2>
+        <p>
+          Los presentes Términos y Condiciones se rigen por la legislación española. Para cualquier controversia 
+          derivada del uso de la Tienda, las partes se someten a los juzgados y tribunales del domicilio del consumidor, 
+          conforme a la normativa vigente.
+        </p>
+      </section>
+
+      <!-- 10 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">10. Contacto</h2>
+        <p>
+          Para cualquier consulta relacionada con estos Términos y Condiciones, puede contactarnos en:
+        </p>
+        <ul class="list-none mt-2 space-y-1">
+          <li><strong>Email:</strong> admin@autopartsstore.com</li>
+          <li><strong>Teléfono:</strong> 605 898 331</li>
+          <li><strong>Dirección:</strong> C. Puerto Serrano, 11540, Sanlúcar de Barrameda, Cádiz</li>
+        </ul>
+      </section>
+
+    </div>
+  </div>
+</PublicLayout>

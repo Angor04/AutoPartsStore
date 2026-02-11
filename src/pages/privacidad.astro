@@ -1,0 +1,149 @@
+---
+// src/pages/privacidad.astro
+import PublicLayout from "@/layouts/PublicLayout.astro";
+
+const title = "Política de Privacidad";
+const description = "Política de privacidad y tratamiento de datos personales de AutoPartsStore.";
+---
+
+<PublicLayout title={title} description={description}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-serif font-bold text-charcoal-900 mb-2">Política de Privacidad</h1>
+    <p class="text-sm text-charcoal-500 mb-10">Última actualización: 11 de febrero de 2026</p>
+
+    <div class="prose prose-charcoal max-w-none space-y-10 text-charcoal-700 text-sm leading-relaxed">
+
+      <!-- 1 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">1. Responsable del Tratamiento</h2>
+        <ul class="list-none space-y-1">
+          <li><strong>Razón social:</strong> AutoPartsStore</li>
+          <li><strong>Dirección:</strong> C. Puerto Serrano, 11540, Sanlúcar de Barrameda, Cádiz, España</li>
+          <li><strong>Email de contacto:</strong> admin@autopartsstore.com</li>
+          <li><strong>Teléfono:</strong> 605 898 331</li>
+        </ul>
+      </section>
+
+      <!-- 2 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">2. Datos que Recopilamos</h2>
+        <p>En función de cómo interactúe con nuestra Tienda, podemos recopilar los siguientes datos personales:</p>
+        <ul class="list-disc pl-5 space-y-1 mt-2">
+          <li><strong>Datos de registro:</strong> nombre, apellidos, correo electrónico y contraseña.</li>
+          <li><strong>Datos de compra:</strong> dirección de envío, teléfono, código postal, ciudad y provincia.</li>
+          <li><strong>Datos de facturación:</strong> los datos de pago son gestionados directamente por Stripe y no se almacenan en nuestros servidores.</li>
+          <li><strong>Datos de navegación:</strong> dirección IP, tipo de navegador, páginas visitadas y cookies (ver nuestra <a href="/cookies" class="text-red-600 hover:text-red-700 underline">Política de Cookies</a>).</li>
+          <li><strong>Datos de comunicación:</strong> contenido de los mensajes enviados a través del formulario de contacto o correo electrónico.</li>
+        </ul>
+      </section>
+
+      <!-- 3 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">3. Finalidad del Tratamiento</h2>
+        <p>Tratamos sus datos personales con las siguientes finalidades:</p>
+        <ul class="list-disc pl-5 space-y-1 mt-2">
+          <li>Gestionar su cuenta de usuario y autenticación.</li>
+          <li>Procesar y gestionar sus pedidos, envíos y devoluciones.</li>
+          <li>Enviar comunicaciones relacionadas con el estado de sus pedidos.</li>
+          <li>Atender sus consultas y solicitudes de soporte.</li>
+          <li>Enviar comunicaciones comerciales y promociones, únicamente si ha dado su consentimiento expreso (newsletter).</li>
+          <li>Cumplir con obligaciones legales y fiscales.</li>
+        </ul>
+      </section>
+
+      <!-- 4 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">4. Base Legal del Tratamiento</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Ejecución de un contrato:</strong> el tratamiento es necesario para gestionar las compras realizadas.</li>
+          <li><strong>Consentimiento:</strong> para el envío de comunicaciones comerciales y la suscripción a la newsletter.</li>
+          <li><strong>Interés legítimo:</strong> para mejorar nuestros servicios y la experiencia del usuario.</li>
+          <li><strong>Obligación legal:</strong> para cumplir con obligaciones fiscales y de facturación.</li>
+        </ul>
+      </section>
+
+      <!-- 5 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">5. Destinatarios de los Datos</h2>
+        <p>Sus datos personales podrán ser comunicados a los siguientes terceros:</p>
+        <ul class="list-disc pl-5 space-y-1 mt-2">
+          <li><strong>Stripe:</strong> pasarela de pago para el procesamiento seguro de transacciones.</li>
+          <li><strong>Supabase:</strong> plataforma de base de datos y autenticación.</li>
+          <li><strong>Resend:</strong> servicio de envío de correos electrónicos transaccionales.</li>
+          <li><strong>Empresas de transporte:</strong> para la gestión y entrega de los envíos.</li>
+        </ul>
+        <p class="mt-2">No se realizan transferencias internacionales de datos fuera del Espacio Económico Europeo salvo a proveedores que cumplan con las garantías adecuadas (cláusulas contractuales tipo o decisiones de adecuación).</p>
+      </section>
+
+      <!-- 6 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">6. Plazo de Conservación</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Los datos de la cuenta de usuario se conservarán mientras esta permanezca activa.</li>
+          <li>Los datos de pedidos se conservarán durante el tiempo necesario para cumplir con las obligaciones legales (mínimo 5 años conforme a la normativa fiscal).</li>
+          <li>Los datos de la newsletter se conservarán hasta que el usuario solicite su baja.</li>
+        </ul>
+      </section>
+
+      <!-- 7 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">7. Derechos del Usuario</h2>
+        <p>De conformidad con el Reglamento General de Protección de Datos (RGPD) y la LOPDGDD, usted tiene derecho a:</p>
+        <ul class="list-disc pl-5 space-y-1 mt-2">
+          <li><strong>Acceso:</strong> conocer qué datos personales tratamos sobre usted.</li>
+          <li><strong>Rectificación:</strong> solicitar la corrección de datos inexactos o incompletos.</li>
+          <li><strong>Supresión:</strong> solicitar la eliminación de sus datos cuando ya no sean necesarios.</li>
+          <li><strong>Oposición:</strong> oponerse al tratamiento de sus datos en determinadas circunstancias.</li>
+          <li><strong>Limitación:</strong> solicitar la limitación del tratamiento de sus datos.</li>
+          <li><strong>Portabilidad:</strong> recibir sus datos en un formato estructurado y de uso común.</li>
+        </ul>
+        <p class="mt-2">
+          Para ejercer estos derechos, puede enviar una solicitud a 
+          <strong>admin@autopartsstore.com</strong> indicando su nombre completo y el derecho que desea ejercer. 
+          Responderemos en un plazo máximo de 30 días.
+        </p>
+        <p class="mt-2">
+          Asimismo, tiene derecho a presentar una reclamación ante la 
+          <strong>Agencia Española de Protección de Datos (AEPD)</strong> en 
+          <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" class="text-red-600 hover:text-red-700 underline">www.aepd.es</a>.
+        </p>
+      </section>
+
+      <!-- 8 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">8. Seguridad de los Datos</h2>
+        <p>
+          AutoPartsStore adopta las medidas técnicas y organizativas necesarias para garantizar la seguridad de sus datos personales 
+          y evitar su alteración, pérdida, tratamiento o acceso no autorizado. Entre estas medidas se incluyen:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 mt-2">
+          <li>Comunicaciones cifradas mediante protocolo HTTPS/SSL.</li>
+          <li>Almacenamiento seguro de contraseñas mediante técnicas de hash.</li>
+          <li>Acceso restringido a datos personales únicamente al personal autorizado.</li>
+          <li>Procesamiento de pagos delegado en Stripe, certificado PCI DSS.</li>
+        </ul>
+      </section>
+
+      <!-- 9 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">9. Modificaciones</h2>
+        <p>
+          AutoPartsStore se reserva el derecho de modificar esta Política de Privacidad en cualquier momento. 
+          Las modificaciones se publicarán en esta misma página y, si son significativas, se notificará a los usuarios registrados por correo electrónico.
+        </p>
+      </section>
+
+      <!-- 10 -->
+      <section>
+        <h2 class="text-lg font-semibold text-charcoal-900 mb-3">10. Contacto</h2>
+        <p>Para cualquier consulta sobre esta Política de Privacidad, puede contactarnos en:</p>
+        <ul class="list-none mt-2 space-y-1">
+          <li><strong>Email:</strong> admin@autopartsstore.com</li>
+          <li><strong>Teléfono:</strong> 605 898 331</li>
+          <li><strong>Dirección:</strong> C. Puerto Serrano, 11540, Sanlúcar de Barrameda, Cádiz</li>
+        </ul>
+      </section>
+
+    </div>
+  </div>
+</PublicLayout>
