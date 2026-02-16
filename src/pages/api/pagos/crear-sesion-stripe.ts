@@ -198,8 +198,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       shipping_address_collection: {
         allowed_countries: ['ES', 'PT', 'FR', 'IT', 'DE', 'AT', 'BE', 'NL', 'LU']
       },
-      success_url: `${import.meta.env.SITE}/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${import.meta.env.SITE}/checkout`,
+      success_url: body.source === 'mobile_app'
+        ? 'autopartsstore://payment-success?session_id={CHECKOUT_SESSION_ID}'
+        : `https://boss.victoriafp.online/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: body.source === 'mobile_app'
+        ? 'autopartsstore://payment-cancel'
+        : `https://boss.victoriafp.online/checkout`,
       expires_at: Math.floor(Date.now() / 1000) + (23 * 60 * 60) // 23 horas (para evitar errores de límite de 24h)
     });
 
