@@ -60,11 +60,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const supabaseAdmin = getSupabaseAdmin();
 
     // IDEMPOTENCIA: Verificar si ya existe una orden para esta sesión
-    const { data: ordenExistente } = await supabaseAdmin
+    const { data: ordenExistenteData } = await supabaseAdmin
       .from('ordenes')
       .select('id, numero_orden')
       .eq('session_stripe_id', sessionId)
       .single();
+
+    const ordenExistente = ordenExistenteData as any;
 
     if (ordenExistente) {
       console.log('Sesión ya procesada, devolviendo orden existente:', ordenExistente.numero_orden);
@@ -87,11 +89,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Fallback: Si no hay usuarioId pero el email coincide con un usuario registrado, vincularlo
     if (!finalUsuarioId && session.customer_email) {
       console.log('🔍 Buscando usuario por email:', session.customer_email);
-      const { data: usuarioPorEmail } = await supabaseAdmin
+      const { data: usuarioPorEmailData } = await supabaseAdmin
         .from('usuarios')
         .select('id')
         .eq('email', session.customer_email)
         .maybeSingle();
+
+      const usuarioPorEmail = usuarioPorEmailData as any;
 
       if (usuarioPorEmail) {
         console.log('Usuario vinculado por email:', usuarioPorEmail.id);
@@ -131,13 +135,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     let numeroOrden = 'ORD-000000';
     try {
       // Buscar el número de orden más alto existente (solo formato 6 dígitos ORD-XXXXXX)
-      const { data: ultimaOrden } = await supabaseAdmin
+      const { data: ultimaOrdenData } = await supabaseAdmin
         .from('ordenes')
         .select('numero_orden')
         .ilike('numero_orden', 'ORD-______')
         .order('numero_orden', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      const ultimaOrden = ultimaOrdenData as any;
 
       if (ultimaOrden && ultimaOrden.numero_orden) {
         // Extraer el número correlativo (ej: ORD-000123 -> 123)
@@ -198,7 +204,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     };
 
 
-    const { data: orden, error: ordenError } = await supabaseAdmin
+    const { data: ordenDataDB, error: ordenError } = await supabaseAdmin
       .from('ordenes')
       .insert(ordenData)
       .select()
@@ -214,6 +220,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    const orden = ordenDataDB as any;
 
     console.log('Orden creada:', {
       id: orden.id,
@@ -247,12 +255,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
 
         // Para el email necesitamos nombres, los sacaremos de line_items de Stripe
-        itemsParaEmail = (session.line_items?.data || []).map(li => ({
-          nombre_producto: li.description,
-          cantidad: li.quantity,
-          precio_unitario: (li.price?.unit_amount || 0) / 100, // Conversión solo para el objeto de email
-          subtotal: (li.amount_total || 0) / 100
-        }));
+        if (session.line_items) {
+          itemsParaEmail = session.line_items.data.map(li => ({
+            nombre_producto: li.description,
+            cantidad: li.quantity,
+            precio_unitario: (li.price?.unit_amount || 0) / 100, // Conversión solo para el objeto de email
+            subtotal: (li.amount_total || 0) / 100
+          }));
+        }
 
         if (items.length > 0) {
           console.log('📝 Insertando', items.length, 'items en ordenes_items');
