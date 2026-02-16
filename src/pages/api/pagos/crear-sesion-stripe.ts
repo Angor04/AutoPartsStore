@@ -191,6 +191,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       mode: 'payment',
       customer_email: email,
       metadata: {
+        email: email, // Guardar email explícitamente para el Webhook
         usuario_id: usuarioId || 'guest',
         carrito_id: body.carrito_id || 'guest',
         descuento_codigo: body.codigo_cupon || '',

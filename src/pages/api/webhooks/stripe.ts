@@ -45,13 +45,16 @@ export const POST: APIRoute = async ({ request }) => {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   const supabaseAdmin = getSupabaseAdmin();
+  const sessionData = session as any; // Fix TS error: shipping_details not in type
 
   // 1. IDEMPOTENCIA: Verificar si ya existe la orden
-  const { data: ordenExistente } = await supabaseAdmin
+  const { data: ordenExistenteData } = await supabaseAdmin
     .from('ordenes')
     .select('id')
     .eq('session_stripe_id', session.id)
     .single();
+
+  const ordenExistente = ordenExistenteData as any;
 
   if (ordenExistente) {
     console.log('⚠️ Webhook: Orden ya existe para esta sesión. Saltando.');
@@ -70,11 +73,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   let usuarioId = metadata.usuario_id && metadata.usuario_id !== 'guest' ? metadata.usuario_id : null;
   if (!usuarioId && session.customer_details?.email) {
     // Intentar vincular por email si es invitado
-    const { data: userByEmail } = await supabaseAdmin
+    const { data: userByEmailData } = await supabaseAdmin
       .from('usuarios')
       .select('id')
       .eq('email', session.customer_details.email)
       .maybeSingle();
+    const userByEmail = userByEmailData as any;
     if (userByEmail) usuarioId = userByEmail.id;
   }
 
@@ -82,13 +86,15 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   let numeroOrden = 'ORD-000000';
   try {
     // Buscar el número de orden más alto existente (solo formato 6 dígitos ORD-XXXXXX)
-    const { data: ultimaOrden } = await supabaseAdmin
+    const { data: ultimaOrdenData } = await supabaseAdmin
       .from('ordenes')
       .select('numero_orden')
       .ilike('numero_orden', 'ORD-______')
       .order('numero_orden', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    const ultimaOrden = ultimaOrdenData as any;
 
     if (ultimaOrden && ultimaOrden.numero_orden) {
       // Extraer el número correlativo (ej: ORD-000123 -> 123)
@@ -127,12 +133,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     gastos_envio: costoEnvio,
     cupon_id: metadata.cupon_id || null,
     direccion_envio: {
-      nombre: session.shipping_details?.name || session.customer_details?.name,
-      calle: session.shipping_details?.address?.line1,
-      ciudad: session.shipping_details?.address?.city,
-      provincia: session.shipping_details?.address?.state,
-      codigo_postal: session.shipping_details?.address?.postal_code,
-      pais: session.shipping_details?.address?.country || 'ES'
+      nombre: sessionData.shipping_details?.name || session.customer_details?.name,
+      calle: sessionData.shipping_details?.address?.line1,
+      ciudad: sessionData.shipping_details?.address?.city,
+      provincia: sessionData.shipping_details?.address?.state,
+      codigo_postal: sessionData.shipping_details?.address?.postal_code,
+      pais: sessionData.shipping_details?.address?.country || 'ES'
     },
     fecha_pago: new Date().toISOString()
   };
@@ -140,7 +146,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // 6. CREAR ORDEN
   const { data, error: ordenError } = await supabaseAdmin
     .from('ordenes')
-    .insert(ordenData)
+    .insert(ordenData as any)
     .select()
     .single();
 
@@ -183,7 +189,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   if (itemsDB.length > 0) {
-    const { error: itemsError } = await supabaseAdmin.from('ordenes_items').insert(itemsDB);
+    const { error: itemsError } = await supabaseAdmin.from('ordenes_items').insert(itemsDB as any);
     if (itemsError) console.error('Error insertando items:', itemsError);
   }
 
