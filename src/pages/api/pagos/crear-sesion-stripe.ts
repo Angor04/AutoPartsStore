@@ -168,10 +168,26 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
+    // ==========================================
+    // 8. CONFIGURAR URLS DE REDIRECCIÓN (WEB VS APP)
+    // ==========================================
+    let successUrl = '';
+    let cancelUrl = '';
+
+    if (body.source === 'mobile_app') {
+      // Deep Links para Flutter (con path /app/)
+      successUrl = `autopartsstore://app/payment-success?session_id={CHECKOUT_SESSION_ID}`;
+      cancelUrl = `autopartsstore://app/payment-cancel`;
+    } else {
+      // Redirección Web (Producción)
+      successUrl = `https://boss.victoriafp.online/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`;
+      cancelUrl = `https://boss.victoriafp.online/checkout`;
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineasFinales,
-      discounts: discounts, // Aplicar el cupón temporal si existe
+      discounts: discounts,
       mode: 'payment',
       customer_email: email,
       metadata: {
@@ -187,7 +203,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         ciudad_cliente: ciudad || '',
         provincia_cliente: provincia || '',
         codigo_postal_cliente: codigoPostal || '',
-        // Guardar los items optimizados para evitar límites de tamaño de Stripe (500 caracteres)
         items_json: JSON.stringify(items.map((i: any) => ({
           id: i.product_id || i.id,
           q: i.quantity,
@@ -198,13 +213,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       shipping_address_collection: {
         allowed_countries: ['ES', 'PT', 'FR', 'IT', 'DE', 'AT', 'BE', 'NL', 'LU']
       },
-      success_url: body.source === 'mobile_app'
-        ? 'autopartsstore://payment-success?session_id={CHECKOUT_SESSION_ID}'
-        : `https://boss.victoriafp.online/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: body.source === 'mobile_app'
-        ? 'autopartsstore://payment-cancel'
-        : `https://boss.victoriafp.online/checkout`,
-      expires_at: Math.floor(Date.now() / 1000) + (23 * 60 * 60) // 23 horas (para evitar errores de límite de 24h)
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      expires_at: Math.floor(Date.now() / 1000) + (23 * 60 * 60)
     });
 
     console.log('Sesión de Stripe creada:', session.id);
