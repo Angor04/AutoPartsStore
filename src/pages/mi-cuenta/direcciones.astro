@@ -29,9 +29,9 @@ const { data: direcciones } = await supabaseAdmin
 ---
 
 <PublicLayout title={title} description={description}>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-8">
+    <div class="flex items-center gap-2 text-xs md:text-sm text-charcoal-600 mb-6 md:mb-8 text-left">
       <a href="/" class="hover:text-navy-500">Inicio</a>
       <span>/</span>
       <span>Mi Cuenta</span>
@@ -47,23 +47,23 @@ const { data: direcciones } = await supabaseAdmin
 
       <!-- Main Content -->
       <div class="lg:col-span-3">
-        <div class="bg-white rounded-lg shadow-sm p-8">
-          <div class="flex items-center justify-between mb-8">
+        <div class="bg-white rounded-lg shadow-sm p-4 md:p-8 text-left">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-4">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-8 h-8 md:w-10 md:h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg class="w-4 h-4 md:w-5 md:h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
               </div>
               <div>
-                <h2 class="text-xl font-serif font-bold text-charcoal-900">Mis Direcciones</h2>
-                <p class="text-sm text-charcoal-500">Añade y gestiona tus direcciones de entrega</p>
+                <h2 class="text-lg md:text-xl font-serif font-bold text-charcoal-900">Mis Direcciones</h2>
+                <p class="text-xs md:text-sm text-charcoal-500">Gestiona tus direcciones de entrega</p>
               </div>
             </div>
             <button 
               onclick="openModal()"
-              class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2"
+              class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>

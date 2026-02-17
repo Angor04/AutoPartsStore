@@ -115,7 +115,7 @@ function formatDate(fecha: string | undefined): string {
   <!-- Componente para limpiar SIEMPRE el carrito al llegar a esta página -->
   <CartCleaner client:load sessionId={ordenId || sessionId || ''} />
   
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
     
     {orden ? (
       <div class="text-center mb-12">
@@ -134,19 +134,19 @@ function formatDate(fecha: string | undefined): string {
       </div>
 
       <!-- Info de la orden -->
-      <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6 md:mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
           <div>
-            <p class="text-sm text-charcoal-500 mb-1">Número de pedido</p>
-            <p class="font-bold text-navy-600">{orden.numero_orden}</p>
+            <p class="text-[10px] md:text-sm text-charcoal-500 mb-1">Nº pedido</p>
+            <p class="text-sm md:text-base font-bold text-navy-600 truncate">{orden.numero_orden}</p>
           </div>
           <div>
             <p class="text-sm text-charcoal-500 mb-1">Fecha</p>
             <p class="font-semibold">{formatDate(orden.fecha_creacion)}</p>
           </div>
           <div>
-            <p class="text-sm text-charcoal-500 mb-1">Estado</p>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            <p class="text-[10px] md:text-sm text-charcoal-500 mb-1">Estado</p>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium"
               class:list={{
                 'bg-green-100 text-green-800': orden.estado === 'PAGADO' || orden.estado === 'COMPLETADO',
                 'bg-yellow-100 text-yellow-800': orden.estado === 'PENDIENTE',
@@ -156,19 +156,19 @@ function formatDate(fecha: string | undefined): string {
             </span>
           </div>
           <div>
-            <p class="text-sm text-charcoal-500 mb-1">Total</p>
-            <p class="font-bold text-lg text-red-600">{formatPrice(orden.total)}</p>
+            <p class="text-[10px] md:text-sm text-charcoal-500 mb-1">Total</p>
+            <p class="font-bold text-base md:text-lg text-red-600">{formatPrice(orden.total)}</p>
           </div>
         </div>
         
-        <div class="mt-6 pt-6 border-t border-charcoal-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+        <div class="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-charcoal-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
           <div>
-            <p class="text-xs text-charcoal-500 uppercase tracking-wider font-semibold mb-1">Cliente</p>
-            <p class="text-charcoal-800 font-medium">{orden.nombre || 'Invitado'}</p>
+            <p class="text-[9px] md:text-xs text-charcoal-500 uppercase tracking-wider font-semibold mb-1">Cliente</p>
+            <p class="text-sm md:text-base text-charcoal-800 font-medium">{orden.nombre || 'Invitado'}</p>
           </div>
           <div>
-            <p class="text-xs text-charcoal-500 uppercase tracking-wider font-semibold mb-1">Email de contacto</p>
-            <p class="text-charcoal-800 font-medium">{orden.email}</p>
+            <p class="text-[9px] md:text-xs text-charcoal-500 uppercase tracking-wider font-semibold mb-1">Email de contacto</p>
+            <p class="text-sm md:text-base text-charcoal-800 font-medium truncate">{orden.email}</p>
           </div>
         </div>
       </div>
@@ -182,21 +182,21 @@ function formatDate(fecha: string | undefined): string {
             orden.items.map((item: any) => {
               const productImg = item.urls_imagenes?.[0] || null;
               return (
-                <div class="py-4 flex items-center justify-between gap-4">
-                  <div class="flex items-center gap-4 flex-1">
-                    <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
+                <div class="py-3 md:py-4 flex items-center justify-between gap-3 md:gap-4">
+                  <div class="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
                       {productImg ? (
                         <img src={productImg} alt={item.nombre_producto} class="w-full h-full object-cover" />
                       ) : (
                         <span class="text-xl"></span>
                       )}
                     </div>
-                    <div>
-                      <p class="font-medium text-charcoal-900">{item.nombre_producto}</p>
-                      <p class="text-sm text-charcoal-500">Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}</p>
+                    <div class="min-w-0">
+                      <p class="text-sm md:text-base font-medium text-charcoal-900 truncate">{item.nombre_producto}</p>
+                      <p class="text-xs md:text-sm text-charcoal-500">Cant: {item.cantidad} × {formatPrice(item.precio_unitario)}</p>
                     </div>
                   </div>
-                  <p class="font-semibold text-charcoal-900 whitespace-nowrap">{formatPrice(item.subtotal)}</p>
+                  <p class="text-sm md:text-base font-semibold text-charcoal-900 whitespace-nowrap">{formatPrice(item.subtotal)}</p>
                 </div>
               );
             })

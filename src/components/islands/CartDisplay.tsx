@@ -242,11 +242,11 @@ export default function CartDisplay() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {cartItems.map((item) => (
-        <div key={item.product_id} className={`flex gap-4 pb-4 border-b border-charcoal-100 ${processingItems.has(item.product_id) ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div key={item.product_id} className={`flex gap-3 md:gap-4 pb-4 border-b border-charcoal-100 ${processingItems.has(item.product_id) ? 'opacity-50 pointer-events-none' : ''}`}>
           {/* Imagen */}
-          <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+          <div className="w-16 h-16 md:w-24 md:h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
             {item.urls_imagenes?.[0] ? (
               <img
                 src={item.urls_imagenes[0]}
@@ -263,11 +263,11 @@ export default function CartDisplay() {
           </div>
 
           {/* Detalles */}
-          <div className="flex-1">
-            <h4 className="font-medium text-charcoal-900 text-sm mb-1 line-clamp-2">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-charcoal-900 text-xs md:text-sm mb-1 line-clamp-2">
               {item.nombre}
             </h4>
-            <p className="text-red-600 font-semibold mb-2">{formatPrice(item.precio)}</p>
+            <p className="text-red-600 text-sm md:text-base font-semibold mb-2">{formatPrice(item.precio)}</p>
 
             {/* Cantidad */}
             <div className="flex items-center gap-2 mb-2">
@@ -277,11 +277,11 @@ export default function CartDisplay() {
                 aria-label="Disminuir cantidad"
                 disabled={processingItems.has(item.product_id)}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </button>
-              <span className="px-2 py-1 bg-charcoal-100 rounded text-sm font-medium w-8 text-center">
+              <span className="px-2 py-1 bg-charcoal-100 rounded text-xs md:text-sm font-medium w-7 md:w-8 text-center border-none">
                 {processingItems.has(item.product_id) ? '...' : item.quantity}
               </span>
               <button
@@ -290,7 +290,7 @@ export default function CartDisplay() {
                 className="p-1 hover:bg-charcoal-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Aumentar cantidad"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </button>
@@ -300,7 +300,7 @@ export default function CartDisplay() {
             )}
 
             {/* Subtotal */}
-            <p className="text-sm text-charcoal-600">
+            <p className="text-[10px] md:text-sm text-charcoal-600">
               Subtotal: {formatPrice(item.precio * item.quantity)}
             </p>
           </div>

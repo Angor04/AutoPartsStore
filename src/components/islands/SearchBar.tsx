@@ -74,7 +74,7 @@ export default function SearchBar() {
     }, []);
 
     return (
-        <div ref={wrapperRef} className="flex-1 max-w-2xl mx-8 relative">
+        <div ref={wrapperRef} className="w-full relative">
             <form action="/productos" method="get" className="relative">
                 <input
                     type="text"

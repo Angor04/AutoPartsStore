@@ -46,9 +46,9 @@ if (userId) {
 ---
 
 <PublicLayout title={title} description={description}>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-6">
+    <div class="flex items-center gap-2 text-xs md:text-sm text-charcoal-600 mb-6">
       <a href="/" class="hover:text-navy-500">Inicio</a>
       <span>/</span>
       <a href="/carrito" class="hover:text-navy-500">Carrito</a>
@@ -57,21 +57,21 @@ if (userId) {
     </div>
 
     <!-- Indicador de pasos -->
-    <div class="flex items-center justify-center mb-8">
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">✓</div>
-          <span class="text-sm font-medium text-green-600">Carrito</span>
+    <div class="flex items-center justify-center mb-6 md:mb-8">
+      <div class="flex items-center gap-2 md:gap-4">
+        <div class="flex items-center gap-1.5 md:gap-2">
+          <div class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-sm font-bold">✓</div>
+          <span class="text-[10px] md:text-sm font-medium text-green-600">Carrito</span>
         </div>
-        <div class="w-16 h-0.5 bg-green-500"></div>
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-navy-500 text-white flex items-center justify-center text-sm font-bold">2</div>
-          <span class="text-sm font-medium text-navy-600">Checkout</span>
+        <div class="w-8 md:w-16 h-0.5 bg-green-500"></div>
+        <div class="flex items-center gap-1.5 md:gap-2">
+          <div class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-navy-500 text-white flex items-center justify-center text-[10px] md:text-sm font-bold">2</div>
+          <span class="text-[10px] md:text-sm font-medium text-navy-600 uppercase md:normal-case">Pago</span>
         </div>
-        <div class="w-16 h-0.5 bg-charcoal-200"></div>
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-charcoal-200 text-charcoal-500 flex items-center justify-center text-sm font-bold">3</div>
-          <span class="text-sm text-charcoal-500">Confirmación</span>
+        <div class="w-8 md:w-16 h-0.5 bg-charcoal-200"></div>
+        <div class="flex items-center gap-1.5 md:gap-2">
+          <div class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-charcoal-200 text-charcoal-500 flex items-center justify-center text-[10px] md:text-sm font-bold">3</div>
+          <span class="text-[10px] md:text-sm text-charcoal-500">Fin</span>
         </div>
       </div>
     </div>
@@ -82,9 +82,9 @@ if (userId) {
         <div class="lg:col-span-2 space-y-6">
           
           <!-- Sección: Datos de contacto -->
-          <div class="bg-white rounded-lg shadow-sm p-6">
-            <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4 flex items-center gap-2">
-              <span class="w-7 h-7 rounded-full bg-navy-500 text-white flex items-center justify-center text-sm">1</span>
+          <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 text-left">
+            <h2 class="text-lg md:text-xl font-serif font-bold text-charcoal-900 mb-4 flex items-center gap-2">
+              <span class="w-6 h-6 md:w-7 md:h-7 rounded-full bg-navy-500 text-white flex items-center justify-center text-xs md:text-sm">1</span>
               Datos de Contacto
             </h2>
             
@@ -138,9 +138,9 @@ if (userId) {
           </div>
 
           <!-- Sección: Dirección de envío -->
-          <div class="bg-white rounded-lg shadow-sm p-6">
-            <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4 flex items-center gap-2">
-              <span class="w-7 h-7 rounded-full bg-navy-500 text-white flex items-center justify-center text-sm">2</span>
+          <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 text-left">
+            <h2 class="text-lg md:text-xl font-serif font-bold text-charcoal-900 mb-4 flex items-center gap-2">
+              <span class="w-6 h-6 md:w-7 md:h-7 rounded-full bg-navy-500 text-white flex items-center justify-center text-xs md:text-sm">2</span>
               Dirección de Envío
             </h2>
             
@@ -199,10 +199,10 @@ if (userId) {
           </div>
 
           <!-- Sección: Cupón de descuento -->
-          <div class="bg-white rounded-lg shadow-sm p-6">
-            <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4 flex items-center gap-2">
-              <span class="w-7 h-7 rounded-full bg-navy-500 text-white flex items-center justify-center text-sm">3</span>
-              Código de Descuento
+          <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 text-left">
+            <h2 class="text-lg md:text-xl font-serif font-bold text-charcoal-900 mb-4 flex items-center gap-2">
+              <span class="w-6 h-6 md:w-7 md:h-7 rounded-full bg-navy-500 text-white flex items-center justify-center text-xs md:text-sm">3</span>
+              Cupón
             </h2>
             
             <div class="flex gap-3">
@@ -230,8 +230,8 @@ if (userId) {
           </div>
 
           <!-- Sección: Notas -->
-          <div class="bg-white rounded-lg shadow-sm p-6">
-            <h2 class="text-lg font-medium text-charcoal-900 mb-3">Notas del Pedido (opcional)</h2>
+          <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 text-left">
+            <h2 class="text-base md:text-lg font-medium text-charcoal-900 mb-3">Notas del Pedido (opcional)</h2>
             <textarea 
               id="notas" 
               name="notas" 
@@ -244,9 +244,9 @@ if (userId) {
 
         <!-- Resumen del pedido (estático) -->
         <div class="lg:col-span-1">
-          <div class="space-y-4">
-            <div class="bg-white rounded-lg shadow-sm p-6">
-              <h2 class="text-xl font-serif font-bold text-charcoal-900 mb-4">Resumen del Pedido</h2>
+          <div class="space-y-4 md:sticky md:top-24">
+            <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 text-left">
+              <h2 class="text-lg md:text-xl font-serif font-bold text-charcoal-900 mb-4">Resumen</h2>
             
             <!-- Lista de productos -->
             <div id="productosLista" class="space-y-3 mb-4 max-h-64 overflow-y-auto">

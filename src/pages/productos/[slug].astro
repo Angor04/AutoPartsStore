@@ -51,9 +51,9 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
 ---
 
 <PublicLayout title={title} description={description}>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
     <!-- Breadcrumb -->
-    <nav class="flex gap-2 mb-8 text-sm text-charcoal-600">
+    <nav class="flex flex-wrap gap-2 mb-6 md:mb-8 text-xs md:text-sm text-charcoal-600">
       <a href="/" class="hover:text-red-600">Inicio</a>
       <span>/</span>
       <a href={categoriaProducto ? `/categoria/${categoriaProducto.slug}` : "/productos"} class="hover:text-red-600">
@@ -64,7 +64,7 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
     </nav>
 
     <!-- Main Content -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
       <!-- Images Gallery -->
       <div class="flex flex-col gap-4">
         {images.length > 0 ? (
@@ -98,12 +98,12 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
       </div>
 
       <!-- Product Info -->
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-4 md:gap-6">
         <div>
-          <h1 class="text-4xl font-bold text-charcoal-900 mb-2">
+          <h1 class="text-2xl md:text-4xl font-bold text-charcoal-900 mb-2 leading-tight">
             {producto.nombre}
           </h1>
-          <p class="text-charcoal-600">{producto.descripcion}</p>
+          <p class="text-sm md:text-base text-charcoal-600">{producto.descripcion}</p>
         </div>
 
         <!-- Pricing -->
@@ -122,13 +122,13 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
 
         <!-- Features -->
         {producto.especificaciones && Object.keys(producto.especificaciones).length > 0 && (
-          <div class="bg-ivory-50 rounded-lg p-6 mt-3">
-            <h3 class="font-bold text-charcoal-900 mb-4">Especificaciones</h3>
+          <div class="bg-ivory-50 rounded-lg p-4 md:p-6 mt-1 md:mt-3">
+            <h3 class="text-sm md:text-base font-bold text-charcoal-900 mb-3 md:mb-4">Especificaciones</h3>
             <ul class="space-y-2">
               {Object.entries(producto.especificaciones).map(([key, value]) => (
-                <li class="flex justify-between">
+                <li class="flex justify-between text-xs md:text-sm">
                   <span class="text-charcoal-600">{key}:</span>
-                  <span class="font-medium text-charcoal-900">{String(value)}</span>
+                  <span class="font-medium text-charcoal-900 text-right">{String(value)}</span>
                 </li>
               ))}
             </ul>
@@ -148,24 +148,30 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
         </div>
 
         <!-- Trust Badges -->
-        <div class="grid grid-cols-3 gap-4 pt-6 border-t border-charcoal-200">
+        <div class="grid grid-cols-3 gap-2 md:gap-4 pt-6 border-t border-charcoal-200">
           <div class="text-center">
-            <svg class="w-8 h-8 mx-auto mb-2 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M9 11l3 3L22 4m-10.5 9.5l3 3L22 4m-13-2h16a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z" />
-            </svg>
-            <p class="text-xs text-charcoal-600 font-medium">Envío gratis +50€</p>
+            <div class="mb-2 flex justify-center">
+              <svg class="w-6 h-6 md:w-8 md:h-8 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9 11l3 3L22 4m-10.5 9.5l3 3L22 4m-13-2h16a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z" />
+              </svg>
+            </div>
+            <p class="text-[10px] md:text-xs text-charcoal-600 font-medium leading-tight">Envío gratis +50€</p>
           </div>
           <div class="text-center">
-            <svg class="w-8 h-8 mx-auto mb-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <p class="text-xs text-charcoal-600 font-medium">Devolución 30 días</p>
+            <div class="mb-2 flex justify-center">
+              <svg class="w-6 h-6 md:w-8 md:h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <p class="text-[10px] md:text-xs text-charcoal-600 font-medium leading-tight">Devolución 30 días</p>
           </div>
           <div class="text-center">
-            <svg class="w-8 h-8 mx-auto mb-2 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 1l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 1z" />
-            </svg>
-            <p class="text-xs text-charcoal-600 font-medium">Garantía 24 meses</p>
+            <div class="mb-2 flex justify-center">
+              <svg class="w-6 h-6 md:w-8 md:h-8 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 1z" />
+              </svg>
+            </div>
+            <p class="text-[10px] md:text-xs text-charcoal-600 font-medium leading-tight">Garantía 24 meses</p>
           </div>
         </div>
       </div>

@@ -13,12 +13,12 @@ const error = Astro.url.searchParams.get('error');
 <BaseLayout title="Iniciar Sesión" description="Acceso a tu cuenta">
   <style>
     .login-wrapper {
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       background-color: #f9f9f9;
-      padding: 20px;
+      padding: 16px;
       overflow-x: hidden;
       overflow-y: auto;
     }
@@ -29,7 +29,7 @@ const error = Astro.url.searchParams.get('error');
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       width: 100%;
       max-width: 380px;
-      padding: 35px;
+      padding: 24px md:35px;
     }
 
     .logo-section {
@@ -38,9 +38,16 @@ const error = Astro.url.searchParams.get('error');
     }
 
     .logo {
-      width: 110px;
-      height: 110px;
+      width: 80px;
+      height: 80px;
       margin: 0 auto 12px;
+    }
+
+    @media (min-width: 768px) {
+      .logo {
+        width: 110px;
+        height: 110px;
+      }
     }
 
     .login-header {
@@ -225,7 +232,7 @@ const error = Astro.url.searchParams.get('error');
           src="https://res.cloudinary.com/ddi0g76bk/image/upload/v1768210429/logo_btu63x.webp" 
           alt="AutoPartsStore" 
           class="logo"
-          style="width: 110px; height: 110px; object-fit: contain;"
+          style="object-fit: contain;"
         />
       </div>
 

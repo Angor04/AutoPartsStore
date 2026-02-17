@@ -155,9 +155,9 @@ function getAcciones(pedido: any) {
 ---
 
 <PublicLayout title={title} description={description}>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm text-charcoal-600 mb-8">
+    <div class="flex items-center gap-2 text-xs md:text-sm text-charcoal-600 mb-6 md:mb-8 text-left">
       <a href="/" class="hover:text-red-600">Inicio</a>
       <span>/</span>
       <a href="/mi-cuenta/perfil" class="hover:text-red-600">Mi Cuenta</a>
@@ -173,18 +173,18 @@ function getAcciones(pedido: any) {
 
       <!-- Main Content -->
       <div class="lg:col-span-3">
-        <div class="bg-white rounded-lg shadow-sm p-8">
-          <div class="flex items-center gap-3 mb-8">
-            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-white rounded-lg shadow-sm p-4 md:p-8 text-left">
+          <div class="flex items-center gap-3 mb-6 md:mb-8">
+            <div class="w-8 h-8 md:w-10 md:h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <svg class="w-4 h-4 md:w-5 md:h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
               </svg>
             </div>
             <div>
-              <h1 class="text-xl font-serif font-bold text-charcoal-900">
+              <h1 class="text-lg md:text-xl font-serif font-bold text-charcoal-900">
                 Mis Pedidos
               </h1>
-              <p class="text-sm text-charcoal-600">
+              <p class="text-xs md:text-sm text-charcoal-600">
                 Consulta el estado de tus pedidos y gestiona devoluciones
               </p>
             </div>
@@ -218,55 +218,55 @@ function getAcciones(pedido: any) {
                 return (
                   <div class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                     <!-- Order Header -->
-                    <div class="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-                      <div class="flex items-center gap-6">
+                    <div class="bg-gray-50 px-4 md:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                      <div class="grid grid-cols-2 sm:flex sm:items-center gap-4 md:gap-6 w-full sm:w-auto">
                         <div>
-                          <p class="text-sm text-gray-500">Pedido</p>
-                          <p class="font-mono font-bold text-charcoal-900">{pedido.numero_orden}</p>
+                          <p class="text-[10px] md:text-sm text-gray-500 uppercase md:normal-case">Pedido</p>
+                          <p class="text-xs md:text-sm font-mono font-bold text-charcoal-900 truncate max-w-[100px] md:max-w-none">{pedido.numero_orden}</p>
                         </div>
                         <div>
-                          <p class="text-sm text-gray-500">Fecha</p>
-                          <p class="text-sm text-charcoal-900">{formatDate(pedido.fecha_creacion)}</p>
+                          <p class="text-[10px] md:text-sm text-gray-500 uppercase md:normal-case">Fecha</p>
+                          <p class="text-xs md:text-sm text-charcoal-900">{formatDate(pedido.fecha_creacion)}</p>
                         </div>
                         <div>
-                          <p class="text-sm text-gray-500">Total</p>
-                          <p class="font-bold text-charcoal-900">{formatPrice(pedido.total)}</p>
+                          <p class="text-[10px] md:text-sm text-gray-500 uppercase md:normal-case">Total</p>
+                          <p class="text-xs md:text-sm font-bold text-charcoal-900">{formatPrice(pedido.total)}</p>
                         </div>
                       </div>
                       
                       <!-- Estado Badge -->
-                      <div class={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${config.bgColor} ${config.color} font-medium`}>
+                      <div class={`inline-flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full ${config.bgColor} ${config.color} text-[10px] md:text-sm font-medium`}>
                         <span>{config.icono}</span>
                         <span>{config.texto}</span>
                       </div>
                     </div>
                     
                     <!-- Order Items -->
-                    <div class="px-6 py-4">
+                    <div class="px-4 md:px-6 py-4">
                       <div class="divide-y divide-gray-100">
                         {items.slice(0, 3).map((item: any) => {
                           const productImg = item.productos?.urls_imagenes?.[0] || null;
                           return (
-                            <div class="flex items-center gap-4 py-3">
-                              <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border border-gray-100">
+                            <div class="flex items-center gap-3 md:gap-4 py-3">
+                              <div class="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
                                 {productImg ? (
                                   <img src={productImg} alt={item.productos?.nombre} class="w-full h-full object-cover" />
                                 ) : (
                                   <span class="text-2xl"></span>
                                 )}
                               </div>
-                              <div class="flex-1">
-                                <p class="font-medium text-charcoal-900">{item.productos?.nombre || 'Producto'}</p>
-                                <p class="text-sm text-gray-500">
-                                  Cantidad: {item.cantidad} × {formatPrice(item.precio_unitario)}
+                              <div class="flex-1 min-w-0">
+                                <p class="text-sm md:text-base font-medium text-charcoal-900 truncate">{item.productos?.nombre || 'Producto'}</p>
+                                <p class="text-[10px] md:text-sm text-gray-500">
+                                  Cant: {item.cantidad} × {formatPrice(item.precio_unitario)}
                                 </p>
                               </div>
-                              <p class="font-medium text-charcoal-900">{formatPrice(item.cantidad * item.precio_unitario)}</p>
+                              <p class="text-sm md:text-base font-medium text-charcoal-900">{formatPrice(item.cantidad * item.precio_unitario)}</p>
                             </div>
                           );
                         })}
                         {items.length > 3 && (
-                          <p class="text-sm text-gray-500 py-2">
+                          <p class="text-xs md:text-sm text-gray-500 py-2">
                             + {items.length - 3} productos más
                           </p>
                         )}
@@ -294,10 +294,10 @@ function getAcciones(pedido: any) {
                     </div>
                     
                     <!-- Order Actions -->
-                    <div class="px-6 py-4 bg-gray-50 flex flex-wrap items-center justify-between gap-4 border-t">
+                    <div class="px-4 md:px-6 py-4 bg-gray-50 flex flex-wrap items-center justify-between gap-4 border-t">
                       <a 
                         href={`/pedido-confirmado?orden=${pedido.id}`}
-                        class="text-sm text-red-600 hover:text-red-700 font-medium"
+                        class="text-sm md:text-base text-red-600 hover:text-red-700 font-medium"
                       >
                         Ver detalles →
                       </a>
@@ -309,7 +309,7 @@ function getAcciones(pedido: any) {
                             data-action="cancelar"
                             data-orden-id={pedido.id}
                             data-orden-numero={pedido.numero_orden}
-                            class="btn-cancelar px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                            class="btn-cancelar px-3 md:px-4 py-2 text-xs md:text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
                           >
                             Cancelar Pedido
                           </button>

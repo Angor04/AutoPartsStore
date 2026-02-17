@@ -19,15 +19,15 @@ export default function CartSummary() {
       }).catch(() => {
         setMounted(true);
       });
-      
+
       // Escuchar evento de limpieza de carrito
       const handleCartCleared = () => {
         console.log('🛒 CartSummary: Evento cart-cleared recibido');
         // El useStore se actualiza automáticamente
       };
-      
+
       window.addEventListener('cart-cleared', handleCartCleared);
-      
+
       return () => {
         window.removeEventListener('cart-cleared', handleCartCleared);
       };
@@ -50,8 +50,8 @@ export default function CartSummary() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-8 h-fit sticky top-24">
-      <h2 className="text-xl font-serif font-bold text-charcoal-900 mb-6">Resumen</h2>
+    <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 h-fit md:sticky md:top-24">
+      <h2 className="text-xl font-serif font-bold text-charcoal-900 mb-4 md:mb-6">Resumen</h2>
 
       <div className="space-y-4 mb-6">
         <div className="flex justify-between text-charcoal-700">
@@ -77,15 +77,15 @@ export default function CartSummary() {
         </div>
       </div>
 
-      <a 
-        href="/checkout" 
+      <a
+        href="/checkout"
         className="block w-full bg-red-600 hover:bg-red-700 text-white text-center py-3 rounded-lg font-medium transition-colors mb-3"
       >
         Proceder al Pago
       </a>
 
-      <a 
-        href="/productos" 
+      <a
+        href="/productos"
         className="block w-full text-red-600 hover:text-red-700 text-center py-3 font-medium transition-colors"
       >
         Continuar Comprando
