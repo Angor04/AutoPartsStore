@@ -70,26 +70,71 @@ if (sessionId) {
 }
 
 // Cargar orden desde BD si tenemos ordenId
+// Cargar orden desde BD si tenemos ordenId
 if (ordenId && !sessionId) {
   try {
-    const response = await fetch(`${url.origin}/api/ordenes/${ordenId}`, {
-      headers: {
-        'Cookie': `user-id=${usuarioId || ''}`
-      }
-    });
+    const supabaseAdmin = getSupabaseAdmin();
+    console.log('Cargando orden directamente desde BD:', ordenId);
 
-    const resultado = await response.json();
+    // 1. Obtener la orden
+    const { data: ordenData, error: ordenError } = await supabaseAdmin
+      .from('ordenes')
+      .select('*')
+      .eq('id', ordenId)
+      .single();
 
-    if (resultado.success && resultado.orden) {
-      orden = resultado.orden;
-      console.log('Orden cargada desde BD:', orden.numero_orden);
+    if (ordenError || !ordenData) {
+      console.error('Error cargando orden (BD):', ordenError);
+      error = 'No se encontró la orden en la base de datos';
     } else {
-      error = resultado.error || 'No se encontró la orden';
-      console.error('Error cargando orden:', error);
+      // 2. Obtener items con productos
+      const { data: itemsData, error: itemsError } = await supabaseAdmin
+        .from('ordenes_items')
+        .select(`
+          *,
+          productos:producto_id (
+            nombre,
+            urls_imagenes
+          )
+        `)
+        .eq('orden_id', ordenId);
+
+      if (itemsError) {
+        console.error('Error cargando items (BD):', itemsError);
+      }
+
+      // 3. Formatear items
+      const itemsFormatted = itemsData?.map((item: any) => ({
+        ...item,
+        nombre_producto: item.productos?.nombre || 'Producto desconocido',
+        urls_imagenes: item.productos?.urls_imagenes || []
+      })) || [];
+
+      // 4. Construir objeto orden completo
+      orden = {
+        id: ordenData.id,
+        numero_orden: ordenData.numero_orden,
+        estado: ordenData.estado,
+        estado_pago: ordenData.estado_pago,
+        subtotal: ordenData.subtotal,
+        descuento_aplicado: 0, // Si no está en BD, asumir 0 o calcular
+        costo_envio: ordenData.gastos_envio || 0,
+        total: ordenData.total,
+        direccion_envio: ordenData.direccion_envio,
+        telefono_envio: ordenData.telefono || '',
+        email_cliente: ordenData.email,
+        nombre_cliente: ordenData.nombre,
+        items: itemsFormatted,
+        fecha_creacion: ordenData.created_at || ordenData.fecha_creacion,
+        impuestos: ordenData.impuestos,
+        usuario_id: ordenData.usuario_id
+      };
+      
+      console.log('Orden cargada exitosamente:', orden.numero_orden);
     }
   } catch (e) {
-    console.error('Error cargando orden desde API:', e);
-    error = 'Error al cargar la orden';
+    console.error('Error general cargando orden:', e);
+    error = 'Error interno al cargar la orden';
   }
 }
 
