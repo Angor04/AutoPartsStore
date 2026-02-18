@@ -1,6 +1,6 @@
 ---
 // src/components/product/ProductGallery.astro
-// Galería de imágenes para la página de detalle del producto
+// Galería de imágenes con carrusel (flechas + dots)
 
 interface Props {
   images: string[];
@@ -9,38 +9,215 @@ interface Props {
 
 const { images, productName } = Astro.props;
 const mainImage = images[0] || "https://via.placeholder.com/600x700?text=No+Image";
-const thumbnails = images.slice(0, 4);
+const hasMultiple = images.length > 1;
 ---
 
-<div class="flex flex-col gap-4">
-  <!-- Main Image -->
-  <div class="w-full aspect-[3/4] bg-charcoal-100 rounded-lg overflow-hidden">
+<div class="product-gallery" data-images={JSON.stringify(images)}>
+  <!-- Main Image Container -->
+  <div class="gallery-main">
     <img
       src={mainImage}
       alt={productName}
-      id="main-image"
-      class="w-full h-full object-cover"
+      id="gallery-main-img"
+      class="gallery-main-img"
     />
+
+    {hasMultiple && (
+      <!-- Left Arrow -->
+      <button class="gallery-arrow gallery-arrow-left" id="gallery-prev" aria-label="Imagen anterior">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+
+      <!-- Right Arrow -->
+      <button class="gallery-arrow gallery-arrow-right" id="gallery-next" aria-label="Siguiente imagen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    )}
   </div>
 
-  <!-- Thumbnails -->
-  {thumbnails.length > 1 && (
-    <div class="flex gap-2 overflow-x-auto">
-      {thumbnails.map((image, index) => (
+  <!-- Dots -->
+  {hasMultiple && (
+    <div class="gallery-dots" id="gallery-dots">
+      {images.map((_, index) => (
         <button
-          class={`flex-shrink-0 w-20 h-24 rounded-lg overflow-hidden border-2 transition-colors cursor-pointer ${
-            index === 0 ? "border-navy-500" : "border-charcoal-200 hover:border-navy-300"
-          }`}
-          onclick={`document.getElementById('main-image').src = '${image}'`}
-        >
-          <img
-            src={image}
-            alt={`${productName} - Imagen ${index + 1}`}
-            class="w-full h-full object-cover"
-            loading="lazy"
-          />
-        </button>
+          class={`gallery-dot ${index === 0 ? 'active' : ''}`}
+          data-index={index}
+          aria-label={`Imagen ${index + 1}`}
+        />
       ))}
     </div>
   )}
 </div>
+
+<style>
+  .product-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gallery-main {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background-color: #f5f5f5;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .gallery-main-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Arrows */
+  .gallery-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.35);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, opacity 0.2s ease;
+    z-index: 2;
+    opacity: 0.7;
+  }
+
+  .gallery-arrow:hover {
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 1;
+  }
+
+  .gallery-arrow-left {
+    left: 10px;
+  }
+
+  .gallery-arrow-right {
+    right: 10px;
+  }
+
+  /* Dots */
+  .gallery-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .gallery-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: #d1d5db;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+    padding: 0;
+  }
+
+  .gallery-dot:hover {
+    background: #9ca3af;
+    transform: scale(1.2);
+  }
+
+  .gallery-dot.active {
+    background: #1e3a5f;
+    transform: scale(1.2);
+  }
+
+  @media (max-width: 640px) {
+    .gallery-arrow {
+      width: 34px;
+      height: 34px;
+    }
+
+    .gallery-arrow svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .gallery-dot {
+      width: 8px;
+      height: 8px;
+    }
+  }
+</style>
+
+<script>
+  const galleryEl = document.querySelector('.product-gallery') as HTMLElement | null;
+  if (galleryEl) {
+    const images: string[] = JSON.parse(galleryEl.dataset.images || '[]');
+    let currentIndex = 0;
+
+    const mainImg = document.getElementById('gallery-main-img') as HTMLImageElement | null;
+    const prevBtn = document.getElementById('gallery-prev');
+    const nextBtn = document.getElementById('gallery-next');
+    const dotsContainer = document.getElementById('gallery-dots');
+
+    function goToImage(index: number): void {
+      if (!mainImg || images.length === 0) return;
+
+      // Wrap around
+      if (index < 0) index = images.length - 1;
+      if (index >= images.length) index = 0;
+
+      currentIndex = index;
+      mainImg.src = images[currentIndex];
+
+      // Update dots
+      if (dotsContainer) {
+        dotsContainer.querySelectorAll('.gallery-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentIndex);
+        });
+      }
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => goToImage(currentIndex - 1));
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => goToImage(currentIndex + 1));
+    }
+
+    // Dot clicks
+    if (dotsContainer) {
+      dotsContainer.querySelectorAll('.gallery-dot').forEach((dot) => {
+        dot.addEventListener('click', () => {
+          const idx = parseInt((dot as HTMLElement).dataset.index || '0', 10);
+          goToImage(idx);
+        });
+      });
+    }
+
+    // Optional: swipe support for mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    galleryEl.addEventListener('touchstart', (e) => {
+      touchStartX = (e as TouchEvent).changedTouches[0].screenX;
+    }, { passive: true });
+
+    galleryEl.addEventListener('touchend', (e) => {
+      touchEndX = (e as TouchEvent).changedTouches[0].screenX;
+      const diff = touchStartX - touchEndX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) goToImage(currentIndex + 1); // swipe left = next
+        else goToImage(currentIndex - 1); // swipe right = prev
+      }
+    }, { passive: true });
+  }
+</script>

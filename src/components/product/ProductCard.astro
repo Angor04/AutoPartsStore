@@ -33,7 +33,7 @@ const inStock = product.stock > 0;
 const productLink = `/productos/${product.id}`;
 ---
 
-<div class="group flex flex-col h-full bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-charcoal-100" data-product-id={product.id} data-original-stock={product.stock}>
+<a href={productLink} class="group flex flex-col h-full bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-charcoal-100 no-underline" data-product-id={product.id} data-original-stock={product.stock}>
   <!-- Image Container -->
   <div class="relative w-full aspect-square bg-gray-100 overflow-hidden">
     <img
@@ -80,13 +80,13 @@ const productLink = `/productos/${product.id}`;
     </div>
 
     <!-- Action -->
-    <a href={productLink} class="w-full mt-auto">
+    <div class="w-full mt-auto">
       <Button variant="primary" size="sm" class="w-full text-[10px] md:text-xs py-1 md:py-2" disabled={!inStock}>
         Ver Detalles
       </Button>
-    </a>
+    </div>
   </div>
-</div>
+</a>
 
 <script>
   // Listener para actualizar el stock en tiempo real

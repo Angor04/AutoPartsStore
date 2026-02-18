@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { generateInvoicePDF } from './invoice-pdf';
 
 // Log de variables de entorno al iniciar
 console.log('Email config (Astro env):', {
@@ -33,16 +34,23 @@ const transporter = nodemailer.createTransport({
   }
 })();
 
+interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 /**
  * Envía un correo electrónico
  */
-export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+export async function sendEmail({ to, subject, html, attachments }: EmailOptions): Promise<boolean> {
   try {
     console.log('Sending email to:', to, 'Subject:', subject);
 
@@ -51,6 +59,11 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
       to,
       subject,
       html,
+      attachments: attachments?.map(a => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType || 'application/pdf',
+      })),
     });
 
     console.log('Email sent successfully:', result.messageId);
@@ -186,10 +199,33 @@ export async function sendOrderConfirmationEmail(
     </div>
   `;
 
+  // Generar factura PDF
+  let attachments: EmailAttachment[] = [];
+  try {
+    const pdfBuffer = await generateInvoicePDF({
+      orderNumber,
+      customerName,
+      customerEmail: email,
+      items,
+      summary,
+      total,
+    });
+    attachments = [{
+      filename: `Factura_${orderNumber}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf',
+    }];
+    console.log(`Invoice PDF generated for order #${orderNumber} (${pdfBuffer.length} bytes)`);
+  } catch (pdfError) {
+    console.error('Error generating invoice PDF:', pdfError);
+    // Continuamos sin adjunto si falla la generación
+  }
+
   return sendEmail({
     to: email,
     subject: `Confirmación de tu pedido #${orderNumber}`,
     html,
+    attachments,
   });
 }
 

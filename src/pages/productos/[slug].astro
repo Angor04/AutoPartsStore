@@ -65,34 +65,44 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
 
     <!-- Main Content -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-      <!-- Images Gallery -->
-      <div class="flex flex-col gap-4">
+      <!-- Images Carousel -->
+      <div class="product-carousel" id="productCarousel" data-images={JSON.stringify(images)}>
         {images.length > 0 ? (
-          <>
-            <div class="bg-gray-100 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
-              <img
-                src={images[0]}
-                alt={producto.nombre}
-                class="w-full h-full object-cover"
-              />
-            </div>
+          <div class="carousel-viewport">
+            <img
+              src={images[0]}
+              alt={producto.nombre}
+              id="carousel-img"
+              class="carousel-img"
+            />
             {images.length > 1 && (
-              <div class="grid grid-cols-3 gap-2">
-                {images.map((img) => (
-                  <button class="bg-gray-100 rounded-lg aspect-square overflow-hidden hover:ring-2 hover:ring-red-600 transition-all">
-                    <img
-                      src={img}
-                      alt={producto.nombre}
-                      class="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+              <>
+                <!-- Left click zone -->
+                <button class="carousel-zone carousel-zone-left" id="carousel-prev" aria-label="Imagen anterior">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <!-- Right click zone -->
+                <button class="carousel-zone carousel-zone-right" id="carousel-next" aria-label="Siguiente imagen">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </>
             )}
-          </>
+          </div>
         ) : (
           <div class="bg-gray-200 rounded-lg aspect-square flex items-center justify-center">
             <span class="text-charcoal-500 text-lg">Sin imagen</span>
+          </div>
+        )}
+
+        {images.length > 1 && (
+          <div class="carousel-dots" id="carousel-dots">
+            {images.map((_, i) => (
+              <button class={`carousel-dot ${i === 0 ? 'active' : ''}`} data-index={i} aria-label={`Imagen ${i + 1}`} />
+            ))}
           </div>
         )}
       </div>
@@ -196,12 +206,107 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
 </PublicLayout>
 
 <style>
-  img {
+  .product-carousel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .carousel-viewport {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    background-color: #f3f4f6;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .carousel-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: opacity 0.25s ease;
   }
-</style>
+
+  /* Clickable zones — cover left/right halves */
+  .carousel-zone {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    z-index: 2;
+    padding: 0 12px;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .carousel-viewport:hover .carousel-zone {
+    opacity: 1;
+  }
+
+  .carousel-zone svg {
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+  }
+
+  .carousel-zone-left {
+    left: 0;
+    justify-content: flex-start;
+  }
+
+  .carousel-zone-right {
+    right: 0;
+    justify-content: flex-end;
+  }
+
+  .carousel-zone:hover svg {
+    transform: scale(1.2);
+    transition: transform 0.15s ease;
+  }
+
+  /* Dots */
+  .carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .carousel-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: #d1d5db;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+    padding: 0;
+  }
+
+  .carousel-dot:hover {
+    background: #9ca3af;
+    transform: scale(1.2);
+  }
+
+  .carousel-dot.active {
+    background: #dc2626;
+    transform: scale(1.2);
+  }
+
+  @media (max-width: 640px) {
+    .carousel-zone {
+      opacity: 0.7;
+    }
+    .carousel-dot {
+      width: 8px;
+      height: 8px;
+    }
+  }
 </style>
 
 <script is:inline define:vars={{ producto }}>
@@ -210,4 +315,55 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
       window.registrarProductosParaSync([producto]);
     }
   });
+</script>
+
+<script>
+  const carouselEl = document.getElementById('productCarousel') as HTMLElement | null;
+  if (carouselEl) {
+    const images: string[] = JSON.parse(carouselEl.dataset.images || '[]');
+    let currentIndex = 0;
+
+    const img = document.getElementById('carousel-img') as HTMLImageElement | null;
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+    const dotsContainer = document.getElementById('carousel-dots');
+
+    function goTo(index: number): void {
+      if (!img || images.length === 0) return;
+      if (index < 0) index = images.length - 1;
+      if (index >= images.length) index = 0;
+      currentIndex = index;
+      img.src = images[currentIndex];
+
+      if (dotsContainer) {
+        dotsContainer.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentIndex);
+        });
+      }
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', () => goTo(currentIndex - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goTo(currentIndex + 1));
+
+    if (dotsContainer) {
+      dotsContainer.querySelectorAll('.carousel-dot').forEach((dot) => {
+        dot.addEventListener('click', () => {
+          goTo(parseInt((dot as HTMLElement).dataset.index || '0', 10));
+        });
+      });
+    }
+
+    // Swipe support
+    let touchStartX = 0;
+    carouselEl.addEventListener('touchstart', (e) => {
+      touchStartX = (e as TouchEvent).changedTouches[0].screenX;
+    }, { passive: true });
+
+    carouselEl.addEventListener('touchend', (e) => {
+      const diff = touchStartX - (e as TouchEvent).changedTouches[0].screenX;
+      if (Math.abs(diff) > 50) {
+        diff > 0 ? goTo(currentIndex + 1) : goTo(currentIndex - 1);
+      }
+    }, { passive: true });
+  }
 </script>

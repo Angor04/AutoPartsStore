@@ -1,14 +1,11 @@
+// src/pages/api/admin/upload-image.ts
+// Sube imágenes al bucket "products-images" de Supabase Storage
 
 import type { APIRoute } from 'astro';
-import { v2 as cloudinary } from 'cloudinary';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import crypto from 'node:crypto';
 
-// Configurar Cloudinary
-cloudinary.config({
-    cloud_name: import.meta.env.CLOUDINARY_CLOUD_NAME,
-    api_key: import.meta.env.CLOUDINARY_API_KEY,
-    api_secret: import.meta.env.CLOUDINARY_API_SECRET,
-    secure: true,
-});
+export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
     try {
@@ -16,37 +13,68 @@ export const POST: APIRoute = async ({ request }) => {
         const file = formData.get('file') as File;
 
         if (!file) {
-            return new Response(JSON.stringify({ error: 'No file provided' }), { status: 400 });
+            return new Response(JSON.stringify({ error: 'No file provided' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
         }
 
-        // Convertir File a Buffer
+        // Validar tipo de archivo
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            return new Response(JSON.stringify({ error: 'Tipo de archivo no permitido. Usa JPG, PNG, WebP o GIF.' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        // Validar tamaño (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            return new Response(JSON.stringify({ error: 'El archivo excede el tamaño máximo de 5MB.' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const supabaseAdmin = getSupabaseAdmin();
+
+        // Generar nombre único
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `${crypto.randomUUID()}.${ext}`;
+        const filePath = `products/${fileName}`;
+
+        // Convertir File a ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
 
-        // Subir a Cloudinary usando un stream
-        // (Cloudinary SDK soporta buffer directamente en upload_stream o usando base64, pero buffers son mejores)
-        const result = await new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-                {
-                    folder: 'auto_parts_store', // Carpeta opcional
-                    resource_type: 'auto',
-                },
-                (error, result) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(result);
-                    }
-                }
-            );
-            uploadStream.end(buffer);
-        });
+        // Subir a Supabase Storage
+        const { data, error } = await supabaseAdmin.storage
+            .from('products-images')
+            .upload(filePath, arrayBuffer, {
+                contentType: file.type,
+                cacheControl: '3600',
+                upsert: false,
+            });
 
-        return new Response(JSON.stringify(result), {
+        if (error) {
+            console.error('Supabase Storage upload error:', error);
+            return new Response(JSON.stringify({ error: error.message }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        // Obtener URL pública
+        const { data: urlData } = supabaseAdmin.storage
+            .from('products-images')
+            .getPublicUrl(filePath);
+
+        return new Response(JSON.stringify({
+            success: true,
+            url: urlData.publicUrl,
+            path: filePath,
+        }), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
         });
 
     } catch (error: any) {

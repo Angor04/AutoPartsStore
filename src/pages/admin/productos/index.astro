@@ -82,8 +82,18 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
     
     .image-upload-area { border: 2px dashed #d1d5db; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #f9fafb; }
     .image-upload-area:hover { border-color: #667eea; background: #f0f4ff; }
-    .preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; }
-    .preview-item { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; }
+    .image-upload-area.drag-over { border-color: #667eea; background: #e0e7ff; }
+    .preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 10px; }
+    .image-card { position: relative; border-radius: 8px; overflow: hidden; border: 2px solid #e5e7eb; cursor: grab; transition: all 0.2s; background: white; }
+    .image-card:active { cursor: grabbing; }
+    .image-card.dragging { opacity: 0.4; border-color: #667eea; }
+    .image-card.drag-over-card { border-color: #667eea; transform: scale(1.05); }
+    .image-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; pointer-events: none; }
+    .image-card .badge-pos { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; color: white; z-index: 2; }
+    .image-card .badge-primary { background: #3b82f6; }
+    .image-card .badge-secondary { background: #6b7280; }
+    .image-card .btn-delete-img { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: #ef4444; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; line-height: 1; z-index: 2; transition: background 0.2s; }
+    .image-card .btn-delete-img:hover { background: #dc2626; }
     
     .btn { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s; }
     .btn-primary { background: #667eea; color: white; }
@@ -246,16 +256,13 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
 
             <!-- Imágenes: Ancho completo -->
             <div class="form-group full-width">
-              <label style="margin-bottom: 8px; display: block;">Imágenes del Producto</label>
+              <label style="margin-bottom: 8px; display: block;">Imágenes del Producto <span style="font-weight: 400; color: #9ca3af; font-size: 12px;">(arrastra para reordenar)</span></label>
               
-              <!-- Contenedor unificado para previews -->
+              <!-- Contenedor sortable para previews -->
               <div id="unifiedPreview" class="preview-container" style="margin-bottom: 15px;"></div>
 
-              <!-- Input Oculto Persistent -->
-              <input type="hidden" id="urls_imagenes" name="urls_imagenes">
-
               <!-- Area de Subida -->
-              <div class="image-upload-area" onclick="document.getElementById('imageInput').click()">
+              <div id="uploadDropZone" class="image-upload-area" onclick="document.getElementById('imageInput').click()">
                 <div style="color: #6b7280;">
                   <svg style="width: 40px; height: 40px; margin: 0 auto 10px; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -554,6 +561,84 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       if (modal) modal.classList.remove('show');
     };
 
+    // ========== IMAGE MANAGEMENT STATE ==========
+    let imageUrls: string[] = []; // Array de URLs en el orden actual
+    let dragSrcIndex: number | null = null;
+
+    function renderImageCards(): void {
+      const container = document.getElementById('unifiedPreview');
+      if (!container) return;
+      container.innerHTML = '';
+
+      imageUrls.forEach((url, index) => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.draggable = true;
+        card.setAttribute('data-index', String(index));
+
+        // Badge
+        const badge = document.createElement('span');
+        badge.className = `badge-pos ${index === 0 ? 'badge-primary' : 'badge-secondary'}`;
+        badge.textContent = index === 0 ? 'Principal' : String(index + 1);
+        card.appendChild(badge);
+
+        // Delete button
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn-delete-img';
+        delBtn.innerHTML = '×';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          removeImage(index);
+        };
+        card.appendChild(delBtn);
+
+        // Image
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `Imagen ${index + 1}`;
+        card.appendChild(img);
+
+        // Drag events
+        card.addEventListener('dragstart', (e) => {
+          dragSrcIndex = index;
+          card.classList.add('dragging');
+          (e as DragEvent).dataTransfer!.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          dragSrcIndex = null;
+          document.querySelectorAll('.image-card').forEach(c => c.classList.remove('drag-over-card'));
+        });
+        card.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          (e as DragEvent).dataTransfer!.dropEffect = 'move';
+          card.classList.add('drag-over-card');
+        });
+        card.addEventListener('dragleave', () => {
+          card.classList.remove('drag-over-card');
+        });
+        card.addEventListener('drop', (e) => {
+          e.preventDefault();
+          card.classList.remove('drag-over-card');
+          if (dragSrcIndex !== null && dragSrcIndex !== index) {
+            // Reorder
+            const moved = imageUrls.splice(dragSrcIndex, 1)[0];
+            imageUrls.splice(index, 0, moved);
+            renderImageCards();
+          }
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    function removeImage(index: number): void {
+      imageUrls.splice(index, 1);
+      renderImageCards();
+    }
+
+    // ========== EDIT PRODUCT ==========
     (window as any).editProduct = function(productJson: string | Record<string, any>): void {
       const product = typeof productJson === 'string' ? JSON.parse(productJson) : productJson;
       
@@ -564,16 +649,11 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       const precioElem = document.getElementById('precio') as HTMLInputElement | null;
       const stockElem = document.getElementById('stock') as HTMLInputElement | null;
       const categoriaElem = document.getElementById('categoria_id') as HTMLInputElement | null;
-      
-      const urlsImagenesElem = document.getElementById('urls_imagenes') as HTMLInputElement | null;
       const modalTitle = document.getElementById('modalTitle');
       const productModal = document.getElementById('productModal');
       
-      // Reseteo de previews
       const imageInput = document.getElementById('imageInput') as HTMLInputElement | null;
       if (imageInput) imageInput.value = '';
-      const unifiedPreview = document.getElementById('unifiedPreview');
-      if (unifiedPreview) unifiedPreview.innerHTML = '';
 
       if (productIdElem) productIdElem.value = product.id;
       if (nombreElem) nombreElem.value = product.nombre || '';
@@ -583,101 +663,62 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       if (stockElem) stockElem.value = product.stock || '';
       if (categoriaElem) categoriaElem.value = product.categoria_id || '';
       
-      const currentUrls = product.urls_imagenes || [];
-      if (urlsImagenesElem) urlsImagenesElem.value = currentUrls.join(', ');
-      
-      // Mostrar imágenes existentes
-      if (unifiedPreview && currentUrls.length > 0) {
-        currentUrls.forEach((url: string) => {
-          const img = document.createElement('img');
-          img.src = url;
-          img.className = 'preview-item';
-          img.setAttribute('data-type', 'existing');
-          unifiedPreview.appendChild(img);
-        });
-      }
+      // Load existing images into state
+      imageUrls = Array.isArray(product.urls_imagenes) ? [...product.urls_imagenes] : [];
+      renderImageCards();
 
       if (modalTitle) modalTitle.textContent = 'Editar Producto';
       if (productModal) productModal.classList.add('show');
     };
 
-    // Manejo de selección de imágenes
-    (window as any).handleImageSelect = function(input: HTMLInputElement): void {
-      const unifiedPreview = document.getElementById('unifiedPreview');
-      if (!unifiedPreview || !input.files) return;
+    // ========== IMAGE UPLOAD (immediate to Supabase) ==========
+    (window as any).handleImageSelect = async function(input: HTMLInputElement): Promise<void> {
+      if (!input.files || input.files.length === 0) return;
+      
+      const uploadStatus = document.getElementById('uploadStatus');
+      if (uploadStatus) uploadStatus.style.display = 'block';
 
-      // Limpiar solo las nuevas para no borrar las que vienen de DB
-      const newImages = unifiedPreview.querySelectorAll('[data-type="new"]');
-      newImages.forEach(img => img.remove());
+      try {
+        for (const file of Array.from(input.files)) {
+          const uploadData = new FormData();
+          uploadData.append('file', file);
 
-      Array.from(input.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = document.createElement('img');
-          img.src = e.target?.result as string;
-          img.className = 'preview-item';
-          img.setAttribute('data-type', 'new');
-          unifiedPreview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      });
+          const res = await fetch('/api/admin/upload-image', {
+            method: 'POST',
+            body: uploadData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              imageUrls.push(data.url);
+            }
+          } else {
+            const err = await res.json();
+            alert('Error subiendo imagen: ' + (err.error || 'Error desconocido'));
+          }
+        }
+        renderImageCards();
+      } catch (err) {
+        console.error('Error subiendo imágenes:', err);
+        alert('Error al subir imágenes.');
+      } finally {
+        if (uploadStatus) uploadStatus.style.display = 'none';
+        input.value = ''; // Reset input
+      }
     };
 
+    // ========== SUBMIT ==========
     (window as any).handleSubmit = async function(e: Event): Promise<void> {
       e.preventDefault();
       const productIdElem = document.getElementById('productId') as HTMLInputElement | null;
       const productFormElem = document.getElementById('productForm');
-      const uploadStatus = document.getElementById('uploadStatus');
-      const imageInput = document.getElementById('imageInput') as HTMLInputElement | null;
       
       if (!productIdElem || !productFormElem || !(productFormElem instanceof HTMLFormElement)) return;
       
       const id = productIdElem.value;
       const formData = new FormData(productFormElem);
 
-      // 1. Subir imágenes si hay seleccionadas
-      let uploadedUrls: string[] = [];
-      if (imageInput && imageInput.files && imageInput.files.length > 0) {
-        if (uploadStatus) uploadStatus.style.display = 'block';
-        
-        try {
-          // Subir secuencialmente para no saturar
-          for (const file of Array.from(imageInput.files)) {
-            const uploadData = new FormData();
-            uploadData.append('file', file);
-
-            const res = await fetch('/api/admin/upload-image', {
-              method: 'POST',
-              body: uploadData
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              if (data.secure_url) {
-                uploadedUrls.push(data.secure_url);
-              }
-            } else {
-              console.error('Error subiendo imagen');
-            }
-          }
-        } catch (err) {
-          console.error('Error subiendo imágenes:', err);
-          alert('Error al subir imágenes. Se intentará guardar las URLs manuales.');
-        } finally {
-          if (uploadStatus) uploadStatus.style.display = 'none';
-        }
-      }
-
-      // Procesar URLs texto y combinarlas con las subidas
-      const urlsStr = String(formData.get('urls_imagenes') || '');
-      const manualUrls = urlsStr
-        .split(',')
-        .map(url => url.trim())
-        .filter(url => url.length > 0);
-      
-      const allUrls = [...manualUrls, ...uploadedUrls];
-
-      // Crear objeto con los datos correctos
       const body = {
         nombre: formData.get('nombre'),
         descripcion: formData.get('descripcion'),
@@ -685,7 +726,7 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
         precio: parseFloat(String(formData.get('precio'))),
         stock: parseInt(String(formData.get('stock'))),
         categoria_id: parseInt(String(formData.get('categoria_id'))),
-        urls_imagenes: allUrls
+        urls_imagenes: imageUrls, // Already in correct order from drag-and-drop
       };
 
       if (id) {
@@ -699,7 +740,7 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
         const response = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
         });
 
         if (response.ok) {
@@ -713,6 +754,44 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
         alert('Error: ' + errorMessage);
       }
     };
+
+    // ========== OPEN MODAL (new product) ==========
+    // Reset imageUrls when opening for new product
+    const origOpenModal = (window as any).openModal;
+    (window as any).openModal = function(): void {
+      origOpenModal();
+      imageUrls = [];
+      renderImageCards();
+    };
+
+    // ========== DROP ZONE for upload area ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      const dropZone = document.getElementById('uploadDropZone');
+      if (dropZone) {
+        ['dragenter', 'dragover'].forEach(evt => {
+          dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+          });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+          dropZone.addEventListener(evt, () => {
+            dropZone.classList.remove('drag-over');
+          });
+        });
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const dt = (e as DragEvent).dataTransfer;
+          if (dt?.files && dt.files.length > 0) {
+            const imageInput = document.getElementById('imageInput') as HTMLInputElement;
+            if (imageInput) {
+              imageInput.files = dt.files;
+              (window as any).handleImageSelect(imageInput);
+            }
+          }
+        });
+      }
+    });
 
     (window as any).deleteProduct = async function(id: string | number): Promise<void> {
       if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
