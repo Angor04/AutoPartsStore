@@ -16,6 +16,7 @@
     "@astrojs/check": "^0.9.6",
     "@astrojs/node": "^9.0.0",
     "@astrojs/react": "^3.5.0",
+    "@astrojs/sitemap": "^3.7.0",
     "@astrojs/tailwind": "^5.1.0",
     "@nanostores/react": "^1.0.0",
     "@supabase/supabase-js": "^2.42.0",
