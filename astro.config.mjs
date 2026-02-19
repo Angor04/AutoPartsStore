@@ -32,4 +32,7 @@ export default defineConfig({
   image: {
     domains: ['aebzgxrpvbwmcktnvkea.supabase.co'],
   },
+  security: {
+    checkOrigin: false,
+  },
 });
