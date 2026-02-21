@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { generateInvoicePDF } from './invoice-pdf';
+import { generateRefundPDF } from './refund-pdf';
 
 // Log de variables de entorno al iniciar
 console.log('Email config (Astro env):', {
@@ -561,7 +562,8 @@ export async function sendReturnStatusUpdateEmail(
   newStatus: string,
   returnLabel: string,
   refundAmount?: number,
-  motivoRechazo?: string
+  motivoRechazo?: string,
+  items?: Array<{ nombre_producto?: string; nombre?: string; cantidad: number; precio_unitario?: number; subtotal?: number }>
 ): Promise<boolean> {
   const statusUpper = newStatus.toUpperCase();
 
@@ -662,9 +664,32 @@ export async function sendReturnStatusUpdateEmail(
     'REEMBOLSADA': `Reembolso Procesado - Pedido #${orderNumber}`,
   };
 
+  // Generar PDF de reembolso si es REEMBOLSADA
+  let attachments: EmailAttachment[] = [];
+  if (statusUpper === 'REEMBOLSADA' && refundAmount) {
+    try {
+      const pdfBuffer = await generateRefundPDF({
+        orderNumber,
+        returnLabel,
+        customerEmail: email,
+        refundAmount,
+        items: items || [],
+      });
+      attachments = [{
+        filename: `Reembolso_${orderNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      }];
+      console.log(`Refund PDF generated for order #${orderNumber} (${pdfBuffer.length} bytes)`);
+    } catch (pdfError) {
+      console.error('Error generating refund PDF:', pdfError);
+    }
+  }
+
   return sendEmail({
     to: email,
     subject: subjectMap[statusUpper] || `Actualización Devolución - Pedido #${orderNumber}`,
     html,
+    attachments,
   });
 }

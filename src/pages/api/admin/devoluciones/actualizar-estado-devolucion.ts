@@ -152,13 +152,43 @@ export const PUT: APIRoute = async ({ request }) => {
         // ==========================================
         if (data.email_usuario) {
             try {
+                // Si es reembolsada, obtener items del pedido para el PDF
+                let orderItems: any[] = [];
+                if (nuevo_estado.toUpperCase() === 'REEMBOLSADA') {
+                    const { data: devData } = await (supabaseAdmin as any)
+                        .from('solicitudes_devolucion')
+                        .select('orden_id')
+                        .eq('id', devolucion_id)
+                        .single();
+
+                    if (devData?.orden_id) {
+                        const { data: items } = await (supabaseAdmin as any)
+                            .from('ordenes_items')
+                            .select(`
+                                cantidad,
+                                precio_unitario,
+                                subtotal,
+                                productos:producto_id (nombre)
+                            `)
+                            .eq('orden_id', devData.orden_id);
+
+                        orderItems = (items || []).map((item: any) => ({
+                            nombre_producto: item.productos?.nombre || 'Producto',
+                            cantidad: item.cantidad,
+                            precio_unitario: item.precio_unitario,
+                            subtotal: item.subtotal,
+                        }));
+                    }
+                }
+
                 await sendReturnStatusUpdateEmail(
                     data.email_usuario,
                     data.numero_pedido,
                     data.nuevo_estado,
                     data.numero_etiqueta,
                     nuevo_estado.toUpperCase() === 'REEMBOLSADA' ? data.monto_reembolso : undefined,
-                    nuevo_estado.toUpperCase() === 'RECHAZADA' ? motivo_rechazo : undefined
+                    nuevo_estado.toUpperCase() === 'RECHAZADA' ? motivo_rechazo : undefined,
+                    orderItems.length > 0 ? orderItems : undefined
                 );
                 console.log(`✅ Email de estado enviado a: ${data.email_usuario}`);
             } catch (emailError) {
