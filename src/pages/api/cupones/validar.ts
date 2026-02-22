@@ -13,19 +13,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const codigoCupon = body.codigo_cupon || body.codigo;
     const subtotal = body.subtotal || 0;
 
-    // Usuario puede venir del body o de cookies
+    // Usuario puede venir del body o de cookies (Opcional para permitir invitados)
     const usuarioId = body.usuario_id || cookies.get('user-id')?.value;
-
-    // Solo permitir cupones a usuarios registrados
-    if (!usuarioId) {
-      return new Response(
-        JSON.stringify({
-          valido: false,
-          mensaje: 'Solo los clientes registrados pueden usar cupones de descuento. ¡Inicia sesión o regístrate!'
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
 
 
     // ==========================================

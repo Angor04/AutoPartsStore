@@ -17,7 +17,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function fixAdmin() {
     const userId = '209c04ff-d099-484b-b8ed-eb617d68a502'; // ID from your logs
-    const email = 'admin@autopartsstore.com';
+    const email = 'agonzalezcruces2004@gmail.com';
 
     console.log(`Checking admin_users for ${userId}...`);
 

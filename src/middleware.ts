@@ -116,7 +116,7 @@ export const onRequest = defineMiddleware(
         const adminUser = adminUserData as any;
 
         // AUTO-FIX / EMERGENCY BYPASS
-        const isMasterAdmin = user.email === 'admin@autopartsstore.com';
+        const isMasterAdmin = user.email === 'agonzalezcruces2004@gmail.com';
 
         if ((adminError || !adminUser) && !isMasterAdmin) {
           console.error('Usuario NO es admin (Middleware):', adminError?.message || 'No record found in admin_users');

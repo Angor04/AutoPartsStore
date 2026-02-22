@@ -93,7 +93,7 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
     y -= 12;
     page.drawText('Sanlucar de Barrameda, Cadiz', { x: margin, y, size: 8, font: helvetica, color: grayText });
     y -= 12;
-    page.drawText('admin@autopartsstore.com', { x: margin, y, size: 8, font: helvetica, color: grayText });
+    page.drawText('agonzalezcruces2004@gmail.com', { x: margin, y, size: 8, font: helvetica, color: grayText });
 
     // Cliente (columna derecha)
     const clientX = width / 2 + 20;
