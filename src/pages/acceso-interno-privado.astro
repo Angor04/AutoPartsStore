@@ -134,8 +134,8 @@ const error = Astro.url.searchParams.get('error');
   <div class="login-wrapper">
     <div class="login-card">
       <div class="login-header">
-        <h1>Acceso Interno</h1>
-        <p>Portal de Seguridad</p>
+        <h1>Acceso Admin</h1>
+        <p>Panel de Administraci&oacute;n</p>
       </div>
 
       {error && <div class="error">{error}</div>}
@@ -143,19 +143,19 @@ const error = Astro.url.searchParams.get('error');
 
       <form method="POST" action="/api/auth/admin-login">
         <div class="form-group">
-          <label for="email">Credencial ID</label>
+          <label for="email">Email</label>
           <input
             type="email"
             id="email"
             name="email"
-            placeholder="Usuario"
+            placeholder="Introduce tu email"
             autocomplete="email"
             required
           />
         </div>
 
         <div class="form-group">
-          <label for="password">Clave de Seguridad</label>
+          <label for="password">Contrase&ntilde;a</label>
           <input
             type="password"
             id="password"
@@ -167,22 +167,21 @@ const error = Astro.url.searchParams.get('error');
         </div>
 
         <div class="form-group">
-          <label for="admin_secret_key" class="text-red-600">Llave Maestra</label>
+          <label for="admin_secret_key">Llave Maestra</label>
           <input
             type="password"
             id="admin_secret_key"
             name="admin_secret_key"
             placeholder="Introduce la llave de acceso"
             required
-            class="border-red-200"
           />
         </div>
 
-        <button type="submit" class="submit-btn" style="background-color: #333;">Validar Acceso</button>
+        <button type="submit" class="submit-btn">Iniciar Sesi&oacute;n</button>
       </form>
 
       <div class="footer-text">
-        <a href="/" class="back-link" style="color: #666;">Volver</a>
+        <a href="/" class="back-link">Volver a la tienda</a>
       </div>
     </div>
   </div>
