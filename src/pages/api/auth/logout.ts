@@ -6,7 +6,7 @@ import { clearCartFromDB } from '@/lib/cartStorage';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ redirect, cookies }) => {
+export const GET: APIRoute = async ({ request, redirect, cookies }) => {
   try {
     // Limpiar carrito de Supabase
     await clearCartFromDB();
@@ -21,6 +21,11 @@ export const GET: APIRoute = async ({ redirect, cookies }) => {
   cookies.delete('user-id', { path: '/' });
   cookies.delete('user-email', { path: '/' });
 
+  // Detectar el origen de forma robusta
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const proto = request.headers.get('x-forwarded-proto') || 'http';
+  const origin = host ? `${proto}://${host}` : (process.env.SITE_URL || 'https://boss.victoriafp.online');
+
   // Redirigir a página principal
-  return redirect('/');
+  return redirect(origin);
 };
