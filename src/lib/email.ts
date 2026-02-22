@@ -3,7 +3,7 @@ import { generateInvoicePDF } from './invoice-pdf';
 import { generateRefundPDF } from './refund-pdf';
 
 // Log de variables de entorno al iniciar
-console.log('Email config (Astro env):', {
+console.log('Config ELMAIL:', {
   host: import.meta.env.EMAIL_SMTP_HOST,
   port: import.meta.env.EMAIL_SMTP_PORT,
   user: import.meta.env.EMAIL_USER ? import.meta.env.EMAIL_USER.slice(0, 5) + '***' : 'NO CONFIGURADO',
@@ -26,9 +26,7 @@ const transporter = nodemailer.createTransport({
   try {
     const verified = await transporter.verify();
     if (verified) {
-      console.log('Email service is ready');
     } else {
-      console.warn('Email service verification failed');
     }
   } catch (error) {
     console.error('Email service verification error:', error instanceof Error ? error.message : error);
@@ -53,7 +51,6 @@ interface EmailOptions {
  */
 export async function sendEmail({ to, subject, html, attachments }: EmailOptions): Promise<boolean> {
   try {
-    console.log('Sending email to:', to, 'Subject:', subject);
 
     const result = await transporter.sendMail({
       from: import.meta.env.EMAIL_FROM || import.meta.env.EMAIL_USER,
@@ -67,7 +64,6 @@ export async function sendEmail({ to, subject, html, attachments }: EmailOptions
       })),
     });
 
-    console.log('Email sent successfully:', result.messageId);
     return true;
   } catch (error) {
     console.error('Error sending email:', error instanceof Error ? error.message : error);
@@ -216,7 +212,6 @@ export async function sendOrderConfirmationEmail(
       content: pdfBuffer,
       contentType: 'application/pdf',
     }];
-    console.log(`Invoice PDF generated for order #${orderNumber} (${pdfBuffer.length} bytes)`);
   } catch (pdfError) {
     console.error('Error generating invoice PDF:', pdfError);
     // Continuamos sin adjunto si falla la generación
@@ -429,7 +424,7 @@ export async function sendOrderStatusUpdateEmail(
       <p>${message}</p>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${import.meta.env.SITE || 'http://localhost:4321'}${isGuest ? `/estado-pedido?orden=${orderNumber}&email=${email}` : '/mi-cuenta/pedidos'}" style="
+        <a href="${import.meta.env.SITE || 'https://boss.victoriafp.online'}${isGuest ? `/estado-pedido?orden=${orderNumber}&email=${email}` : '/mi-cuenta/pedidos'}" style="
           background-color: #ef4444;
           color: white;
           padding: 12px 30px;
@@ -563,7 +558,9 @@ export async function sendReturnStatusUpdateEmail(
   returnLabel: string,
   refundAmount?: number,
   motivoRechazo?: string,
-  items?: Array<{ nombre_producto?: string; nombre?: string; cantidad: number; precio_unitario?: number; subtotal?: number }>
+  items?: Array<{ nombre_producto?: string; nombre?: string; cantidad: number; precio_unitario?: number; subtotal?: number }>,
+  customerName?: string,
+  summary?: { subtotal: number; envio: number; descuento: number }
 ): Promise<boolean> {
   const statusUpper = newStatus.toUpperCase();
 
@@ -674,13 +671,14 @@ export async function sendReturnStatusUpdateEmail(
         customerEmail: email,
         refundAmount,
         items: items || [],
+        customerName: customerName || 'Cliente',
+        summary: summary,
       });
       attachments = [{
         filename: `Reembolso_${orderNumber}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf',
       }];
-      console.log(`Refund PDF generated for order #${orderNumber} (${pdfBuffer.length} bytes)`);
     } catch (pdfError) {
       console.error('Error generating refund PDF:', pdfError);
     }

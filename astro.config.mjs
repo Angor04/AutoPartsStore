@@ -14,7 +14,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: parseInt(process.env.PORT || '4321'),
   },
-  site: process.env.SITE_URL || 'http://localhost:4321',
+  site: process.env.SITE_URL || 'https://boss.victoriafp.online',
   integrations: [
     react(),
     tailwind({

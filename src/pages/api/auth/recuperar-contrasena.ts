@@ -26,7 +26,10 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     }
 
     // Solicitar reset de contraseña en Supabase
-    const siteUrl = process.env.SITE_URL || 'http://localhost:4322';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const siteUrl = host ? `${proto}://${host}` : (process.env.SITE_URL || 'https://boss.victoriafp.online');
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${siteUrl}/auth/resetear-contrasena`,
     });
