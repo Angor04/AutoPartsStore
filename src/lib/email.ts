@@ -104,6 +104,59 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<boo
 }
 
 /**
+ * Envía correo de bienvenida para suscriptores de newsletter con cupón
+ */
+export async function sendNewsletterWelcomeEmail(
+  email: string,
+  couponCode: string,
+  discount: number = 10
+): Promise<boolean> {
+  const siteUrl = process.env.SITE_URL || 'https://boss.victoriafp.online';
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+      <div style="background-color: #1a1a1a; padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-style: italic;">AutoPartsStore</h1>
+      </div>
+      
+      <div style="padding: 40px 30px; text-align: center; background-image: linear-gradient(to bottom, #fef2f2, #ffffff);">
+        <h2 style="color: #111827; margin-bottom: 10px; font-size: 26px;">¡Bienvenido a nuestra Newsletter!</h2>
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Gracias por suscribirte. Estamos emocionados de compartir contigo nuestras mejores ofertas, consejos de mantenimiento y novedades del mundo del motor.</p>
+        
+        <div style="margin: 40px 0; padding: 30px; background-color: #ffffff; border: 2px dashed #dc2626; border-radius: 12px;">
+          <p style="color: #ef4444; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 0;">Tu Regalo de Bienvenida</p>
+          <p style="font-size: 32px; font-weight: 800; color: #111827; margin: 10px 0;">${discount}% DTO.</p>
+          <p style="color: #4b5563; font-size: 14px; margin-bottom: 20px;">Utiliza este código en tu próxima compra:</p>
+          
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 28px; font-weight: bold; color: #111827; letter-spacing: 3px; display: inline-block;">
+            ${couponCode}
+          </div>
+          
+          <p style="color: #9ca3af; font-size: 11px; margin-top: 20px;">* Válido por 30 días en toda la tienda.</p>
+        </div>
+        
+        <a href="${siteUrl}/productos" style="background-color: #dc2626; color: #ffffff; padding: 16px 32px; border-radius: 8px; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.2);">¡Empezar a comprar ya!</a>
+      </div>
+      
+      <div style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 13px; margin: 0;">Recibes este correo porque te has suscrito a la newsletter de AutoPartsStore.</p>
+        <div style="margin-top: 15px; font-size: 13px;">
+          <a href="${siteUrl}/privacidad" style="color: #dc2626; text-decoration: none;">Privacidad</a>
+          <span style="color: #d1d5db; margin: 0 10px;">|</span>
+          <a href="${siteUrl}/contacto" style="color: #dc2626; text-decoration: none;">Contacto</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `🎁 ¡Tu cupón del ${discount}% de descuento ya está aquí!`,
+    html
+  });
+}
+
+/**
  * Envía correo de confirmación de pedido con detalles completos
  */
 export async function sendOrderConfirmationEmail(

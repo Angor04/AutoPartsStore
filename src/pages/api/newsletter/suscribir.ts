@@ -1,15 +1,13 @@
-// src/pages/api/newsletter/suscribir.ts
-// Endpoint para suscribirse a newsletter y recibir código de descuento
-
 import type { APIRoute } from 'astro';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { sendNewsletterWelcomeEmail } from '@/lib/email';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { email, usuario_id, recibe_ofertas } = body;
+    const { email } = body;
 
     // ==========================================
     // 1. VALIDAR EMAIL
@@ -24,18 +22,19 @@ export const POST: APIRoute = async ({ request }) => {
     const supabaseAdmin = getSupabaseAdmin();
 
     // ==========================================
-    // 2. VERIFICAR SI YA ESTÁ SUSCRITO
+    // 2. VERIFICAR SI YA TIENE UN CUPÓN ACTIVO
     // ==========================================
-    const { data: existente } = await supabaseAdmin
-      .from('newsletter_suscriptores')
-      .select('id, estado_suscripcion')
+    // Usamos cast a any porque la tabla es nueva y puede no estar en los tipos generados
+    const { data: existente } = await (supabaseAdmin.from('cupones_newsletter') as any)
+      .select('id, usado')
       .eq('email', email.toLowerCase())
+      .eq('usado', false)
       .single();
 
-    if (existente && existente.estado_suscripcion) {
+    if (existente) {
       return new Response(
         JSON.stringify({
-          mensaje: 'Ya estás suscrito a nuestra newsletter',
+          mensaje: 'Ya estás suscrito y tienes un cupón pendiente de uso.',
           ya_suscrito: true
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -45,11 +44,9 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // 3. GENERAR CÓDIGO DE DESCUENTO
     // ==========================================
-    // Usar la función SQL que creamos
-    const { data: codigoData, error: codigoError } = await supabaseAdmin
-      .rpc('generar_codigo_descuento');
+    const { data: codigo_descuento, error: codigoError } = await (supabaseAdmin.rpc as any)('generar_codigo_descuento');
 
-    if (codigoError) {
+    if (codigoError || !codigo_descuento) {
       console.error('Error generating code:', codigoError);
       return new Response(
         JSON.stringify({ error: 'Error al generar código de descuento' }),
@@ -57,73 +54,48 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    const codigo_descuento = codigoData;
+    // ==========================================
+    // 4. GUARDAR EN cupones_newsletter
+    // ==========================================
+    const fechaExpiracion = new Date();
+    fechaExpiracion.setDate(fechaExpiracion.getDate() + 30); // 30 días de validez
 
-    // ==========================================
-    // 4. CREAR CUPÓN AUTOMÁTICO (10% descuento)
-    // ==========================================
-    const { data: cupon, error: cuponError } = await supabaseAdmin
-      .from('cupones')
+    const { error: insertError } = await (supabaseAdmin.from('cupones_newsletter') as any)
       .insert({
         codigo: codigo_descuento,
-        descripcion: 'Código de bienvenida newsletter',
-        tipo_descuento: 'porcentaje',
-        valor_descuento: 10, // 10% descuento
-        cantidad_minima_compra: 0,
-        uso_unico: true,
-        limite_usos: 1,
-        activo: true,
-        fecha_expiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 días
-      })
-      .select('id');
-
-    if (cuponError) {
-      console.error('Error creating coupon:', cuponError);
-      // No fallar completamente, continuar sin cupón
-    }
-
-    // ==========================================
-    // 5. GUARDAR SUSCRIPTOR EN BASE DE DATOS
-    // ==========================================
-    const { data: suscriptor, error: suscriptorError } = await supabaseAdmin
-      .from('newsletter_suscriptores')
-      .upsert({
         email: email.toLowerCase(),
-        usuario_id: usuario_id || null,
-        estado_suscripcion: true,
-        recibe_ofertas: recibe_ofertas !== false,
-        codigo_descuento_otorgado: codigo_descuento,
-        fecha_suscripcion: new Date().toISOString(),
-        fecha_confirmacion: new Date().toISOString() // En producción, enviar email de confirmación
-      })
-      .select();
+        porcentaje_descuento: 10,
+        usado: false,
+        fecha_expiracion: fechaExpiracion.toISOString()
+      });
 
-    if (suscriptorError) {
-      console.error('Error saving subscriber:', suscriptorError);
+    if (insertError) {
+      console.error('Error inserting newsletter coupon:', insertError);
       return new Response(
-        JSON.stringify({ error: 'Error al guardar suscripción' }),
+        JSON.stringify({ error: 'Error al registrar la suscripción' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     // ==========================================
-    // 6. ENVIAR EMAIL (CONFIGURACIÓN MANUAL REQUERIDA)
+    // 5. ENVIAR EMAIL DE BIENVENIDA
     // ==========================================
-    // Este es un paso que DEBE HACERSE MANUALMENTE después
-    // Se explica en detalle al final
-
-    // Simulamos que enviamos email
+    try {
+      await sendNewsletterWelcomeEmail(email.toLowerCase(), codigo_descuento, 10);
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // No bloqueamos la respuesta al usuario si el email falla
+    }
 
     // ==========================================
-    // 7. RETORNAR RESPUESTA
+    // 6. RETORNAR ÉXITO
     // ==========================================
     return new Response(
       JSON.stringify({
         success: true,
-        mensaje: 'Gracias por suscribirte. Hemos enviado un código de descuento a tu email.',
-        codigo_descuento, // Opcional: mostrar en frontend
-        descuento_porcentaje: 10,
-        valido_dias: 30
+        mensaje: '¡Gracias por suscribirte! Revisa tu email para recibir tu cupón de descuento.',
+        codigo_descuento,
+        porcentaje: 10
       }),
       { status: 201, headers: { 'Content-Type': 'application/json' } }
     );
@@ -145,43 +117,31 @@ export const POST: APIRoute = async ({ request }) => {
 
 1. USUARIO RELLENA FORMULARIO:
    - Email: usuario@example.com
-   - Acepta ofertas: true
 
 2. FRONTEND LLAMA:
    POST /api/newsletter/suscribir
-   Body: { email, usuario_id, recibe_ofertas }
+   Body: { email }
 
 3. BACKEND EJECUTA:
    a) Valida email
-   b) Genera código aleatorio: "DESC2026011701AB23"
-   c) Crea cupón automático en DB:
-      - Tipo: porcentaje
-      - Valor: 10%
+   b) Genera código aleatorio: "NEW-XXXX"
+   c) Crea registro en cupones_newsletter:
+      - Porcentaje: 10%
       - Vencimiento: 30 días
-   d) Guarda suscriptor
-   e) ENVÍA EMAIL (paso manual)
+   d) ENVÍA EMAIL DE BIENVENIDA
 
 4. BASE DE DATOS DESPUÉS:
    
-   newsletter_suscriptores:
-   ┌─────────────────────────────────────┐
-   │ id | email              | codigo    │
-   ├─────────────────────────────────────┤
-   │ 1  │ usuario@exam.com   │ DESC... │
-   └─────────────────────────────────────┘
+   cupones_newsletter:
+   ┌───────────────────────────────────────────┐
+   │ id | codigo   | email          | usado    │
+   ├───────────────────────────────────────────┤
+   │ 1  │ NEW-ABCD │ user@exam.com  │ false    │
+   └───────────────────────────────────────────┘
 
-   cupones:
-   ┌──────────────────────────────────────────┐
-   │ id | codigo       | tipo    | valor │
-   ├──────────────────────────────────────────┤
-   │ 1  │ DESC20260117 │ % | 10    │
-   └──────────────────────────────────────────┘
-
-5. USUARIO RECIBE EMAIL CON:
-   "¡Bienvenido! Aquí está tu código: DESC20260117
-    10% de descuento en tu primera compra (válido 30 días)"
+5. USUARIO RECIBE EMAIL CON SU CUPÓN
 
 6. EN CHECKOUT:
-   Usuario ingresa código → validar_cupon() → Si válido, aplicar descuento
+   Usuario ingresa código → validar_cupon() → Si válido, aplicar y marcar como usado al pagar
 
 */

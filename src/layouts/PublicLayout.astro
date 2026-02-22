@@ -8,6 +8,7 @@ import SearchBar from "@/components/islands/SearchBar";
 import CartSlideOver from "@/components/ui/CartSlideOver.astro";
 import { getCategories } from "@/lib/supabase";
 import type { Category } from "@/types/index";
+import NewsletterPopup from "@/components/NewsletterPopup.astro";
 
 export const prerender = false;
 
@@ -132,6 +133,34 @@ const isLoggedIn = !!(accessToken || userId);
     <!-- Footer -->
     <footer class="bg-charcoal-900 text-ivory-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+        <!-- Newsletter Section -->
+        <div class="mb-12 pb-12 border-b border-charcoal-800">
+          <div class="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div class="text-center lg:text-left">
+              <h3 class="text-xl md:text-2xl font-serif font-bold mb-2">¡Consigue un 10% de descuento!</h3>
+              <p class="text-ivory-300">Suscríbete a nuestra newsletter y recibe un cupón exclusivo para tu próxima compra.</p>
+            </div>
+            <div class="w-full lg:w-auto">
+              <form id="footer-newsletter" class="flex flex-col sm:flex-row gap-3">
+                <input 
+                  type="email" 
+                  id="footer-email" 
+                  placeholder="Introduce tu email" 
+                  required
+                  class="bg-charcoal-800 border border-charcoal-700 rounded-lg px-6 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all min-w-[300px]"
+                />
+                <button 
+                  type="submit" 
+                  class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 active:scale-95"
+                >
+                  Suscribirme
+                </button>
+              </form>
+              <div id="footer-newsletter-msg" class="mt-3 text-sm text-center lg:text-left hidden"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <!-- About -->
           <div class="text-center sm:text-left">
@@ -187,6 +216,9 @@ const isLoggedIn = !!(accessToken || userId);
         </div>
       </div>
     </footer>
+    
+    <!-- Newsletter Popup (solo para usuarios no suscritos) -->
+    {!isLoggedIn && <NewsletterPopup delayMs={8000} />}
   </div>
   <script is:inline>
     // Fail-safe para detectar sesión en el cliente cuando el SSR falla por cookies seguras/redirects
@@ -209,5 +241,46 @@ const isLoggedIn = !!(accessToken || userId);
       }
     })();
   </script>
+
+  <!-- Lógica para el Newsletter del Footer -->
+  <script is:inline>
+    document.getElementById('footer-newsletter')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const email = document.getElementById('footer-email').value;
+      const msgDiv = document.getElementById('footer-newsletter-msg');
+      const btn = form.querySelector('button');
+
+      msgDiv.classList.remove('hidden', 'text-green-400', 'text-red-400');
+      msgDiv.textContent = 'Enviando...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/newsletter/suscribir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, recibe_ofertas: true })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          msgDiv.textContent = '¡Suscrito con éxito! Mira tu email.';
+          msgDiv.classList.add('text-green-400');
+          form.reset();
+        } else {
+          msgDiv.textContent = data.error || data.mensaje || 'Error al suscribirse';
+          msgDiv.classList.add('text-red-400');
+        }
+      } catch (error) {
+        msgDiv.textContent = 'Error de conexión';
+        msgDiv.classList.add('text-red-400');
+      } finally {
+        msgDiv.classList.remove('hidden');
+        btn.disabled = false;
+      }
+    });
+  </script>
+
   <script src="/js/stock-real-time.js?v=1" is:inline></script>
 </BaseLayout>
