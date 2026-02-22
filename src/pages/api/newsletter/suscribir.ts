@@ -7,7 +7,8 @@ export const prerender = false;
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { email } = body;
+    const emailRaw = body.email;
+    const email = emailRaw ? emailRaw.trim().toLowerCase() : '';
 
     // ==========================================
     // 1. VALIDAR EMAIL
@@ -27,7 +28,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Comprobamos si el email ya existe en la tabla, sea el cupón usado o no
     const { data: existente } = await (supabaseAdmin.from('cupones_newsletter') as any)
       .select('id, usado')
-      .eq('email', email.toLowerCase())
+      .eq('email', email)
       .limit(1)
       .maybeSingle();
 
@@ -63,7 +64,7 @@ export const POST: APIRoute = async ({ request }) => {
     const { error: insertError } = await (supabaseAdmin.from('cupones_newsletter') as any)
       .insert({
         codigo: codigo_descuento,
-        email: email.toLowerCase(),
+        email: email,
         porcentaje_descuento: 10,
         usado: false,
         fecha_expiracion: fechaExpiracion.toISOString()
@@ -81,7 +82,7 @@ export const POST: APIRoute = async ({ request }) => {
     // 5. ENVIAR EMAIL DE BIENVENIDA
     // ==========================================
     try {
-      await sendNewsletterWelcomeEmail(email.toLowerCase(), codigo_descuento, 10);
+      await sendNewsletterWelcomeEmail(email, codigo_descuento, 10);
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);
       // No bloqueamos la respuesta al usuario si el email falla

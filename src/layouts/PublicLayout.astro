@@ -247,11 +247,11 @@ const isLoggedIn = !!(accessToken || userId);
     document.getElementById('footer-newsletter')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
-      const email = document.getElementById('footer-email').value;
+      const email = document.getElementById('footer-email').value.trim();
       const msgDiv = document.getElementById('footer-newsletter-msg');
       const btn = form.querySelector('button');
 
-      msgDiv.classList.remove('hidden', 'text-green-400', 'text-red-400');
+      msgDiv.classList.remove('hidden', 'text-green-400', 'text-red-400', 'text-yellow-400');
       msgDiv.textContent = 'Enviando...';
       btn.disabled = true;
 
@@ -263,6 +263,7 @@ const isLoggedIn = !!(accessToken || userId);
         });
 
         const data = await response.json();
+        msgDiv.classList.remove('text-green-400', 'text-red-400', 'text-yellow-400');
 
         if (response.ok) {
           if (data.ya_suscrito) {

@@ -366,13 +366,14 @@ const { delayMs = 5000, mostrarAlSalir = true } = Astro.props;
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = emailInput.value;
+    const email = emailInput.value.trim();
     const aceptaOfertas = document.getElementById('aceptaOfertas').checked;
     const codigoDiv = document.getElementById('codigoDescuento');
 
     // Limpiar mensajes
     errorDiv.style.display = 'none';
     exitoDiv.style.display = 'none';
+    form.classList.remove('error', 'success');
 
     try {
       const response = await fetch('/api/newsletter/suscribir', {
@@ -381,7 +382,7 @@ const { delayMs = 5000, mostrarAlSalir = true } = Astro.props;
         body: JSON.stringify({
           email,
           recibe_ofertas: aceptaOfertas,
-          usuario_id: null // Si tienes usuario autenticado, pasarlo aquí
+          usuario_id: null
         })
       });
 
@@ -391,26 +392,37 @@ const { delayMs = 5000, mostrarAlSalir = true } = Astro.props;
         throw new Error(data.error || 'Error al suscribirse');
       }
 
-      // Mostrar código de descuento si se recibió
-      if (data.codigo_descuento) {
-        codigoDiv.textContent = data.codigo_descuento;
-      } else if (data.codigo) {
-        codigoDiv.textContent = data.codigo;
+      if (data.ya_suscrito) {
+        errorDiv.textContent = data.mensaje || 'Este correo ya está suscrito.';
+        errorDiv.style.background = '#fef3c7'; // Color crema/amarillo
+        errorDiv.style.color = '#92400e';
+        errorDiv.style.borderColor = '#f59e0b';
+        errorDiv.style.display = 'block';
       } else {
-        codigoDiv.textContent = 'Revisa tu email';
+        // Mostrar código de descuento si se recibió
+        if (data.codigo_descuento) {
+          codigoDiv.textContent = data.codigo_descuento;
+        } else if (data.codigo) {
+          codigoDiv.textContent = data.codigo;
+        } else {
+          codigoDiv.textContent = 'Revisa tu email';
+        }
+
+        // Mostrar éxito
+        exitoDiv.style.display = 'block';
+        form.style.display = 'none';
       }
 
-      // Mostrar éxito
-      exitoDiv.style.display = 'block';
-      form.style.display = 'none';
-
-      // Cerrar popup después de 5 segundos (dar tiempo a ver el código)
+      // Cerrar popup después de 5 segundos
       setTimeout(() => {
         popup.style.display = 'none';
       }, 5000);
 
     } catch (error) {
       errorDiv.textContent = error.message || 'Error al suscribirse';
+      errorDiv.style.background = '#fee2e2'; // Reset color error original
+      errorDiv.style.color = '#991b1b';
+      errorDiv.style.borderColor = '#dc2626';
       errorDiv.style.display = 'block';
     }
   });
