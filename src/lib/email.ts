@@ -43,12 +43,14 @@ const getTransporter = () => {
     console.error('[EmailService] ❌ Error: EMAIL_USER o EMAIL_PASSWORD no configurados');
   }
 
-  return nodemailer.createTransport({
+  transporterInstance = nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: { user, pass },
   });
+
+  return transporterInstance;
 };
 
 /**
