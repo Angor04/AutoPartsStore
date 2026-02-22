@@ -164,7 +164,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     let successUrl = '';
     let cancelUrl = '';
 
-    const origin = new URL(request.url).origin;
+    // Detectar el origen de forma más robusta (para entornos con proxy como Coolify)
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const origin = host ? `${proto}://${host}` : new URL(request.url).origin;
 
     if (body.source === 'mobile_app') {
       // Deep Links para Flutter (con path /app/)
