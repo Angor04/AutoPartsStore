@@ -19,38 +19,39 @@ export const getEnv = (key: string) => {
   return undefined;
 };
 
-// Log de variables de entorno al iniciar
-console.log('Config EMAIL (Robust):', {
-  host: getEnv('EMAIL_SMTP_HOST'),
-  port: getEnv('EMAIL_SMTP_PORT'),
-  user: getEnv('EMAIL_USER') ? getEnv('EMAIL_USER').slice(0, 5) + '***' : 'NO CONFIGURADO',
-  from: getEnv('EMAIL_FROM')
-});
+// Función para crear el transportador bajo demanda (asegura leer env variables actualizadas)
+const getTransporter = () => {
+  const host = getEnv('EMAIL_SMTP_HOST') || 'smtp.gmail.com';
+  const port = parseInt(getEnv('EMAIL_SMTP_PORT') || '587');
+  const user = getEnv('EMAIL_USER');
+  const pass = getEnv('EMAIL_PASSWORD');
 
-// Crear transportador de correo con Gmail
-const transporter = nodemailer.createTransport({
-  host: getEnv('EMAIL_SMTP_HOST') || 'smtp.gmail.com',
-  port: parseInt(getEnv('EMAIL_SMTP_PORT') || '587'),
-  secure: false, // true para 465, false para otros puertos
-  auth: {
-    user: getEnv('EMAIL_USER'),
-    pass: getEnv('EMAIL_PASSWORD'),
-  },
-});
-
-// Verificar conexión al iniciar
-(async () => {
-  try {
-    const verified = await transporter.verify();
-    if (verified) {
-      console.log('✅ Email service ready - SMTP connection verified');
-    } else {
-      console.error('❌ Email service verification failed - check credentials');
-    }
-  } catch (error) {
-    console.error('Email service verification error:', error);
+  if (!user || !pass) {
+    console.error('[EmailService] ❌ Error: EMAIL_USER o EMAIL_PASSWORD no configurados');
   }
-})();
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+};
+
+/**
+ * Verifica la conexión SMTP (para depuración)
+ */
+export async function verifyConnection(): Promise<boolean> {
+  try {
+    const transporter = getTransporter();
+    const verified = await transporter.verify();
+    console.log('✅ Email service connection verified');
+    return verified;
+  } catch (error) {
+    console.error('❌ Email service verification error:', error);
+    return false;
+  }
+}
 
 interface EmailAttachment {
   filename: string;
@@ -71,8 +72,9 @@ interface EmailOptions {
 export async function sendEmail({ to, subject, html, attachments }: EmailOptions): Promise<boolean> {
   try {
     const from = getEnv('EMAIL_FROM') || getEnv('EMAIL_USER');
+    const transporter = getTransporter();
 
-    console.log(`[EmailService] 📧 Intentando enviar email a: ${to} | Asunto: ${subject}`);
+    console.log(`[EmailService] 📧 Intentando enviar email a: ${to} | Asunto: ${subject} | From: ${from}`);
 
     const result = await transporter.sendMail({
       from,
