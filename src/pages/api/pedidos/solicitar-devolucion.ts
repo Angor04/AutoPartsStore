@@ -4,7 +4,7 @@
 
 import type { APIRoute } from 'astro';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendReturnRequestEmail } from '@/lib/email';
+import { sendReturnRequestEmail, sendAdminReturnNotificationEmail } from '@/lib/email';
 
 export const prerender = false;
 
@@ -88,19 +88,32 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // ==========================================
-    // 4. ENVIAR EMAIL DE CONFIRMACIÓN
+    // 4. ENVIAR EMAILS DE CONFIRMACIÓN Y NOTIFICACIÓN ADMIN
     // ==========================================
     if (emailUsuario) {
       try {
+        // Al cliente
         await sendReturnRequestEmail(
           emailUsuario,
           resultado.numero_pedido,
           resultado.numero_etiqueta,
           resultado.monto_reembolso
         );
+
+        // Al admin
+        const adminEmail = import.meta.env.EMAIL_USER;
+        if (adminEmail) {
+          await sendAdminReturnNotificationEmail(
+            adminEmail,
+            resultado.numero_pedido,
+            resultado.numero_etiqueta,
+            motivo,
+            emailUsuario
+          );
+        }
       } catch (emailError) {
         // No fallar la solicitud si el email falla
-        console.error('⚠️ Error enviando email de devolución:', emailError);
+        console.error('⚠️ Error enviando emails de devolución:', emailError);
       }
     } else {
     }

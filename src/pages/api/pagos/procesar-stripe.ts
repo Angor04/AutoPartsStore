@@ -4,7 +4,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendOrderConfirmationEmail } from '@/lib/email';
+import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail } from '@/lib/email';
 
 export const prerender = false;
 
@@ -245,7 +245,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // ==========================================
-    // ENVIAR EMAIL DE CONFIRMACIÓN
+    // ENVIAR EMAIL DE CONFIRMACIÓN Y NOTIFICACIÓN ADMIN
     // ==========================================
     const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
     if (emailDestino) {
@@ -262,8 +262,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             descuento: descuentoMonto
           }
         );
+
+        // Notificar al Administrador
+        const adminEmail = import.meta.env.EMAIL_USER;
+        if (adminEmail) {
+          await sendAdminOrderNotificationEmail(
+            adminEmail,
+            orden.numero_orden,
+            total,
+            metadata.nombre_cliente || 'Cliente',
+            itemsParaEmail
+          );
+        }
       } catch (emailError) {
-        console.error('Error enviando email:', emailError);
+        console.error('Error enviando emails:', emailError);
       }
     }
 

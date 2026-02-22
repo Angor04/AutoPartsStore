@@ -744,3 +744,80 @@ export async function sendReturnStatusUpdateEmail(
     attachments,
   });
 }
+/**
+ * Envía notificación al admin cuando hay un nuevo pedido
+ */
+export async function sendAdminOrderNotificationEmail(
+  adminEmail: string,
+  orderNumber: string,
+  total: number,
+  customerName: string,
+  items: any[]
+): Promise<boolean> {
+  const itemsList = items.map(item => `
+    <li>${item.nombre_producto || item.nombre} x${item.cantidad}</li>
+  `).join('');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; border: 1px solid #eee;">
+      <h2 style="color: #1e293b;">🚀 Nuevo Pedido Recibido</h2>
+      <p>Se ha registrado un nuevo pedido en la tienda:</p>
+      <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>Número de Orden:</strong> #${orderNumber}</p>
+        <p><strong>Cliente:</strong> ${customerName}</p>
+        <p><strong>Total:</strong> €${total.toFixed(2)}</p>
+      </div>
+      <h4 style="margin-bottom: 10px;">Productos:</h4>
+      <ul style="color: #64748b;">
+        ${itemsList}
+      </ul>
+      <p style="margin-top: 30px;">
+        <a href="${process.env.SITE_URL || 'https://boss.victoriafp.online'}/admin/pedidos" 
+           style="background: #1e293b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+           Ver en el Panel Admin
+        </a>
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `🔔 NUEVO PEDIDO #${orderNumber} - €${total.toFixed(2)}`,
+    html
+  });
+}
+
+/**
+ * Envía notificación al admin cuando hay una nueva solicitud de devolución
+ */
+export async function sendAdminReturnNotificationEmail(
+  adminEmail: string,
+  orderNumber: string,
+  returnLabel: string,
+  reason: string,
+  customerEmail: string
+): Promise<boolean> {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; border: 1px solid #eee;">
+      <h2 style="color: #b91c1c;">📦 Nueva Solicitud de Devolución</h2>
+      <p>Se ha solicitado una devolución para el pedido <strong>#${orderNumber}</strong>:</p>
+      <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #b91c1c;">
+        <p><strong>Etiqueta de Devolución:</strong> ${returnLabel}</p>
+        <p><strong>Cliente:</strong> ${customerEmail}</p>
+        <p><strong>Motivo:</strong> ${reason}</p>
+      </div>
+      <p style="margin-top: 30px;">
+        <a href="${process.env.SITE_URL || 'https://boss.victoriafp.online'}/admin/pedidos" 
+           style="background: #1e293b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+           Gestionar Devoluciones
+        </a>
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `⚠️ SOLICITUD DE DEVOLUCIÓN - Pedido #${orderNumber}`,
+    html
+  });
+}
