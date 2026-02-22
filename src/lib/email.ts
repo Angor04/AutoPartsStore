@@ -4,13 +4,19 @@ import { generateRefundPDF } from './refund-pdf';
 
 // Helper robosteo para variables de entorno
 export const getEnv = (key: string) => {
-  let value = undefined;
-  if (import.meta.env && import.meta.env[key]) {
-    value = import.meta.env[key];
-  } else if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    value = process.env[key];
+  // Intentar primero con import.meta.env (Astro standard)
+  if (import.meta.env && import.meta.env[key] !== undefined) {
+    const val = import.meta.env[key];
+    return typeof val === 'string' ? val.trim() : val;
   }
-  return typeof value === 'string' ? value.trim() : value;
+
+  // Si no está ahí, intentar con process.env (Node.js standard)
+  if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
+    const val = process.env[key];
+    return typeof val === 'string' ? val.trim() : val;
+  }
+
+  return undefined;
 };
 
 // Log de variables de entorno al iniciar

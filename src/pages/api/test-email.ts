@@ -34,10 +34,22 @@ export const GET: APIRoute = async () => {
 
     const success = successSimple && successAdmin;
 
+    // Obtener info de diagnóstico (mascarada)
+    const { getEnv } = await import('@/lib/email');
+    const debugConfig = {
+      smtp_host: getEnv('EMAIL_SMTP_HOST'),
+      smtp_port: getEnv('EMAIL_SMTP_PORT'),
+      email_user: getEnv('EMAIL_USER') ? `${getEnv('EMAIL_USER')?.slice(0, 4)}***` : 'MISSING',
+      email_from: getEnv('EMAIL_FROM')
+    };
+
     return new Response(
       JSON.stringify({
         success,
-        message: success ? 'Email sent successfully' : 'Email failed to send',
+        simple: successSimple,
+        admin_notification: successAdmin,
+        config: debugConfig,
+        message: success ? 'Emails sent successfully' : 'One or more emails failed',
         timestamp: new Date().toISOString()
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
