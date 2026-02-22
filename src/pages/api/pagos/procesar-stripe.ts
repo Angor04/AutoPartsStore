@@ -4,17 +4,20 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, getAdminEmail } from '@/lib/email';
+import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, getAdminEmail, getEnv } from '@/lib/email';
 
 export const prerender = false;
 
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
+// Inicializar Stripe usando getEnv para mayor robustez en producción
+const stripe = new Stripe(getEnv('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16' as any,
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
+  console.log('[StripeAPI] 🚀 NUEVA PETICIÓN RECIBIDA EN PROCESAR-STRIPE');
   try {
     const body = await request.json();
+    console.log('[StripeAPI] Payload recibido:', JSON.stringify(body));
     const sessionId = body.session_id;
     const usuarioId = cookies.get('user-id')?.value;
 

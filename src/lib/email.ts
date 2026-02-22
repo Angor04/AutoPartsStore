@@ -96,7 +96,13 @@ export async function sendEmail({ to, subject, html, attachments }: EmailOptions
     const from = getEnv('EMAIL_FROM') || getEnv('EMAIL_USER');
     const transporter = getTransporter();
 
-    console.log(`[EmailService] 📧 Intentando enviar email a: ${to} | Asunto: ${subject} | From: ${from}`);
+    console.log(`[EmailService] 📧 PRE-SEND DIAGNOSTIC:
+      To: ${to}
+      Subject: ${subject}
+      From: ${from}
+      Transporter established: ${!!transporter}
+      Singleton instance: ${!!transporterInstance}
+    `);
 
     const result = await transporter.sendMail({
       from,
