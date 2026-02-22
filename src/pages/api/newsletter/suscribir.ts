@@ -22,19 +22,19 @@ export const POST: APIRoute = async ({ request }) => {
     const supabaseAdmin = getSupabaseAdmin();
 
     // ==========================================
-    // 2. VERIFICAR SI YA TIENE UN CUPÓN ACTIVO
+    // 2. VERIFICAR SI YA ESTÁ SUSCRITO
     // ==========================================
-    // Usamos cast a any porque la tabla es nueva y puede no estar en los tipos generados
+    // Comprobamos si el email ya existe en la tabla, sea el cupón usado o no
     const { data: existente } = await (supabaseAdmin.from('cupones_newsletter') as any)
       .select('id, usado')
       .eq('email', email.toLowerCase())
-      .eq('usado', false)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (existente) {
       return new Response(
         JSON.stringify({
-          mensaje: 'Ya estás suscrito y tienes un cupón pendiente de uso.',
+          mensaje: 'Este correo ya está suscrito a nuestra newsletter. ¡Gracias por tu fidelidad!',
           ya_suscrito: true
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
