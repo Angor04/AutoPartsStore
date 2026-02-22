@@ -3,24 +3,37 @@ import { generateInvoicePDF } from './invoice-pdf';
 import { generateRefundPDF } from './refund-pdf';
 
 // Helper robosteo para variables de entorno
+// Helper robosteo para variables de entorno
 export const getEnv = (key: string) => {
+  let val = undefined;
+
   // Intentar primero con import.meta.env (Astro standard)
   if (import.meta.env && import.meta.env[key] !== undefined) {
-    const val = import.meta.env[key];
-    return typeof val === 'string' ? val.trim() : val;
+    val = import.meta.env[key];
+  }
+  // Si no está ahí, intentar con process.env (Node.js standard)
+  else if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
+    val = process.env[key];
   }
 
-  // Si no está ahí, intentar con process.env (Node.js standard)
-  if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
-    const val = process.env[key];
-    return typeof val === 'string' ? val.trim() : val;
+  if (val !== undefined) {
+    const finalVal = typeof val === 'string' ? val.trim() : val;
+    // No hacer log de cosas sensibles
+    if (key !== 'EMAIL_PASSWORD' && key !== 'STRIPE_SECRET_KEY' && key !== 'SUPABASE_SERVICE_ROLE_KEY') {
+      console.log(`[getEnv] ${key}: ${finalVal}`);
+    }
+    return finalVal;
   }
 
   return undefined;
 };
 
+// Singleton para el transportador
+let transporterInstance: any = null;
+
 // Función para crear el transportador bajo demanda (asegura leer env variables actualizadas)
 const getTransporter = () => {
+  if (transporterInstance) return transporterInstance;
   const host = getEnv('EMAIL_SMTP_HOST') || 'smtp.gmail.com';
   const port = parseInt(getEnv('EMAIL_SMTP_PORT') || '587');
   const user = getEnv('EMAIL_USER');
@@ -796,7 +809,7 @@ export async function sendAdminOrderNotificationEmail(
         ${itemsList}
       </ul>
       <p style="margin-top: 30px;">
-        <a href="${process.env.SITE_URL || 'https://boss.victoriafp.online'}/admin/pedidos" 
+        <a href="${getEnv('SITE_URL') || 'https://boss.victoriafp.online'}/admin/pedidos" 
            style="background: #1e293b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
            Ver en el Panel Admin
         </a>
@@ -831,7 +844,7 @@ export async function sendAdminReturnNotificationEmail(
         <p><strong>Motivo:</strong> ${reason}</p>
       </div>
       <p style="margin-top: 30px;">
-        <a href="${process.env.SITE_URL || 'https://boss.victoriafp.online'}/admin/pedidos" 
+        <a href="${getEnv('SITE_URL') || 'https://boss.victoriafp.online'}/admin/pedidos" 
            style="background: #1e293b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
            Gestionar Devoluciones
         </a>

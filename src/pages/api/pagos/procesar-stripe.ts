@@ -245,11 +245,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // ==========================================
-    // ENVIAR EMAILS (CLIENTE Y ADMIN)
+    // ENVIAR EMAILS (ADMIN Y LUEGO CLIENTE)
     // ==========================================
-    const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
 
-    // 1. Notificar al Cliente (si hay email)
+    // 1. Notificar al Administrador (Máxima Prioridad e Independiente)
+    const { getEnv } = await import('@/lib/email');
+    const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+
+    try {
+      console.log(`[StripeAPI] 🔔 Intentando notificar admin: ${adminEmail} | Pedido: ${orden.numero_orden}`);
+      const adminSuccess = await sendAdminOrderNotificationEmail(
+        adminEmail,
+        orden.numero_orden,
+        total,
+        metadata.nombre_cliente || 'Cliente',
+        itemsParaEmail
+      );
+      console.log(`[StripeAPI] Resultado notificación admin: ${adminSuccess ? 'EXITO' : 'FALLO'}`);
+    } catch (adminEmailError) {
+      console.error('❌ Error crítico enviando email al administrador:', adminEmailError);
+    }
+
+    // 2. Notificar al Cliente (si hay email)
+    const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
     if (emailDestino) {
       try {
         await sendOrderConfirmationEmail(
@@ -267,26 +285,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       } catch (emailError) {
         console.error('Error enviando email al cliente:', emailError);
       }
-    }
-
-    // 2. Notificar al Administrador (Independiente)
-    try {
-      const { getEnv } = await import('@/lib/email');
-      const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
-
-      console.log(`[StripeAPI] 🔔 Notificando admin: ${adminEmail} | Pedido: ${orden.numero_orden}`);
-
-      await sendAdminOrderNotificationEmail(
-        adminEmail,
-        orden.numero_orden,
-        total,
-        metadata.nombre_cliente || 'Cliente',
-        itemsParaEmail
-      );
-
-      console.log('✅ Notificación admin enviada correctamente');
-    } catch (adminEmailError) {
-      console.error('❌ Error enviando email al administrador:', adminEmailError);
     }
 
     // ==========================================

@@ -88,8 +88,27 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // ==========================================
-    // 4. ENVIAR EMAILS (CLIENTE Y ADMIN)
+    // 4. ENVIAR EMAILS (ADMIN Y LUEGO CLIENTE)
     // ==========================================
+
+    // Al cliente (si hay email)
+    // Al admin (Máxima Prioridad e Independiente)
+    try {
+      const { getEnv } = await import('@/lib/email');
+      const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+
+      console.log(`[ReturnAPI] 🔔 Intentando notificar admin: ${adminEmail} | Pedido: ${resultado.numero_pedido}`);
+      const adminSuccess = await sendAdminReturnNotificationEmail(
+        adminEmail,
+        resultado.numero_pedido,
+        resultado.numero_etiqueta,
+        motivo,
+        emailUsuario || 'Email desconocido'
+      );
+      console.log(`[ReturnAPI] Resultado notificación admin: ${adminSuccess ? 'EXITO' : 'FALLO'}`);
+    } catch (adminError) {
+      console.error('⚠️ Error crítico enviando notificación admin (devolución):', adminError);
+    }
 
     // Al cliente (si hay email)
     if (emailUsuario) {
@@ -103,23 +122,6 @@ export const POST: APIRoute = async ({ request }) => {
       } catch (emailError) {
         console.error('⚠️ Error enviando email al cliente (devolución):', emailError);
       }
-    }
-
-    // Al admin (Independiente)
-    try {
-      const { getEnv } = await import('@/lib/email');
-      const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
-
-      console.log(`[ReturnAPI] 🔔 Notificando admin: ${adminEmail} | Pedido: ${resultado.numero_pedido}`);
-      await sendAdminReturnNotificationEmail(
-        adminEmail,
-        resultado.numero_pedido,
-        resultado.numero_etiqueta,
-        motivo,
-        emailUsuario || 'Email desconocido'
-      );
-    } catch (adminError) {
-      console.error('⚠️ Error enviando notificación admin (devolución):', adminError);
     }
 
     // ==========================================
