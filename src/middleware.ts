@@ -24,7 +24,6 @@ export const onRequest = defineMiddleware(
 
       if (!authToken) {
         // No hay sesión, redirigir a login
-        console.log('Sin token, redirigiendo a login');
         return context.redirect('/admin/login');
       }
 
@@ -38,7 +37,6 @@ export const onRequest = defineMiddleware(
 
         if (timeDiff > oneHourMs) {
           // Más de 1 hora sin actividad
-          console.log('Sesión expirada por inactividad');
           context.cookies.delete('sb-auth-token');
           context.cookies.delete('sb-last-activity');
           return context.redirect(`/admin/login?error=${encodeURIComponent('Sesión expirada por inactividad')}`);
@@ -65,13 +63,11 @@ export const onRequest = defineMiddleware(
 
         // Si el token expiró pero tenemos refresh token, intentar renovar
         if ((error || !user) && refreshToken) {
-          console.log('Token expirado, intentando refrescar sesión...');
           const { data: refreshData, error: refreshError } = await supabaseAdmin.auth.refreshSession({
             refresh_token: refreshToken,
           });
 
           if (!refreshError && refreshData.session) {
-            console.log('Sesión refrescada con éxito');
             user = refreshData.user;
 
             // Actualizar cookies con los nuevos tokens
@@ -107,8 +103,6 @@ export const onRequest = defineMiddleware(
 
         // DEBUG: Check environment and visibility
         const serviceKey = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-        console.log('[Middleware] Service Key available:', !!serviceKey, serviceKey ? 'Length: ' + serviceKey.length : '');
-        console.log('[Middleware] Checking admin_users for ID:', user.id);
 
         // Verificar que sea admin en la tabla admin_users
         const { data: adminUserData, error: adminError } = await (supabaseAdmin as any)
@@ -118,7 +112,6 @@ export const onRequest = defineMiddleware(
           .limit(1)
           .maybeSingle();
 
-        console.log('[Middleware] Query Result:', adminUserData ? 'Found' : 'Not Found', adminError ? adminError.message : 'No Error');
 
         const adminUser = adminUserData as any;
 
@@ -131,7 +124,6 @@ export const onRequest = defineMiddleware(
         }
 
         if (isMasterAdmin && (!adminUser || adminError)) {
-          console.warn('[Middleware] BYPASS: Allowing master admin despite DB lookup failure.');
           context.locals.admin = { id: user.id, email: user.email, nombre: 'Admin System', activo: true };
           context.locals.user = user;
           return next();

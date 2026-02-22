@@ -8,7 +8,6 @@ interface CartCleanerProps {
 export default function CartCleaner({ sessionId }: CartCleanerProps) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      console.log('🛒 CartCleaner: Iniciando limpieza profunda...');
 
       const cleanSession = async () => {
         // 1. Usar la función oficial del store y ESPERAR a que termine
@@ -29,7 +28,6 @@ export default function CartCleaner({ sessionId }: CartCleanerProps) {
           const key = sessionStorage.key(i);
           if (key && key.startsWith('cart-')) {
             sessionStorage.removeItem(key);
-            console.log(`🧹 Clave extra eliminada: ${key}`);
           }
         }
 
@@ -37,7 +35,6 @@ export default function CartCleaner({ sessionId }: CartCleanerProps) {
         window.dispatchEvent(new CustomEvent('cart-cleared'));
         window.dispatchEvent(new CustomEvent('cartUpdated'));
 
-        console.log('Carrito totalmente purgado');
       };
 
       cleanSession();

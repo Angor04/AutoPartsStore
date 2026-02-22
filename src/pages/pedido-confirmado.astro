@@ -43,7 +43,6 @@ let error = null;
 // Procesar sesión de Stripe primero
 if (sessionId) {
   try {
-    console.log('Procesando sesión de Stripe:', sessionId);
     
     const supabaseAdmin = getSupabaseAdmin();
     
@@ -55,14 +54,12 @@ if (sessionId) {
       .maybeSingle();
 
     if (ordenExistente) {
-      console.log('Orden encontrada por session_stripe_id:', ordenExistente.numero_orden);
       return Astro.redirect(`/pedido-confirmado?orden=${ordenExistente.id}`);
     }
 
     // 2. Si no existe aún, llamar al endpoint para crearla (usar localhost para evitar reverse proxy)
     const port = process.env.PORT || '4321';
     const internalUrl = `http://localhost:${port}/api/pagos/procesar-stripe`;
-    console.log('Orden no encontrada, llamando a:', internalUrl);
     
     const response = await fetch(internalUrl, {
       method: 'POST',
@@ -73,7 +70,6 @@ if (sessionId) {
     const resultado = await response.json();
 
     if (resultado.success && resultado.orden_id) {
-      console.log('Orden creada desde Stripe:', resultado.numero_orden);
       return Astro.redirect(`/pedido-confirmado?orden=${resultado.orden_id}`);
     } else {
       error = resultado.error || 'Error procesando el pago';
@@ -90,7 +86,6 @@ if (sessionId) {
 if (ordenId && !sessionId) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    console.log('Cargando orden directamente desde BD:', ordenId);
 
     // 1. Obtener la orden
     const { data: ordenData, error: ordenError } = await supabaseAdmin
@@ -148,7 +143,6 @@ if (ordenId && !sessionId) {
         usuario_id: ordenData.usuario_id
       };
       
-      console.log('Orden cargada exitosamente:', orden.numero_orden);
     }
   } catch (e) {
     console.error('Error general cargando orden:', e);

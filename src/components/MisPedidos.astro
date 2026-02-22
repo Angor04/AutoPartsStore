@@ -94,7 +94,7 @@ function puedeSolicitar Devolucion(orden: Order): boolean {
               <button
                 type="button"
                 class="btn-action btn-ver"
-                onclick="verDetalles('{pedido.id}')"
+                onclick={`verDetalles('${pedido.id}')`}
               >
                 Ver Detalles
               </button>
@@ -103,17 +103,17 @@ function puedeSolicitar Devolucion(orden: Order): boolean {
                 <button
                   type="button"
                   class="btn-action btn-danger"
-                  onclick="mostrarConfirmacionCancelar('{pedido.id}', '{pedido.numero_orden}')"
+                  onclick={`mostrarConfirmacionCancelar('${pedido.id}', '${pedido.numero_orden}')`}
                 >
                   Cancelar Pedido
                 </button>
               )}
 
-              {puedeSolicitar Devolucion(pedido) && (
+              {puedeSolicitarDevolucion(pedido) && (
                 <button
                   type="button"
                   class="btn-action btn-warning"
-                  onclick="mostrarFormDevolucion('{pedido.id}', '{pedido.numero_orden}', {pedido.total})"
+                  onclick={`mostrarFormDevolucion('${pedido.id}', '${pedido.numero_orden}', ${pedido.total})`}
                 >
                   Solicitar Devolución
                 </button>

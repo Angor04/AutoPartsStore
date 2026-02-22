@@ -18,8 +18,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const sessionId = body.session_id;
     const usuarioId = cookies.get('user-id')?.value;
 
-    console.log('Procesando sesión de Stripe:', sessionId);
-
     if (!sessionId) {
       return new Response(
         JSON.stringify({
@@ -35,12 +33,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['line_items', 'payment_intent']
-    });
-
-    console.log('Sesión recuperada:', {
-      payment_status: session.payment_status,
-      customer_email: session.customer_email,
-      amount_total: session.amount_total
     });
 
     if (session.payment_status !== 'paid') {
@@ -64,12 +56,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .from('ordenes')
       .select('id, numero_orden')
       .eq('session_stripe_id', sessionId)
-      .single();
+      .maybeSingle();
 
     const ordenExistente = ordenExistenteData as any;
 
     if (ordenExistente) {
-      console.log('Sesión ya procesada, devolviendo orden existente:', ordenExistente.numero_orden);
       return new Response(
         JSON.stringify({
           success: true,
@@ -88,7 +79,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Fallback: Si no hay usuarioId pero el email coincide con un usuario registrado, vincularlo
     if (!finalUsuarioId && session.customer_email) {
-      console.log('🔍 Buscando usuario por email:', session.customer_email);
       const { data: usuarioPorEmailData } = await supabaseAdmin
         .from('usuarios')
         .select('id')
@@ -98,7 +88,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const usuarioPorEmail = usuarioPorEmailData as any;
 
       if (usuarioPorEmail) {
-        console.log('Usuario vinculado por email:', usuarioPorEmail.id);
         finalUsuarioId = usuarioPorEmail.id;
       } else {
         // Opción B: Buscar en auth.users via admin
@@ -106,7 +95,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           const { data: { users }, error: searchError } = await supabaseAdmin.auth.admin.listUsers();
           const targetUser = users.find((u: any) => u.email === session.customer_email);
           if (targetUser) {
-            console.log('Usuario vinculado por email (auth):', targetUser.id);
             finalUsuarioId = targetUser.id;
           }
         } catch (e) {
@@ -116,25 +104,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const descuentoMonto = parseFloat(metadata.descuento_monto || '0');
-    const codigoCupon = metadata.descuento_codigo || null;
 
     // Obtener dirección de envío
     const shippingDetails = (session as any).shipping_details;
-    const billingDetails = (session.payment_intent as any)?.charges?.data?.[0]?.billing_details;
-
-    console.log('Información de envío:', {
-      nombre: shippingDetails?.name,
-      email: session.customer_email,
-      address: shippingDetails?.address,
-      usuario_id: finalUsuarioId
-    });
 
     // ==========================================
     // CREAR NÚMERO DE ORDEN CORRELATIVO GLOBAL
     // ==========================================
     let numeroOrden = 'ORD-000000';
     try {
-      // Buscar el número de orden más alto existente (solo formato 6 dígitos ORD-XXXXXX)
       const { data: ultimaOrdenData } = await supabaseAdmin
         .from('ordenes')
         .select('numero_orden')
@@ -146,7 +124,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const ultimaOrden = ultimaOrdenData as any;
 
       if (ultimaOrden && ultimaOrden.numero_orden) {
-        // Extraer el número correlativo (ej: ORD-000123 -> 123)
         const match = ultimaOrden.numero_orden.match(/ORD-(\d+)/);
         if (match) {
           const ultimoNum = parseInt(match[1], 10);
@@ -155,28 +132,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
       }
     } catch (e) {
-      console.error('Error generando número de orden correlativo:', e);
-      // En caso de error, dejamos el valor por defecto ORD-000000
+      console.error('Error generando número de orden:', e);
     }
-    // Requisito: Convertir céntimos de Stripe a decimal real una sola vez
+
+    // Totales ( Stripe cents -> Euro decimal )
     const total = Math.round((session.amount_total || 0)) / 100;
-    // Leer costo_envio de metadata si existe
+
     let costoEnvio = 5.99;
     if (metadata.costo_envio !== undefined) {
       costoEnvio = parseFloat(metadata.costo_envio);
-    } else if (metadata.descuento_codigo && metadata.descuento_codigo.toUpperCase() === 'ENVIOGRATIS') {
+    } else if (metadata.descuento_codigo?.toUpperCase() === 'ENVIOGRATIS') {
       costoEnvio = 0;
     }
-    const subtotal = Math.round((total + descuentoMonto - costoEnvio) * 100) / 100;
 
-    console.log('📝 Creando orden con importes reales:', {
-      numeroOrden,
-      usuarioId: finalUsuarioId,
-      email: session.customer_email,
-      total,
-      subtotal,
-      descuentoMonto
-    });
+    const subtotal = Math.round((total + descuentoMonto - costoEnvio) * 100) / 100;
 
     // Preparar datos para insertar
     const ordenData: any = {
@@ -203,7 +172,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       fecha_pago: new Date().toISOString()
     };
 
-
     const { data: ordenDataDB, error: ordenError } = await supabaseAdmin
       .from('ordenes')
       .insert(ordenData)
@@ -213,24 +181,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (ordenError) {
       console.error('Error creando orden:', ordenError);
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Error al crear la orden: ' + ordenError.message
-        }),
+        JSON.stringify({ success: false, error: 'Error al crear la orden: ' + ordenError.message }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const orden = ordenDataDB as any;
 
-    console.log('Orden creada:', {
-      id: orden.id,
-      numero_orden: orden.numero_orden,
-      total: orden.total
-    });
-
     // ==========================================
-    // CREAR ITEMS DE LA ORDEN Y ENVIAR EMAIL
+    // CREAR ITEMS DE LA ORDEN
     // ==========================================
     const itemsJson = metadata.items_json;
     let itemsParaEmail: any[] = [];
@@ -238,126 +197,93 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (itemsJson && orden?.id) {
       try {
         const cartItemsRaw = JSON.parse(itemsJson);
-        console.log('Reconstruyendo items desde metadata:', cartItemsRaw.length);
+        const items = cartItemsRaw.map((item: any) => ({
+          orden_id: orden.id,
+          producto_id: item.id || 0,
+          cantidad: parseInt(item.q) || 1,
+          precio_unitario: parseFloat(item.p) || 0,
+          subtotal: Math.round((parseFloat(item.p) * parseInt(item.q)) * 100) / 100,
+          creado_en: new Date().toISOString()
+        }));
 
-        const items = cartItemsRaw.map((item: any) => {
-          const precio_unitario = parseFloat(item.p || item.precio) || 0;
-          const cantidad = parseInt(item.q || item.quantity) || 1;
-
-          return {
-            orden_id: orden.id,
-            producto_id: item.id || item.product_id || 0,
-            cantidad: cantidad,
-            precio_unitario: Math.round(precio_unitario * 100) / 100,
-            subtotal: Math.round(precio_unitario * cantidad * 100) / 100,
-            creado_en: new Date().toISOString()
-          };
-        });
-
-        // Para el email necesitamos nombres, los sacaremos de line_items de Stripe
         if (session.line_items) {
           itemsParaEmail = session.line_items.data.map(li => ({
             nombre_producto: li.description,
             cantidad: li.quantity,
-            precio_unitario: (li.price?.unit_amount || 0) / 100, // Conversión solo para el objeto de email
+            precio_unitario: (li.price?.unit_amount || 0) / 100,
             subtotal: (li.amount_total || 0) / 100
           }));
         }
 
         if (items.length > 0) {
-          console.log('📝 Insertando', items.length, 'items en ordenes_items');
-          const { error: itemsError } = await supabaseAdmin
-            .from('ordenes_items')
-            .insert(items);
-
-          if (itemsError) {
-            console.error('Error guardando items:', itemsError);
-          } else {
-            console.log(`${items.length} items guardados en ordenes_items`);
-          }
+          await supabaseAdmin.from('ordenes_items').insert(items);
         }
       } catch (parseError) {
-        console.error('Error parseando items_json:', parseError);
+        console.error('Error parseando items:', parseError);
       }
-    } else {
-      console.warn('No se encontraron items en metadata o la orden no tiene ID');
     }
 
     // ==========================================
-    // ENVIAR EMAIL DE CONFIRMACIÓN (AHORA CON ITEMS)
+    // REGISTRAR USO DE CUPÓN (ATÓMICO POR RPC)
     // ==========================================
-    let emailSent = false;
+    if (metadata.cupon_id && finalUsuarioId && orden?.id) {
+      try {
+        // Casting a any para evitar errores de tipado si la función no está en Database Types
+        await (supabaseAdmin as any).rpc('aplicar_cupon', {
+          p_cupon_id: metadata.cupon_id,
+          p_usuario_id: finalUsuarioId,
+          p_orden_id: orden.id,
+          p_descuento: descuentoMonto
+        });
+      } catch (e) {
+        console.error('Error aplicando cupón:', e);
+      }
+    }
+
+    // ==========================================
+    // ENVIAR EMAIL DE CONFIRMACIÓN
+    // ==========================================
     const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
-
-    console.log('Preparando envío de email:', {
-      emailDestino,
-      session_email: session.customer_email,
-      metadata_email: metadata.email_cliente,
-      customer_details_email: (session as any).customer_details?.email,
-      itemsCount: itemsParaEmail.length
-    });
-
     if (emailDestino) {
       try {
-        console.log('Intentando enviar email de confirmación completo a:', emailDestino);
-        emailSent = await sendOrderConfirmationEmail(
+        await sendOrderConfirmationEmail(
           emailDestino,
           orden.numero_orden,
           total,
-          metadata.nombre_cliente || (session as any).customer_details?.name || 'Cliente',
+          metadata.nombre_cliente || 'Cliente',
           itemsParaEmail,
           {
             subtotal: subtotal,
-            envio: ordenData.gastos_envio || 0,
-            descuento: descuentoMonto || 0
+            envio: costoEnvio,
+            descuento: descuentoMonto
           }
         );
-
-        if (emailSent) {
-          console.log('Email de confirmación enviado exitosamente a:', emailDestino);
-        }
       } catch (emailError) {
-        console.error('Error al enviar email:', emailError);
+        console.error('Error enviando email:', emailError);
       }
     }
 
     // ==========================================
     // LIMPIAR CARRITO
     // ==========================================
-    // El frontend debería hacer esto, pero también lo hacemos aquí
     if (usuarioId) {
-      // Eliminar carrito temporal de BD
-      await supabaseAdmin
-        .from('carrito_temporal')
-        .delete()
-        .eq('usuario_id', usuarioId);
-      console.log('Carrito temporal eliminado');
+      await supabaseAdmin.from('carrito_temporal').delete().eq('usuario_id', usuarioId);
     }
 
-    // ==========================================
-    // RETORNAR DATOS DE LA ORDEN
-    // ==========================================
     return new Response(
       JSON.stringify({
         success: true,
         orden_id: orden.id,
         numero_orden: orden.numero_orden,
-        email: session.customer_email,
-        total: total,
-        descuento: descuentoMonto,
-        items: session.line_items?.data?.length || 0,
         message: 'Orden creada exitosamente'
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error procesando Stripe:', error);
+    console.error('Error en procesar-stripe:', error);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido'
-      }),
+      JSON.stringify({ success: false, error: 'Error interno del servidor' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

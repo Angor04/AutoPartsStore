@@ -49,7 +49,6 @@ export const GET: APIRoute = async ({ params, cookies }) => {
       const orderEmail = orden.email || orden.email_cliente;
 
       if (userEmail && orderEmail && userEmail.toLowerCase() === orderEmail.toLowerCase()) {
-        console.log(`Auto-vinculando orden ${orden.numero_orden} al usuario ${usuarioId}`);
         await supabaseAdmin
           .from('ordenes')
           .update({ usuario_id: usuarioId })

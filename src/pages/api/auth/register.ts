@@ -19,8 +19,6 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     const fullname = formData.get('fullname')?.toString();
     const telefono = formData.get('telefono')?.toString();
 
-    console.log('Form data received:', { email, fullname, telefono });
-    console.log('Supabase config:', { url: !!supabaseUrl, key: !!supabaseServiceKey });
 
     // Validaciones
     if (!email || !password || !fullname) {
@@ -47,9 +45,12 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       email,
       password,
       email_confirm: true,
+      user_metadata: {
+        nombre: fullname,
+        telefono: telefono || '',
+      },
     });
 
-    console.log('Auth response:', { authError, userId: authData?.user?.id });
 
     if (authError || !authData.user) {
       return redirect(`/auth/register?error=${encodeURIComponent(authError?.message || 'Error al crear usuario')}`);
@@ -66,14 +67,12 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       actualizado_en: new Date().toISOString(),
     };
 
-    console.log('Inserting user data:', insertData);
 
     const { data: insertResult, error: insertError } = await supabase
       .from('usuarios')
       .insert(insertData)
       .select();
 
-    console.log('Insert response:', { insertError, result: insertResult });
 
     if (insertError) {
       // Si falla, eliminar el usuario creado
@@ -84,7 +83,6 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
     // 2b. Vincular pedidos de invitado anteriores
     try {
-      console.log('🔗 Vinculando pedidos de invitado anteriores para:', email);
 
       // Intentar vincular por columna 'email'
       const { error: updateError1 } = await supabase
@@ -101,9 +99,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         .is('usuario_id', null);
 
       if (updateError1 && updateError2) {
-        console.warn('Error vinculando pedidos anteriores (ninguna columna respondió):', { updateError1, updateError2 });
       } else {
-        console.log('Intento de vinculación de pedidos completado');
       }
     } catch (linkError) {
       console.error('Error vinculando pedidos:', linkError);
@@ -111,14 +107,11 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
     // 3. Enviar email de bienvenida con Nodemailer
     try {
-      console.log('Sending welcome email to:', email);
 
       const emailSent = await sendWelcomeEmail(fullname, email);
 
       if (emailSent) {
-        console.log('Welcome email sent successfully');
       } else {
-        console.warn('Failed to send welcome email, but registration successful');
       }
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);

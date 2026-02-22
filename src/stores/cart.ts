@@ -19,7 +19,6 @@ function getGuestSessionId(): string {
   if (!sessionId) {
     sessionId = 'guest-' + Math.random().toString(36).substr(2, 9);
     sessionStorage.setItem('guest-session-id', sessionId);
-    console.log('cart.ts - Nuevo Guest Session ID creado:', sessionId);
   }
   return sessionId;
 }
@@ -31,22 +30,18 @@ function getGuestSessionId(): string {
 function saveCartToSessionStorage(items: CartItem[]) {
   // Asegurar que solo se ejecute en el navegador
   if (typeof window === 'undefined') {
-    console.log("saveCart - Corriendo en servidor, saliendo");
     return;
   }
 
   const sessionId = getGuestSessionId();
   const cartKey = `cart-${sessionId}`;
 
-  console.log("saveCart - Guardando carrito de invitado en sessionStorage:", cartKey);
   try {
     const jsonStr = JSON.stringify(items);
     if (items.length === 0) {
       sessionStorage.removeItem(cartKey);
-      console.log("saveCart - Carrito vacío, eliminado de sessionStorage");
     } else {
       sessionStorage.setItem(cartKey, jsonStr);
-      console.log("saveCart - Guardado en sessionStorage exitosamente");
     }
   } catch (e) {
     console.error('Error al guardar carrito:', e);
@@ -57,22 +52,17 @@ function saveCartToSessionStorage(items: CartItem[]) {
  * Guarda el carrito en BD o sessionStorage según el usuario
  */
 async function saveCart(items: CartItem[]) {
-  console.log("saveCart - Intentando guardar:", items);
 
   if (typeof window === 'undefined') {
-    console.log("saveCart - Corriendo en servidor, saliendo");
     return;
   }
 
   try {
     const isAuthenticated = await isUserAuthenticated();
-    console.log("saveCart - ¿Autenticado?:", isAuthenticated);
 
     if (isAuthenticated) {
-      console.log("saveCart - Usuario autenticado, guardando en BD");
       await saveCartToDB(items);
     } else {
-      console.log("saveCart - Usuario NO autenticado, guardando en sessionStorage");
       saveCartToSessionStorage(items);
     }
   } catch (e) {
@@ -86,11 +76,9 @@ async function saveCart(items: CartItem[]) {
  * Añade un producto al carrito
  */
 export function addToCart(item: CartItem) {
-  console.log("addToCart - Función llamada con:", item);
 
   // Obtener el estado actual del store
   const currentItems = cartStore.get();
-  console.log("addToCart - current state:", currentItems);
 
   const existingItem = currentItems.find((i) => i.product_id === item.product_id);
 
@@ -113,7 +101,6 @@ export function addToCart(item: CartItem) {
     updated = [...currentItems, { ...item, subtotal: item.quantity * item.precio }];
   }
 
-  console.log("addToCart - updated state:", updated);
 
   // Actualizar el store PRIMERO (para que el UI se actualice inmediatamente)
   cartStore.set(updated);
@@ -200,14 +187,12 @@ export async function clearCartPersistent() {
  * Limpia el carrito cuando el usuario cierra sesión
  */
 export async function clearCartOnLogout() {
-  console.log("clearCartOnLogout - Limpiando carrito");
   clearCart();
 
   // Limpiar también sessionStorage completamente
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('autopartsstore-cart');
     localStorage.removeItem('autopartsstore-cart');
-    console.log("clearCartOnLogout - sessionStorage y localStorage limpiados");
   }
 
   if (typeof window !== 'undefined') {
@@ -224,22 +209,17 @@ export async function clearCartOnLogout() {
  * Carga el carrito desde BD (usuario) o sessionStorage (invitado)
  */
 export async function loadCart() {
-  console.log("loadCart - Cargando carrito");
 
   if (typeof window === 'undefined') {
-    console.log("loadCart - En servidor, saliendo");
     return;
   }
 
   try {
     const isAuthenticated = await isUserAuthenticated();
-    console.log("loadCart - ¿Autenticado?:", isAuthenticated);
 
     if (isAuthenticated) {
-      console.log("loadCart - Usuario autenticado, cargando de BD");
       const cartFromDB = await loadCartFromDB();
       if (cartFromDB && Array.isArray(cartFromDB) && cartFromDB.length > 0) {
-        console.log("loadCart - Carrito cargado de BD:", cartFromDB);
         cartStore.set(cartFromDB);
         // Limpiar sessionStorage de invitados
         const sessionId = sessionStorage.getItem('guest-session-id');
@@ -248,14 +228,12 @@ export async function loadCart() {
         }
         return;
       } else {
-        console.log("loadCart - Carrito vacío en BD");
         cartStore.set([]);
         return;
       }
     }
 
     // Invitado: Recuperar del sessionStorage si existe
-    console.log("loadCart - Invitado, recuperando del sessionStorage");
     const sessionId = sessionStorage.getItem('guest-session-id');
     if (sessionId) {
       const cartKey = `cart-${sessionId}`;
@@ -263,7 +241,6 @@ export async function loadCart() {
       if (savedCart) {
         try {
           const cartItems = JSON.parse(savedCart);
-          console.log("loadCart - Carrito recuperado del sessionStorage:", cartItems);
           cartStore.set(cartItems);
           return;
         } catch (e) {
@@ -273,7 +250,6 @@ export async function loadCart() {
     }
 
     // Si no hay carrito guardado, iniciar vacío
-    console.log("loadCart - Sin carrito guardado, iniciando vacío");
     cartStore.set([]);
   } catch (e) {
     console.error('Error en loadCart:', e);

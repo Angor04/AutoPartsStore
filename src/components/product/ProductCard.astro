@@ -14,7 +14,6 @@ const { product } = Astro.props;
 const mainImage = product.urls_imagenes?.[0] || "https://via.placeholder.com/400x500?text=No+Image";
 
 // DEBUG: Ver qué datos llegan realmente
-console.log(`[ProductCard] ID: ${product.id}, Precio: ${product.precio}, Original: ${product.precio_original}`);
 
 
 // Requisito: Usar EXCLUSIVAMENTE precio_original como fuente de verdad

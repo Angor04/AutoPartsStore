@@ -146,24 +146,33 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 5. VALIDAR Y APLICAR CUPÓN (si existe)
     // ==========================================
     let descuento = 0;
+    let cuponId: string | null = null;
     let cuponAplicado: string | null = null;
 
     if (codigo_cupon) {
-      const { data: validacionCupon, error: errorCupon } = await supabaseAdmin
+      const { data: validacionCuponArray, error: errorCupon } = await supabaseAdmin
         .rpc('validar_cupon', {
           p_codigo: codigo_cupon,
           p_usuario_id: userId,
           p_subtotal: subtotal
         });
 
+      const validacionCupon = Array.isArray(validacionCuponArray) ? validacionCuponArray[0] : validacionCuponArray;
+
       if (errorCupon) {
         console.error('Error validando cupón:', errorCupon);
-      } else if (validacionCupon && validacionCupon.valido) {
-        descuento = validacionCupon.descuento_calculado || 0;
-        cuponAplicado = codigo_cupon;
-      } else if (validacionCupon && !validacionCupon.valido) {
-        // Cupón inválido - advertir pero continuar
-        console.log('Cupón inválido:', validacionCupon.mensaje);
+      } else {
+        const resCupon = Array.isArray(validacionCuponArray) ? validacionCuponArray[0] : validacionCuponArray;
+        console.log('DEBUG: Resultado validacionCupon:', resCupon);
+
+        if (resCupon && resCupon.o_valido) {
+          descuento = resCupon.o_descuento_calculado || 0;
+          cuponAplicado = codigo_cupon;
+          cuponId = resCupon.o_cupon_id;
+          console.log(`DEBUG: Cupón válido encontrado. ID: ${cuponId}, Descuento: ${descuento}`);
+        } else if (resCupon && !resCupon.o_valido) {
+          console.warn('DEBUG: Cupón inválido:', resCupon.o_mensaje);
+        }
       }
     }
 
@@ -208,10 +217,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         usuario_id: userId,
         estado: 'PENDIENTE',
         subtotal: subtotal,
-        descuento: descuento,
+        descuento_aplicado: descuento,
         gastos_envio: gastosEnvio,
         total: total,
-        codigo_cupon: cuponAplicado,
+        cupon_id: cuponId,
         direccion_envio: JSON.stringify(direccion_envio),
         metodo_pago: metodo_pago,
         notas: notas || null
@@ -274,12 +283,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 10. MARCAR CUPÓN COMO USADO (si aplica)
     // ==========================================
-    if (cuponAplicado) {
-      await supabaseAdmin.rpc('aplicar_cupon', {
-        p_codigo: cuponAplicado,
+    if (cuponId) {
+      console.log(`DEBUG: Intentando aplicar cupón ${cuponId} para usuario ${userId} en orden ${orden.id}`);
+      const { data: cupResult, error: cupError } = await supabaseAdmin.rpc('aplicar_cupon', {
+        p_cupon_id: cuponId,
         p_usuario_id: userId,
-        p_orden_id: orden.id
+        p_orden_id: orden.id,
+        p_descuento: descuento
       });
+
+      if (cupError) {
+        console.error('❌ Error crítico al aplicar cupón (RPC):', cupError);
+      } else if (cupResult === false) {
+        console.warn('⚠️ La función aplicar_cupon devolvió false (posible fallo silencioso en SQL)');
+      } else {
+        console.log('✅ Cupón aplicado y registrado con éxito');
+      }
     }
 
     // ==========================================
@@ -305,10 +324,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 13. RETORNAR ÉXITO
     // ==========================================
-    console.log(`\nORDEN CREADA: ${orden.numero_orden || orden.id}`);
-    console.log(`   Usuario: ${userId}`);
-    console.log(`   Total: €${total.toFixed(2)}`);
-    console.log(`   Items: ${itemsConPrecio.length}`);
     if (cuponAplicado) console.log(`   Cupón: ${cuponAplicado} (-€${descuento.toFixed(2)})`);
 
     return new Response(

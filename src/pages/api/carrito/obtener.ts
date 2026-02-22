@@ -25,7 +25,6 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       .single();
 
     if (error || !cartData) {
-      console.log('No hay carrito para el usuario:', userId);
       return new Response(JSON.stringify({ items: [] }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -59,7 +58,6 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       }
     }
 
-    console.log('Carrito cargado y actualizado para usuario', userId, ':', items.length, 'items');
 
     return new Response(JSON.stringify({ items }), {
       status: 200,

@@ -27,14 +27,37 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // 2. VERIFICAR QUE EL PEDIDO EXISTE Y PERTENECE AL USUARIO
     // ==========================================
-    const { data: orden, error: ordenError } = await supabaseAdmin
+    // Intentamos seleccionar tanto 'email' como 'email_cliente' por si acaso hay discrepancias de esquema
+    const { data: ordenData, error: ordenError } = await supabaseAdmin
       .from('ordenes')
-      .select('id, numero_orden, estado, estado_pago, usuario_id, total')
+      .select('id, numero_orden, estado, estado_pago, usuario_id, email, email_cliente, nombre, total, actualizado_en')
       .eq('id', orden_id)
       .eq('usuario_id', usuario_id)
       .single();
 
-    if (ordenError || !orden) {
+    if (ordenError) {
+      console.error('Error al recuperar la orden:', {
+        codigo: ordenError.code,
+        mensaje: ordenError.message,
+        detalles: ordenError.details,
+        hint: ordenError.hint
+      });
+      return new Response(
+        JSON.stringify({
+          error: 'Error al buscar el pedido',
+          detalles: ordenError.message,
+          code: ordenError.code
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const orden = ordenData as any;
+
+    // Fallback para el email
+    const emailFinal = orden.email || orden.email_cliente || '';
+
+    if (!orden) {
       return new Response(
         JSON.stringify({ error: 'Pedido no encontrado o no tienes permisos' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
@@ -55,6 +78,23 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // ==========================================
+    // 3b. VALIDAR VENTANA DE 2 HORAS
+    // ==========================================
+    if (orden.actualizado_en) {
+      const fechaPago = new Date(orden.actualizado_en);
+      const ahora = new Date();
+      const dosHorasMs = 2 * 60 * 60 * 1000;
+      if (ahora.getTime() - fechaPago.getTime() >= dosHorasMs) {
+        return new Response(
+          JSON.stringify({
+            error: 'El plazo de cancelación de 2 horas ha expirado. Puedes solicitar una devolución una vez recibas el pedido.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ==========================================
     // 4. EJECUTAR FUNCIÓN SQL TRANSACCIONAL
     // ==========================================
     // Esta es la operación ATÓMICA que:
@@ -63,7 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
     // 3. Registra en historial
     // TODO en UNA TRANSACCIÓN (todo o nada)
 
-    const { data: resultado, error: funcError } = await supabaseAdmin
+    const { data: resultado, error: funcError } = await (supabaseAdmin as any)
       .rpc('cancelar_pedido_atomico', {
         p_orden_id: orden_id,
         p_usuario_id: usuario_id
@@ -83,7 +123,9 @@ export const POST: APIRoute = async ({ request }) => {
     // ==========================================
     // 5. VALIDAR RESULTADO DE LA FUNCIÓN
     // ==========================================
-    const { exito, mensaje, stock_restaurado } = resultado[0] || {};
+    // Supabase RPC puede devolver un array o un objeto directo dependiendo del tipo de retorno
+    const dataObj = Array.isArray(resultado) ? resultado[0] : resultado;
+    const { exito, mensaje, stock_restaurado } = dataObj || {};
 
     if (!exito) {
       return new Response(
@@ -96,9 +138,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // ==========================================
-    // 6. REGISTRAR AUDITORÍA (opcional pero recomendado)
+    // 6. REGISTRAR AUDITORÍA
     // ==========================================
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from('ordenes_historial')
       .insert({
         orden_id,
@@ -109,12 +151,20 @@ export const POST: APIRoute = async ({ request }) => {
       });
 
     // ==========================================
-    // 7. ENVIAR EMAIL DE CONFIRMACIÓN (MANUAL)
+    // 7. ENVIAR EMAIL DE CONFIRMACIÓN
     // ==========================================
-    console.log(`ENVIAR EMAIL DE CANCELACIÓN A: usuario@example.com`);
-    console.log(`Pedido: ${orden.numero_orden}`);
-    console.log(`Reembolso: ${orden.total}€ en ${stock_restaurado} productos`);
-    console.log(`Tiempo de reembolso: 5-7 días hábiles`);
+    try {
+      const { sendOrderStatusUpdateEmail } = await import('@/lib/email');
+      await sendOrderStatusUpdateEmail(
+        emailFinal,
+        orden.nombre || 'Cliente',
+        orden.numero_orden,
+        'cancelado',
+        false // No es invitado si tenemos usuario_id
+      );
+    } catch (emailError) {
+      console.error('Error enviando email de cancelación:', emailError);
+    }
 
     // ==========================================
     // 8. RETORNAR ÉXITO

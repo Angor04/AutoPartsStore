@@ -98,13 +98,11 @@ export const POST: APIRoute = async ({ request }) => {
           resultado.numero_etiqueta,
           resultado.monto_reembolso
         );
-        console.log(`✅ Email de devolución enviado a: ${emailUsuario}`);
       } catch (emailError) {
         // No fallar la solicitud si el email falla
         console.error('⚠️ Error enviando email de devolución:', emailError);
       }
     } else {
-      console.warn('⚠️ No se encontró email del usuario, no se envió notificación');
     }
 
     // ==========================================

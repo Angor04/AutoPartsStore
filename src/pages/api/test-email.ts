@@ -8,7 +8,6 @@ export const prerender = false;
 
 export const GET: APIRoute = async () => {
   try {
-    console.log('Testing email service...');
 
     const success = await sendEmail({
       to: 'agonzalezcruces2004@gmail.com',

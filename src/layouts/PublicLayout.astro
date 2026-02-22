@@ -22,7 +22,8 @@ const categorias: Category[] = await getCategories();
 
 // Verificar si hay sesión iniciada
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
-const isLoggedIn = !!accessToken;
+const userId = Astro.cookies.get('user-id')?.value;
+const isLoggedIn = !!(accessToken || userId);
 ---
 
 <BaseLayout title={title} description={description} image={image}>
@@ -72,11 +73,13 @@ const isLoggedIn = !!accessToken;
                   </div>
                 </div>
               ) : (
-                <a href="/auth/login" class="p-2 text-red-600">
-                  <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                  </svg>
-                </a>
+                <div id="mobile-login-btn">
+                  <a href="/auth/login" class="p-2 text-red-600">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  </a>
+                </div>
               )}
             </div>
           </div>
@@ -110,9 +113,11 @@ const isLoggedIn = !!accessToken;
                 </div>
               </div>
             ) : (
-              <a href="/auth/login" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors whitespace-nowrap">
-                Iniciar Sesión
-              </a>
+              <div id="desktop-login-btn">
+                <a href="/auth/login" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors whitespace-nowrap">
+                  Iniciar Sesión
+                </a>
+              </div>
             )}
           </div>
         </div>
@@ -183,5 +188,26 @@ const isLoggedIn = !!accessToken;
       </div>
     </footer>
   </div>
+  <script is:inline>
+    // Fail-safe para detectar sesión en el cliente cuando el SSR falla por cookies seguras/redirects
+    (function() {
+      const cookies = document.cookie;
+      const hasUserId = cookies.includes('user-id=');
+      const hasAccessToken = cookies.includes('sb-access-token=');
+      
+      if (hasUserId || hasAccessToken) {
+        // Si tenemos cookies pero el servidor renderizó el botón de login, lo ocultamos.
+        // Nota: No reconstruimos el menú completo aquí por simplicidad y porque el layout 
+        // ya tiene la lógica de isLoggedIn. Esto es solo para evitar el "Iniciar Sesión" confuso.
+        const desktopBtn = document.getElementById('desktop-login-btn');
+        const mobileBtn = document.getElementById('mobile-login-btn');
+        
+        if (desktopBtn) desktopBtn.style.display = 'none';
+        if (mobileBtn) mobileBtn.style.display = 'none';
+        
+        console.log('Sesión detectada en cliente. Botón de login ocultado automáticamente.');
+      }
+    })();
+  </script>
   <script src="/js/stock-real-time.js?v=1" is:inline></script>
 </BaseLayout>

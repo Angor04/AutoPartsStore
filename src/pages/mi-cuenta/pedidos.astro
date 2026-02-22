@@ -14,11 +14,9 @@ const description = "Ver el historial de tus pedidos";
 const userId = Astro.cookies.get('user-id')?.value;
 
 if (!userId) {
-  console.log('🚫 No userId found in cookies for /mi-cuenta/pedidos');
   return Astro.redirect('/auth/login?redirect=/mi-cuenta/pedidos');
 }
 
-console.log('🔍 Fetching orders for userId:', userId);
 
 // Cargar pedidos del usuario
 const supabaseAdmin = getSupabaseAdmin();
@@ -143,8 +141,31 @@ function getAcciones(pedido: any) {
   const estadoUpper = (pedido.estado || '').toUpperCase();
   const tieneDevolucion = devolucionesMap.has(pedido.id);
   const enVentana = dentroDeVentanaDevolucion(pedido);
+  
+  // Ventana de cancelación: 2 horas desde el pago
+  let puedeCancelar = false;
+  let tiempoRestanteCancelacion = '';
+  if (estadoUpper === 'PAGADO' && pedido.actualizado_en) {
+    const fechaPago = new Date(pedido.actualizado_en);
+    const ahora = new Date();
+    const dosHorasMs = 2 * 60 * 60 * 1000;
+    const diferencia = ahora.getTime() - fechaPago.getTime();
+    puedeCancelar = diferencia < dosHorasMs;
+    if (puedeCancelar) {
+      const minutosRestantes = Math.ceil((dosHorasMs - diferencia) / (60 * 1000));
+      if (minutosRestantes <= 60) {
+        tiempoRestanteCancelacion = `(${minutosRestantes} min restantes)`;
+      } else {
+        const horas = Math.floor(minutosRestantes / 60);
+        const mins = minutosRestantes % 60;
+        tiempoRestanteCancelacion = `(${horas}h ${mins}min restantes)`;
+      }
+    }
+  }
+  
   return {
-    puedeCancelar: estadoUpper === 'PAGADO',
+    puedeCancelar,
+    tiempoRestanteCancelacion,
     puedeDevolver: estadoUpper === 'ENTREGADO' && !tieneDevolucion && enVentana,
     tieneDevolucion: tieneDevolucion,
     estadoDevolucion: devolucionesMap.get(pedido.id) || null,
@@ -303,16 +324,21 @@ function getAcciones(pedido: any) {
                       </a>
                       
                       <div class="flex items-center gap-3">
-                        {/* Botón Cancelar - Solo para PAGADO */}
+                        {/* Botón Cancelar - Solo para PAGADO dentro de 2h */}
                         {acciones.puedeCancelar && (
-                          <button
-                            data-action="cancelar"
-                            data-orden-id={pedido.id}
-                            data-orden-numero={pedido.numero_orden}
-                            class="btn-cancelar px-3 md:px-4 py-2 text-xs md:text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                          >
-                            Cancelar Pedido
-                          </button>
+                          <div class="flex flex-col items-end gap-1">
+                            <button
+                              data-action="cancelar"
+                              data-orden-id={pedido.id}
+                              data-orden-numero={pedido.numero_orden}
+                              class="btn-cancelar px-3 md:px-4 py-2 text-xs md:text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                              Cancelar Pedido
+                            </button>
+                            {acciones.tiempoRestanteCancelacion && (
+                              <span class="text-[10px] text-gray-400">{acciones.tiempoRestanteCancelacion}</span>
+                            )}
+                          </div>
                         )}
                         
                         {/* Botón Devolución - Solo para ENTREGADO sin devolución previa y dentro de ventana */}
@@ -371,7 +397,9 @@ function getAcciones(pedido: any) {
       <button class="modal-close">&times;</button>
       <div class="text-center mb-6">
         <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-          <span class="text-3xl"></span>
+          <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
         </div>
         <h3 class="text-xl font-bold text-charcoal-900">¿Cancelar pedido?</h3>
         <p class="text-gray-600 mt-2">Pedido: <span id="cancel-orden-numero" class="font-mono font-bold"></span></p>
@@ -422,7 +450,9 @@ function getAcciones(pedido: any) {
       <div id="devolucion-paso1">
         <div class="text-center mb-6">
           <div class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
-            <span class="text-3xl"></span>
+            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+            </svg>
           </div>
           <h3 class="text-xl font-bold text-charcoal-900">Solicitar Devolución</h3>
           <p class="text-gray-600 mt-2">Pedido: <span id="return-orden-numero" class="font-mono font-bold"></span></p>
@@ -467,35 +497,33 @@ function getAcciones(pedido: any) {
       <!-- Paso 2: Instrucciones -->
       <div id="devolucion-paso2" class="hidden">
         <div class="text-center mb-6">
-          <div class="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-            <span class="text-3xl"></span>
-          </div>
-          <h3 class="text-xl font-bold text-charcoal-900">Solicitud Recibida</h3>
+          <h3 class="text-2xl font-bold text-charcoal-900">¡Solicitud Recibida!</h3>
         </div>
         
         <!-- Instrucciones de envío -->
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
           <h4 class="font-bold text-charcoal-900 mb-3 flex items-center gap-2">
-            <span></span> Instrucciones de Envío
+            <svg class="w-5 h-5 text-charcoal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Instrucciones de Envío
           </h4>
           <p class="text-gray-700 mb-4">
             Por favor, envía los artículos <strong>sin usar</strong> y en su <strong>embalaje original</strong> a:
           </p>
-          <div class="bg-white border border-gray-300 rounded-lg p-4 font-mono text-sm">
+          <div class="bg-white border border-gray-300 rounded-lg p-4 font-mono text-sm text-center">
             <p>AutoParts Store - Devoluciones</p>
             <p>C. Puerto Serrano, 11540</p>
-            <p>Sanlúcar de Barrameda</p>
-            <p>Cádiz, España</p>
+            <p>Sanlúcar de Barrameda (Cádiz)</p>
           </div>
-          <p class="text-sm text-gray-500 mt-3">
-            Número de etiqueta: <span id="etiqueta-numero" class="font-mono font-bold text-orange-600"></span>
-          </p>
         </div>
         
         <!-- Confirmación email -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p class="text-blue-800 text-sm flex items-start gap-2">
-            <span class="text-xl"></span>
+            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
             <span>
               <strong>Hemos enviado un correo</strong> a tu email asociado con la etiqueta de devolución imprimible y las instrucciones detalladas.
             </span>
@@ -505,7 +533,9 @@ function getAcciones(pedido: any) {
         <!-- Disclaimer financiero -->
         <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
           <p class="text-green-800 text-sm flex items-start gap-2">
-            <span class="text-xl"></span>
+            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             <span>
               Una vez recibido y validado el paquete, el reembolso de <strong id="return-total"></strong> se procesará en tu método de pago original en un plazo de <strong>5 a 7 días hábiles</strong>.
             </span>
@@ -732,7 +762,8 @@ function getAcciones(pedido: any) {
         loading?.classList.add('hidden');
         paso1?.classList.add('hidden');
         document.getElementById('devolucion-paso2')?.classList.remove('hidden');
-        document.getElementById('etiqueta-numero').textContent = result.numero_etiqueta || 'DEV-XXXXX';
+        
+        console.log('Solicitud de devolución procesada con éxito');
         
       } catch (error) {
         loading?.classList.add('hidden');

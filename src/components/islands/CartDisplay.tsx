@@ -46,7 +46,6 @@ export default function CartDisplay() {
     // Al montar, cargar el carrito
     if (typeof window !== 'undefined') {
       loadCart().then(() => {
-        console.log('Carrito cargado');
         setMounted(true);
       }).catch((err) => {
         console.error('Error cargando carrito:', err);
@@ -57,7 +56,6 @@ export default function CartDisplay() {
       const handleCartCleared = () => {
         // En este caso, ya que usamos el store, el update del store triggereará el re-render.
         // Solo necesitamos limpiar el DOM si es necesario, pero updateSummaryDOM lo hará cuando items cambie.
-        console.log('🛒 CartDisplay: Evento cart-cleared recibido');
       };
 
       window.addEventListener('cart-cleared', handleCartCleared);

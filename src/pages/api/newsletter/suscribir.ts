@@ -113,9 +113,6 @@ export const POST: APIRoute = async ({ request }) => {
     // Se explica en detalle al final
 
     // Simulamos que enviamos email
-    console.log(`ENVIAR EMAIL A: ${email}`);
-    console.log(`CÓDIGO DE DESCUENTO: ${codigo_descuento}`);
-    console.log(`DESCUENTO: 10% en tu primera compra`);
 
     // ==========================================
     // 7. RETORNAR RESPUESTA

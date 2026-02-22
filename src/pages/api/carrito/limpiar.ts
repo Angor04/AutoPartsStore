@@ -17,7 +17,6 @@ export const POST: APIRoute = async ({ cookies }) => {
       });
     }
 
-    console.log('API carrito/limpiar - Usuario:', userId);
 
     const supabase = getSupabaseAdmin();
     

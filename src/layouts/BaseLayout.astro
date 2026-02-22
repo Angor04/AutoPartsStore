@@ -63,7 +63,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
       if (SUPABASE_URL && SUPABASE_KEY) {
-        console.log('[Realtime] Initializing client...');
         const client = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const channel = client
@@ -72,7 +71,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
             'postgres_changes',
             { event: '*', schema: 'public', table: 'productos' },
             (payload) => {
-              console.log('[Realtime] Change received:', payload);
               const { eventType, new: newRecord, old: oldRecord } = payload;
               
               // Helper to find cards
@@ -85,7 +83,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
               // Helper to hide product
               const hideProduct = (id) => {
                 const cards = findCards(id);
-                console.log(`[Realtime] Hiding ${cards.length} cards for ID: ${id}`);
                 cards.forEach((card) => {
                   if (card instanceof HTMLElement) {
                     card.style.display = 'none';
@@ -110,7 +107,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
               // Helper to show product
               const showProduct = (id) => {
                  const cards = findCards(id);
-                 console.log(`[Realtime] Showing ${cards.length} cards for ID: ${id}`);
                  cards.forEach((card) => {
                     if (card instanceof HTMLElement) {
                        card.style.display = '';
@@ -149,7 +145,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
             }
           )
           .subscribe((status) => {
-            console.log('[Realtime] Status:', status);
           });
       }
     </script>

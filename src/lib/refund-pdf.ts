@@ -1,22 +1,31 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
+interface RefundItem {
+    nombre_producto?: string;
+    nombre?: string;
+    cantidad: number;
+    precio_unitario?: number;
+    subtotal?: number;
+}
+
 interface RefundData {
     orderNumber: string;
     returnLabel: string;
     customerEmail: string;
+    customerName?: string;
     refundAmount: number;
     refundDate?: string;
-    items?: Array<{
-        nombre_producto?: string;
-        nombre?: string;
-        cantidad: number;
-        precio_unitario?: number;
-        subtotal?: number;
-    }>;
+    items?: RefundItem[];
+    summary?: {
+        subtotal: number;
+        envio: number;
+        descuento: number;
+    };
 }
 
 /**
- * Genera un PDF de comprobante de reembolso usando pdf-lib (puro JS)
+ * Genera un PDF de comprobante de reembolso con estilo de factura
+ * Incluye signo negativo en el total para indicar la devolución de dinero.
  */
 export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
     const pdfDoc = await PDFDocument.create();
@@ -29,13 +38,14 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
     const margin = 50;
     const contentWidth = width - margin * 2;
 
-    // Colores
+    // Colores (Alinhados con invoice-pdf.ts)
     const darkBlue = rgb(30 / 255, 41 / 255, 59 / 255);
     const grayText = rgb(100 / 255, 116 / 255, 139 / 255);
     const lightGray = rgb(226 / 255, 232 / 255, 240 / 255);
     const veryLightGray = rgb(248 / 255, 250 / 255, 252 / 255);
     const white = rgb(1, 1, 1);
     const green = rgb(16 / 255, 185 / 255, 129 / 255);
+    const red = rgb(220 / 255, 38 / 255, 38 / 255);
 
     // ========== HEADER ==========
     page.drawRectangle({
@@ -48,13 +58,13 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
         size: 22, font: helveticaBold, color: white,
     });
 
-    page.drawText('COMPROBANTE DE REEMBOLSO', {
+    page.drawText('FACTURA DE DEVOLUCIÓN', {
         x: margin, y: height - 62,
-        size: 11, font: helvetica, color: white,
+        size: 12, font: helvetica, color: white,
     });
 
-    // Nro pedido y fecha a la derecha
-    const orderText = `Pedido ${data.orderNumber}`;
+    // Nro y fecha a la derecha
+    const orderText = `No ${data.orderNumber}`;
     const orderTextWidth = helveticaBold.widthOfTextAtSize(orderText, 11);
     page.drawText(orderText, {
         x: width - margin - orderTextWidth, y: height - 40,
@@ -71,22 +81,33 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
         size: 10, font: helvetica, color: white,
     });
 
-    // ========== DATOS ==========
+    // ========== DATOS EMPRESA Y CLIENTE ==========
     let y = height - 130;
 
-    // Etiqueta devolucion
-    page.drawText('DATOS DE LA DEVOLUCION', { x: margin, y, size: 9, font: helveticaBold, color: darkBlue });
-    y -= 16;
-
-    page.drawText(`Etiqueta: ${data.returnLabel}`, { x: margin, y, size: 9, font: helvetica, color: grayText });
+    // Empresa (EMISOR)
+    page.drawText('EMISOR', { x: margin, y, size: 9, font: helveticaBold, color: darkBlue });
     y -= 14;
-    page.drawText(`Cliente: ${data.customerEmail}`, { x: margin, y, size: 9, font: helvetica, color: grayText });
-    y -= 14;
-    page.drawText(`Pedido original: ${data.orderNumber}`, { x: margin, y, size: 9, font: helvetica, color: grayText });
+    page.drawText('Auto Parts Store', { x: margin, y, size: 8, font: helvetica, color: grayText });
+    y -= 12;
+    page.drawText('C. Puerto Serrano, 11540', { x: margin, y, size: 8, font: helvetica, color: grayText });
+    y -= 12;
+    page.drawText('Sanlucar de Barrameda, Cadiz', { x: margin, y, size: 8, font: helvetica, color: grayText });
+    y -= 12;
+    page.drawText('admin@autopartsstore.com', { x: margin, y, size: 8, font: helvetica, color: grayText });
 
-    y -= 25;
+    // Cliente (columna derecha)
+    const clientX = width / 2 + 20;
+    let cy = height - 130;
+    page.drawText('CLIENTE', { x: clientX, y: cy, size: 9, font: helveticaBold, color: darkBlue });
+    cy -= 14;
+    page.drawText(data.customerName || 'Cliente', { x: clientX, y: cy, size: 8, font: helvetica, color: grayText });
+    cy -= 12;
+    page.drawText(data.customerEmail, { x: clientX, y: cy, size: 8, font: helvetica, color: grayText });
+    cy -= 12;
+    page.drawText(`Ref. Devolución: ${data.returnLabel}`, { x: clientX, y: cy, size: 8, font: helvetica, color: grayText });
 
     // Línea separadora
+    y -= 25;
     page.drawLine({
         start: { x: margin, y }, end: { x: width - margin, y },
         thickness: 0.5, color: lightGray,
@@ -94,63 +115,30 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
 
     y -= 20;
 
-    // ========== ESTADO ==========
-    // Recuadro verde de "REEMBOLSADO"
-    const reembolsoBoxH = 50;
+    // ========== TABLA CABECERA ==========
+    const col1 = margin + 5;
+    const col2 = margin + contentWidth * 0.50; // Ajustado para dar más espacio
+    const col3 = margin + contentWidth * 0.70;
+    const col4 = width - margin - 5;
+
+    // Fondo cabecera
     page.drawRectangle({
-        x: margin, y: y - reembolsoBoxH + 15, width: contentWidth, height: reembolsoBoxH,
-        color: rgb(240 / 255, 253 / 255, 244 / 255), // bg-green-50
-        borderColor: rgb(187 / 255, 247 / 255, 208 / 255),
-        borderWidth: 1,
+        x: margin, y: y - 5, width: contentWidth, height: 20,
+        color: veryLightGray,
     });
 
-    page.drawText('REEMBOLSO PROCESADO', {
-        x: margin + 15, y: y - 5,
-        size: 14, font: helveticaBold, color: green,
-    });
+    page.drawText('PRODUCTO', { x: col1, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
+    page.drawText('CANTIDAD', { x: col2, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
+    page.drawText('PRECIO UNIT.', { x: col3, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
 
-    const amountText = `${data.refundAmount.toFixed(2)} EUR`;
-    const amountWidth = helveticaBold.widthOfTextAtSize(amountText, 14);
-    page.drawText(amountText, {
-        x: width - margin - 15 - amountWidth, y: y - 5,
-        size: 14, font: helveticaBold, color: green,
-    });
+    const totalHeader = 'TOTAL';
+    const totalHeaderW = helveticaBold.widthOfTextAtSize(totalHeader, 8);
+    page.drawText(totalHeader, { x: col4 - totalHeaderW, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
 
-    page.drawText('El importe sera devuelto a tu metodo de pago en 5-7 dias habiles.', {
-        x: margin + 15, y: y - 25,
-        size: 8, font: helvetica, color: grayText,
-    });
+    y -= 22;
 
-    y -= reembolsoBoxH + 15;
-
-    // ========== TABLA DE PRODUCTOS (si hay items) ==========
+    // ========== FILAS ==========
     if (data.items && data.items.length > 0) {
-        y -= 10;
-
-        page.drawText('PRODUCTOS DEVUELTOS', { x: margin, y, size: 9, font: helveticaBold, color: darkBlue });
-        y -= 18;
-
-        const col1 = margin + 5;
-        const col2 = margin + contentWidth * 0.55;
-        const col3 = margin + contentWidth * 0.70;
-        const col4 = width - margin - 5;
-
-        // Cabecera tabla
-        page.drawRectangle({
-            x: margin, y: y - 5, width: contentWidth, height: 20,
-            color: veryLightGray,
-        });
-
-        page.drawText('PRODUCTO', { x: col1, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
-        page.drawText('CANT.', { x: col2, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
-        page.drawText('P. UNIT.', { x: col3, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
-
-        const subtotalHeader = 'SUBTOTAL';
-        const subtotalHeaderW = helveticaBold.widthOfTextAtSize(subtotalHeader, 8);
-        page.drawText(subtotalHeader, { x: col4 - subtotalHeaderW, y: y + 2, size: 8, font: helveticaBold, color: darkBlue });
-
-        y -= 22;
-
         for (const item of data.items) {
             const nombre = item.nombre_producto || item.nombre || 'Producto';
             const cantidad = item.cantidad;
@@ -176,27 +164,57 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
             });
             y -= 12;
         }
+    } else {
+        // Fallback si no hay items detallados
+        page.drawText('Reembolso por devolución de productos', { x: col1, y, size: 8, font: helvetica, color: grayText });
+        const totalTextFallback = `-${data.refundAmount.toFixed(2)} EUR`;
+        const totalWFallback = helvetica.widthOfTextAtSize(totalTextFallback, 8);
+        page.drawText(totalTextFallback, { x: col4 - totalWFallback, y, size: 8, font: helvetica, color: red });
+        y -= 20;
     }
 
-    // ========== TOTAL REEMBOLSADO ==========
-    y -= 15;
+    y -= 10;
+
+    // ========== RESUMEN ==========
+    const summaryX = width - margin - 150;
+
+    if (data.summary) {
+        // Subtotal
+        page.drawText('Subtotal:', { x: summaryX, y, size: 9, font: helvetica, color: grayText });
+        const subText = `${data.summary.subtotal.toFixed(2)} EUR`;
+        const subW = helvetica.widthOfTextAtSize(subText, 9);
+        page.drawText(subText, { x: col4 - subW, y, size: 9, font: helvetica, color: grayText });
+        y -= 16;
+
+        // Descuento
+        if (data.summary.descuento > 0) {
+            page.drawText('Descuento:', { x: summaryX, y, size: 9, font: helvetica, color: green });
+            const descText = `-${data.summary.descuento.toFixed(2)} EUR`;
+            const descW = helvetica.widthOfTextAtSize(descText, 9);
+            page.drawText(descText, { x: col4 - descW, y, size: 9, font: helvetica, color: green });
+            y -= 16;
+        }
+
+        // Envío
+        page.drawText('Envio:', { x: summaryX, y, size: 9, font: helvetica, color: grayText });
+        const envioText = data.summary.envio === 0 ? 'Gratis' : `${data.summary.envio.toFixed(2)} EUR`;
+        const envioW = helvetica.widthOfTextAtSize(envioText, 9);
+        page.drawText(envioText, { x: col4 - envioW, y, size: 9, font: helvetica, color: grayText });
+        y -= 12;
+    }
+
+    // Línea total
     page.drawLine({
-        start: { x: width - margin - 200, y }, end: { x: width - margin, y },
+        start: { x: summaryX, y }, end: { x: width - margin, y },
         thickness: 0.5, color: darkBlue,
     });
-    y -= 18;
+    y -= 20;
 
-    page.drawText('TOTAL REEMBOLSADO:', {
-        x: width - margin - 200, y,
-        size: 14, font: helveticaBold, color: green,
-    });
-
-    const totalText = `${data.refundAmount.toFixed(2)} EUR`;
-    const totalW = helveticaBold.widthOfTextAtSize(totalText, 14);
-    page.drawText(totalText, {
-        x: width - margin - totalW, y,
-        size: 14, font: helveticaBold, color: green,
-    });
+    // TOTAL REEMBOLSADO
+    page.drawText('TOTAL:', { x: summaryX, y, size: 14, font: helveticaBold, color: darkBlue });
+    const finalTotalText = `-${data.refundAmount.toFixed(2)} EUR`;
+    const finalTotalW = helveticaBold.widthOfTextAtSize(finalTotalText, 14);
+    page.drawText(finalTotalText, { x: col4 - finalTotalW, y, size: 14, font: helveticaBold, color: red });
 
     // ========== PIE ==========
     const footerY = 60;
@@ -212,7 +230,7 @@ export async function generateRefundPDF(data: RefundData): Promise<Buffer> {
         size: 7, font: helvetica, color: grayText,
     });
 
-    const footer2 = 'Este documento sirve como comprobante de tu reembolso. Gracias por tu confianza.';
+    const footer2 = 'Gracias por tu confianza. Este documento sirve como comprobante de tu reembolso.';
     const footer2W = helvetica.widthOfTextAtSize(footer2, 7);
     page.drawText(footer2, {
         x: (width - footer2W) / 2, y: footerY - 22,

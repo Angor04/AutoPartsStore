@@ -20,10 +20,52 @@ export type Database = {
         Insert: OrderInsert;
         Update: OrderUpdate;
       };
+      ordenes_items: {
+        Row: OrderItem;
+        Insert: any;
+        Update: any;
+      };
+      ordenes_historial: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      solicitudes_devolucion: {
+        Row: SolicitudDevolucion;
+        Insert: any;
+        Update: any;
+      };
+      cupones: {
+        Row: Cupon;
+        Insert: any;
+        Update: any;
+      };
       configuracion: {
         Row: Setting;
         Insert: SettingInsert;
         Update: SettingUpdate;
+      };
+    };
+    Functions: {
+      cancelar_pedido_atomico: {
+        Args: {
+          p_orden_id: string;
+          p_usuario_id: string;
+        };
+        Returns: {
+          exito: boolean;
+          mensaje: string;
+          stock_restaurado: number;
+        }[];
+      };
+      admin_cambiar_estado_devolucion: {
+        Args: {
+          p_devolucion_id: number;
+          p_nuevo_estado: string;
+          p_numero_seguimiento?: string;
+          p_monto_reembolso?: number;
+        };
+        Returns: any;
       };
     };
   };

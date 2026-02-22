@@ -14,10 +14,6 @@ import type { Product, Category } from "@/types/index";
 const slug = Astro.params.slug;
 const productos: Product[] = await getProducts();
 
-console.log("Slug:", slug);
-console.log("Productos tipo:", typeof productos);
-console.log("Productos es array:", Array.isArray(productos));
-console.log("Productos cargados:", productos?.length || 0);
 
 let producto: Product | undefined;
 
@@ -28,7 +24,6 @@ if (Array.isArray(productos) && productos.length > 0) {
   });
 }
 
-console.log("Producto encontrado:", producto?.nombre || "No encontrado");
 
 if (!producto) {
   return new Response("Producto no encontrado", { status: 404 });

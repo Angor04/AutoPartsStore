@@ -129,7 +129,6 @@ export default function AddToCartButton({
         stock: stockRestante
       };
 
-      console.log("Agregando al carrito validado:", cartItem);
       addToCart(cartItem);
 
       setIsAdded(true);

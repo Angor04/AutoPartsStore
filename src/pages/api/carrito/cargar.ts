@@ -17,7 +17,6 @@ export const GET: APIRoute = async ({ cookies }) => {
       });
     }
 
-    console.log('API carrito/cargar - Usuario:', userId);
 
     const supabase = getSupabaseAdmin();
 
@@ -58,7 +57,6 @@ export const GET: APIRoute = async ({ cookies }) => {
       }
     }
 
-    console.log('API carrito/cargar - Items encontrados y actualizados:', items.length);
 
     return new Response(JSON.stringify({ items, authenticated: true }), {
       status: 200,

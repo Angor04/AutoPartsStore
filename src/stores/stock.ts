@@ -37,7 +37,6 @@ export function updateReservedStock(items: CartItem[]) {
     sessionStorage.setItem('stock-reserved', JSON.stringify(reserved));
   }
 
-  console.log("Stock reservado actualizado:", reserved);
 }
 
 /**

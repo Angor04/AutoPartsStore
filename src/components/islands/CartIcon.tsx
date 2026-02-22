@@ -11,7 +11,6 @@ export default function CartIcon() {
   // Escuchar cambios en el carrito
   useEffect(() => {
     const handleCartCleared = () => {
-      console.log('🛒 CartIcon: Evento cart-cleared recibido');
       // El useStore ya se actualiza automáticamente
     };
     
@@ -27,7 +26,6 @@ export default function CartIcon() {
     ? items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)
     : 0;
 
-  console.log("CartIcon - items:", items, "count:", itemCount);
 
   const handleOpenCart = () => {
     if (typeof window !== 'undefined' && (window as any).openCart) {

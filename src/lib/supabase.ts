@@ -18,7 +18,6 @@ const SUPABASE_ANON_KEY = getEnv('PUBLIC_SUPABASE_ANON_KEY');
 
 // Cliente para operaciones públicas (lectura de productos)
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('Missing Supabase environment variables');
 }
 
 export const supabaseClient = createClient<Database>(

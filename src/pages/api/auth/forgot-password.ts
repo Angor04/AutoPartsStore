@@ -41,7 +41,6 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (userError || !users) {
       // Por seguridad, decimos que enviamos email aunque no exista
-      console.warn('User not found:', email);
       return new Response(
         JSON.stringify({ 
           success: true,

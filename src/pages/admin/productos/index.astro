@@ -403,7 +403,6 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
             }
             
             // Opcional: Mostrar toast de éxito
-            console.log(`Producto ${productId} ahora está ${newStatus ? 'activo' : 'inactivo'}`);
             
             const statusText = document.getElementById(`status-text-${productId}`);
             if (statusText) {

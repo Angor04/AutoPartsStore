@@ -57,7 +57,6 @@ export default function SearchBar() {
     useEffect(() => {
         const handleVisibilityChange = (event: CustomEvent) => {
             const { id, visible } = event.detail;
-            console.log('[SearchBar] Visibility change:', id, visible);
 
             if (!visible) {
                 setResults(prev => prev.filter(p => p.id !== id));

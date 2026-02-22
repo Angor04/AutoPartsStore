@@ -77,13 +77,11 @@ export const PUT: APIRoute = async (context) => {
         // Si tiene perfil y explícitamente desactivó notificaciones, no enviar
         if (usuario && usuario.notificaciones_pedidos === false) {
           shouldSendEmail = false;
-          console.log(`Usuario ${usuario_id} tiene desactivadas las notificaciones de pedido. Email omitido.`);
         }
       }
       // Si es invitado (usuario_id null), shouldSendEmail se mantiene true (transaccional)
 
       if (shouldSendEmail && email) {
-        console.log(`Estado cambiado de ${currentOrder.estado} a ${estado}. Enviando email a ${email}`);
         await sendOrderStatusUpdateEmail(
           email,
           nombre || 'Cliente',

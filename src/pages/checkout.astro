@@ -12,20 +12,31 @@ const description = "Completa tu pedido de forma segura";
 // Verificar autenticación
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
 let userId = Astro.cookies.get('user-id')?.value; 
-let userEmail = Astro.cookies.get('user-email')?.value;
+const cookieEmail = Astro.cookies.get('user-email')?.value;
 
-// Si no hay token de acceso, forzar modo invitado
-if (!accessToken) {
+// Si no hay token de acceso NI user-id, forzar modo invitado
+if (!accessToken && !userId) {
   userId = undefined;
-  userEmail = undefined;
 }
 
 // Cargar datos si el usuario está logueado
 const supabaseAdmin = getSupabaseAdmin();
 let direccion = null;
 let perfil = null;
+let authEmail = '';
 
 if (userId) {
+  // 1. Obtener email de Auth (el más fiable, igual que en perfil.astro)
+  try {
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userData?.user?.email) {
+      authEmail = userData.user.email;
+    }
+  } catch (e: any) {
+    console.error('AUTH ERROR in checkout.astro:', e.message);
+  }
+
+  // 2. Obtener dirección principal
   const { data: direccionData } = await supabaseAdmin
     .from('direcciones_envio')
     .select('*')
@@ -35,14 +46,20 @@ if (userId) {
   
   direccion = direccionData;
 
+  // 3. Obtener perfil
   const { data: perfilData } = await supabaseAdmin
     .from('usuarios')
-    .select('nombre, apellidos, telefono')
+    .select('*')
     .eq('id', userId)
     .single();
   
   perfil = perfilData;
 }
+
+// La prioridad final para el email:
+// 1. Email de Auth (directo de la cuenta)
+// 2. Email de la cookie (sesión actual)
+const finalUserEmail = authEmail || cookieEmail || '';
 ---
 
 <PublicLayout title={title} description={description}>
@@ -118,7 +135,7 @@ if (userId) {
                   id="email" 
                   name="email" 
                   required
-                  value={userEmail || ''}
+                  value={finalUserEmail}
                   class="w-full px-4 py-2 border border-charcoal-200 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-transparent"
                 />
               </div>
@@ -299,9 +316,6 @@ if (userId) {
 </PublicLayout>
 
 <script is:inline>
-  // ==================================================
-  // VARIABLES GLOBALES
-  // ==================================================
   let cartItems = [];
   let subtotal = 0;
   let descuento = 0;
@@ -357,47 +371,38 @@ if (userId) {
   // ==================================================
   async function cargarCarrito() {
     try {
-      console.log('cargarCarrito() - Iniciando carga...');
-      
-      // Primero intentar obtener del API (usuarios logueados)
+      // Intentar obtener del API (usuarios logueados)
       try {
-        console.log('cargarCarrito() - Intentando obtener de BD...');
         const response = await fetch('/api/carrito/obtener');
-        const data = await response.json();
-        
-        console.log('cargarCarrito() - Respuesta API:', data);
-        
-        cartItems = data.items || [];
-        console.log('cargarCarrito() - Items de BD:', cartItems.length);
-        
-        if (cartItems && cartItems.length > 0) {
-          console.log('cargarCarrito() - Carrito cargado de BD');
-          renderizarProductos();
-          calcularTotales();
-          return;
+        if (response.ok) {
+          const data = await response.json();
+          cartItems = data.items || [];
+          
+          if (cartItems && cartItems.length > 0) {
+            renderizarProductos();
+            calcularTotales();
+            return;
+          }
         }
-      } catch (e) {
-        console.log('cargarCarrito() - Error en BD, intentando sessionStorage:', e);
-      }
+      } catch (e) {}
       
-      // Si no hay en BD, intentar sessionStorage (usuarios no logueados o carrito local)
-      console.log('cargarCarrito() - Buscando en sessionStorage...');
+      // Fallback a sessionStorage
       cartItems = getCartItems();
-      console.log('cargarCarrito() - Items de sessionStorage:', cartItems.length);
       
       if (!cartItems || cartItems.length === 0) {
-        console.warn('cargarCarrito() - Carrito vacío, redirigiendo a /carrito');
+        // Si no hay nada en 1.5 segundos, volver al carrito
         setTimeout(() => {
-          window.location.href = '/carrito';
-        }, 500);
+          if (!cartItems || cartItems.length === 0) {
+            window.location.href = '/carrito';
+          }
+        }, 1500);
         return;
       }
       
-      console.log('cargarCarrito() - Carrito cargado de sessionStorage');
       renderizarProductos();
       calcularTotales();
     } catch (e) {
-      console.error('cargarCarrito() - Error:', e);
+      console.error('Error cargando carrito:', e);
     }
   }
 
@@ -406,46 +411,48 @@ if (userId) {
   // ==================================================
   function renderizarProductos() {
     const container = document.getElementById('productosLista');
+    if (!container) return;
     
     if (!cartItems || cartItems.length === 0) {
-      container.innerHTML = '<p class="text-charcoal-500">Carrito vacío</p>';
+      container.innerHTML = '<p class="text-charcoal-500 text-sm">Carrito vacío</p>';
       return;
     }
     
-    container.innerHTML = cartItems.map(item => {
-      const imagenUrl = Array.isArray(item.urls_imagenes) && item.urls_imagenes.length > 0 
-        ? item.urls_imagenes[0] 
-        : (item.imagen || '/images/placeholder.jpg');
-      const nombreProducto = item.nombre || 'Producto sin nombre';
-      const precioProducto = parseFloat(item.precio) || 0;
-      const cantidad = parseInt(item.quantity) || 1;
-      const precioTotal = precioProducto * cantidad;
-      
-      return `
-        <div class="flex items-center gap-3 pb-3 border-b border-charcoal-50">
-          <img 
-            src="${imagenUrl}" 
-            alt="${nombreProducto}"
-            class="w-12 h-12 object-cover rounded"
-            onerror="this.src='/images/placeholder.jpg'"
-          />
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-charcoal-900 truncate">${nombreProducto}</p>
-            <p class="text-xs text-charcoal-500">Cant: ${cantidad}</p>
-          </div>
-          <span class="text-sm font-semibold text-charcoal-700">
-            ${formatearPrecio(precioTotal)}
-          </span>
-        </div>
-      `;
-    }).join('');
+    try {
+      container.innerHTML = cartItems.map(item => {
+        if (!item) return '';
+        const imagenUrl = Array.isArray(item.urls_imagenes) && item.urls_imagenes.length > 0 
+          ? item.urls_imagenes[0] 
+          : (item.imagen || '/images/placeholder.jpg');
+        const nombreProducto = item.nombre || 'Producto';
+        const precioProducto = parseFloat(item.precio) || 0;
+        const cantidad = parseInt(item.cantidad) || parseInt(item.quantity) || 1;
+        const precioTotal = precioProducto * cantidad;
+        
+        return `
+          <div class="flex items-center gap-3 pb-3 border-b border-charcoal-50">
+            <img src="${imagenUrl}" alt="${nombreProducto}" class="w-12 h-12 object-cover rounded" onerror="this.src='/images/placeholder.jpg'" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-charcoal-900 truncate">${nombreProducto}</p>
+              <p class="text-xs text-charcoal-500">Cant: ${cantidad}</p>
+            </div>
+            <span class="text-sm font-semibold text-charcoal-700">${formatearPrecio(precioTotal)}</span>
+          </div>`;
+      }).join('');
+    } catch (err) {
+      container.innerHTML = '<p class="text-red-500 text-sm">Error al cargar productos</p>';
+    }
   }
 
   // ==================================================
   // CALCULAR TOTALES
   // ==================================================
   function calcularTotales() {
-    subtotal = cartItems.reduce((sum, item) => sum + (item.precio * item.quantity), 0);
+    subtotal = cartItems.reduce((sum, item) => {
+      const p = parseFloat(item.precio) || 0;
+      const c = parseInt(item.cantidad) || parseInt(item.quantity) || 0;
+      return sum + (p * c);
+    }, 0);
     let envio = COSTO_ENVIO;
     // Si el cupón aplicado es ENVIOGRATIS, el envío es gratis
     if (codigoCuponAplicado && codigoCuponAplicado.toUpperCase() === 'ENVIOGRATIS') {
@@ -475,7 +482,6 @@ if (userId) {
     
     if (!codigo) return;
     
-    console.log('Validando cupón:', codigo, 'Subtotal:', subtotal);
     
     mensaje.className = 'mt-3 p-2 rounded text-sm bg-blue-50 text-blue-700';
     mensaje.textContent = 'Validando cupón...';
@@ -596,8 +602,6 @@ if (userId) {
       const stripeData = await stripeResponse.json();
       
       if (stripeData.success && stripeData.url) {
-        console.log('Sesión de Stripe creada:', stripeData.session_id);
-        console.log('Redirigiendo a:', stripeData.url);
         
         // Redirigir a Stripe Checkout
         window.location.href = stripeData.url;
@@ -625,6 +629,16 @@ if (userId) {
   // ==================================================
   document.addEventListener('DOMContentLoaded', async () => {
     await cargarCarrito();
+    
+    // Rellenar email desde la cookie si el campo está vacío (fallback cliente)
+    const emailInput = document.getElementById('email');
+    
+    if (emailInput && !emailInput.value) {
+      const emailCookie = document.cookie.split('; ').find(row => row.startsWith('user-email='))?.split('=')[1];
+      if (emailCookie) {
+        emailInput.value = decodeURIComponent(emailCookie);
+      }
+    }
     
     document.getElementById('btnAplicarCupon').addEventListener('click', validarCupon);
     document.getElementById('btnQuitarCupon')?.addEventListener('click', quitarCupon);

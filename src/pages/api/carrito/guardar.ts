@@ -22,7 +22,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Requisito: Guardar precios tal cual vienen (decimales)
     // No aplicar ninguna normalización ni división.
 
-    console.log('API carrito/guardar - Usuario:', userId, 'Items:', items?.length);
 
     const supabase = getSupabaseAdmin();
 

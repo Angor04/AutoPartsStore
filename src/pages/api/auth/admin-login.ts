@@ -19,7 +19,6 @@ export const POST: APIRoute = async (context) => {
     }
 
     // Autenticar con Supabase
-    console.log(`[AdminLogin] Attempting login for: ${email}`);
     const { data, error } = await supabaseClient.auth.signInWithPassword({
       email,
       password,
@@ -28,7 +27,6 @@ export const POST: APIRoute = async (context) => {
     if (error) {
       console.error('[AdminLogin] Supabase Auth Error:', error);
     } else {
-      console.log('[AdminLogin] Login successful for:', data.user?.id);
     }
 
     if (error || !data.session) {

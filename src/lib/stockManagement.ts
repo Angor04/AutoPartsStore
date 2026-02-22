@@ -110,12 +110,13 @@ export async function updateStockAfterPurchase(
  */
 export async function getLowStockAlerts(threshold: number = 10) {
   try {
-    const { data, error } = await (supabaseClient as any).rpc(
-      'get_low_stock_alerts',
-      {
-        p_threshold: threshold,
-      }
-    );
+    const { data, error } = await (supabaseClient as any)
+      .from('productos')
+      .select('id, nombre, stock, urls_imagenes')
+      .lt('stock', threshold)
+      .gt('stock', 0)
+      .eq('activo', true)
+      .order('stock', { ascending: true });
 
     if (error) {
       console.error('Error getting low stock alerts:', error);

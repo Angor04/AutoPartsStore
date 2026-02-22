@@ -16,11 +16,9 @@ function getUserIdFromCookie(): string | null {
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
     if (name === 'user-id' && value) {
-      console.log('getUserIdFromCookie - Usuario encontrado:', value);
       return value;
     }
   }
-  console.log('getUserIdFromCookie - No hay usuario logueado (invitado)');
   return null;
 }
 
@@ -47,11 +45,9 @@ export async function saveCartToDB(items: CartItem[]): Promise<boolean> {
     const userId = getUserIdFromCookie();
 
     if (!userId) {
-      console.log('saveCartToDB - No hay usuario autenticado');
       return false;
     }
 
-    console.log('saveCartToDB - Guardando en BD para usuario:', userId, 'Items:', items.length);
 
     const response = await fetch('/api/carrito/guardar', {
       method: 'POST',
@@ -66,7 +62,6 @@ export async function saveCartToDB(items: CartItem[]): Promise<boolean> {
       return false;
     }
 
-    console.log('saveCartToDB - Carrito guardado exitosamente');
     return true;
   } catch (e) {
     console.error('saveCartToDB - Error:', e);
@@ -79,13 +74,11 @@ export async function saveCartToDB(items: CartItem[]): Promise<boolean> {
  */
 export async function loadCartFromDB(): Promise<CartItem[] | null> {
   try {
-    console.log('loadCartFromDB - Cargando desde BD...');
 
     const response = await fetch('/api/carrito/cargar');
     const result = await response.json();
 
     if (!result.authenticated) {
-      console.log('loadCartFromDB - Usuario no autenticado');
       return null;
     }
 
@@ -94,7 +87,6 @@ export async function loadCartFromDB(): Promise<CartItem[] | null> {
     // Requisito: Los precios ya vienen de la BD como fuente única de verdad.
     // No aplicar ninguna normalización ni división.
 
-    console.log('loadCartFromDB - Carrito cargado:', items?.length, 'items');
     return items;
   } catch (e) {
     console.error('loadCartFromDB - Error:', e);
@@ -107,14 +99,12 @@ export async function loadCartFromDB(): Promise<CartItem[] | null> {
  */
 export async function clearCartFromDB(): Promise<boolean> {
   try {
-    console.log('clearCartFromDB - Limpiando carrito...');
 
     const response = await fetch('/api/carrito/limpiar', {
       method: 'POST',
     });
 
     const result = await response.json();
-    console.log('clearCartFromDB - Resultado:', result.success);
     return result.success;
   } catch (e) {
     console.error('clearCartFromDB - Error:', e);

@@ -17,7 +17,6 @@ const productos = await getProducts();
 const { alerts: productosBalsoStock, error: alertError } = 
   await getLowStockAlerts(10);
 
-console.log('Alertas de bajo stock:', productosBalsoStock?.length || 0);
 if (alertError) {
   console.error('Error obteniendo alertas:', alertError);
 }
@@ -50,7 +49,18 @@ const { data: ordenesHoy } = await supabaseAdmin
   .lte('creado_en', endOfToday.toISOString())
   .neq('estado', 'cancelada');
 
-const ingresosHoy = ordenesHoy?.reduce((sum, orden) => sum + (orden.total || 0), 0) || 0;
+const ventasHoy = ordenesHoy?.reduce((sum, orden) => sum + (orden.total || 0), 0) || 0;
+
+// Reembolsos de hoy
+const { data: reembolsosHoy } = await supabaseAdmin
+  .from('solicitudes_devolucion')
+  .select('monto_reembolso')
+  .eq('estado', 'REEMBOLSADA')
+  .gte('actualizado_en', startOfToday.toISOString())
+  .lte('actualizado_en', endOfToday.toISOString());
+
+const totalReembolsos = reembolsosHoy?.reduce((sum, dev) => sum + (dev.monto_reembolso || 0), 0) || 0;
+const ingresosHoy = ventasHoy - totalReembolsos;
 
 // 2. Últimas 5 Órdenes
 const { data: ultimasOrdenesData } = await supabaseAdmin
@@ -135,7 +145,7 @@ const ultimasOrdenes = ultimasOrdenesData || [];
           <h3 style="font-size: 32px; font-weight: bold; color: #10b981; margin-top: 8px;">{formatNumber(ingresosHoy)} €</h3>
         </div>
       </div>
-      <p style="color: #10b981; font-size: 12px; margin-top: 12px;">Ventas realizadas hoy</p>
+      <p style="color: #10b981; font-size: 12px; margin-top: 12px;">Ventas realizadas hoy{totalReembolsos > 0 ? ` (- ${formatNumber(totalReembolsos)} € devoluciones)` : ''}</p>
     </div>
   </div>
 

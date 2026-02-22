@@ -99,12 +99,10 @@ export const PUT: APIRoute = async ({ request }) => {
                     refundParams.amount = Math.round(monto_reembolso * 100); // Stripe usa céntimos
                 }
 
-                console.log(`💰 Ejecutando reembolso Stripe: PI=${paymentIntentId}, monto=€${montoFinal}`);
 
                 const refund = await stripe.refunds.create(refundParams);
                 stripeRefundId = refund.id;
 
-                console.log(`✅ Reembolso Stripe exitoso: ${refund.id}, status: ${refund.status}`);
             } catch (stripeError: any) {
                 console.error('❌ Error en reembolso Stripe:', stripeError);
                 return new Response(
@@ -162,6 +160,18 @@ export const PUT: APIRoute = async ({ request }) => {
                         .single();
 
                     if (devData?.orden_id) {
+                        // Obtener datos extras de la orden para calcular descuento prorrateado
+                        const { data: ordenExtData } = await (supabaseAdmin as any)
+                            .from('ordenes')
+                            .select('subtotal, descuento_aplicado, gastos_envio, nombre')
+                            .eq('id', devData.orden_id)
+                            .single();
+
+                        const subtotalOrden = ordenExtData?.subtotal || 0;
+                        const descuentoTotal = ordenExtData?.descuento_aplicado || 0;
+                        const gastosEnvio = ordenExtData?.gastos_envio || 0;
+                        const nombreCliente = ordenExtData?.nombre || 'Cliente';
+
                         const { data: items } = await (supabaseAdmin as any)
                             .from('ordenes_items')
                             .select(`
@@ -172,12 +182,35 @@ export const PUT: APIRoute = async ({ request }) => {
                             `)
                             .eq('orden_id', devData.orden_id);
 
-                        orderItems = (items || []).map((item: any) => ({
-                            nombre_producto: item.productos?.nombre || 'Producto',
-                            cantidad: item.cantidad,
-                            precio_unitario: item.precio_unitario,
-                            subtotal: item.subtotal,
-                        }));
+                        let runningSubtotal = 0;
+                        orderItems = (items || []).map((item: any) => {
+                            const pUnit = item.precio_unitario || 0;
+                            const itemSubtotal = pUnit * item.cantidad;
+                            runningSubtotal += itemSubtotal;
+
+                            return {
+                                nombre_producto: item.productos?.nombre || 'Producto',
+                                cantidad: item.cantidad,
+                                precio_unitario: pUnit,
+                                subtotal: itemSubtotal,
+                            };
+                        });
+
+                        // El monto real reembolsado es data.monto_reembolso
+                        const refundAmount = data.monto_reembolso || 0;
+
+                        // Calculamos el descuento real basado en la diferencia (Subtotal + Envío - Reembolso)
+                        const calculatedDiscount = Math.max(0, Math.round((runningSubtotal + gastosEnvio - refundAmount) * 100) / 100);
+
+                        const refundSummary = {
+                            subtotal: runningSubtotal,
+                            envio: gastosEnvio,
+                            descuento: calculatedDiscount
+                        };
+
+                        // Adjuntar datos para el email/PDF
+                        (data as any).nombre_cliente = nombreCliente;
+                        (data as any).refund_summary = refundSummary;
                     }
                 }
 
@@ -188,9 +221,10 @@ export const PUT: APIRoute = async ({ request }) => {
                     data.numero_etiqueta,
                     nuevo_estado.toUpperCase() === 'REEMBOLSADA' ? data.monto_reembolso : undefined,
                     nuevo_estado.toUpperCase() === 'RECHAZADA' ? motivo_rechazo : undefined,
-                    orderItems.length > 0 ? orderItems : undefined
+                    orderItems.length > 0 ? orderItems : undefined,
+                    (data as any).nombre_cliente,
+                    (data as any).refund_summary
                 );
-                console.log(`✅ Email de estado enviado a: ${data.email_usuario}`);
             } catch (emailError) {
                 console.error('⚠️ Error enviando email de estado:', emailError);
             }

@@ -20,9 +20,7 @@ const { data: ordenesData, error: ordersError } = await supabaseAdmin
 if (ordersError) {
     console.error('Error fetching orders:', ordersError);
 } else {
-    console.log(`Fetched ${ordenesData?.length} orders.`);
     if (ordenesData && ordenesData.length > 0) {
-        console.log('First order keys:', Object.keys(ordenesData[0]));
     }
 }
 
@@ -257,7 +255,6 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                    badge.style.opacity = '1';
                }
           }
-          console.log('Estado actualizado correctamente');
           location.reload();
         } else {
           const error = await response.json();
@@ -284,12 +281,10 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
             }
         });
 
-        console.log('[Orders] Initializing Realtime subscription...');
 
         client
             .channel('admin-orders-list')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes' }, async (payload) => {
-                console.log('[Orders] Change received:', payload);
                 
                 // Opción 1: Recargar la página para obtener los datos más frescos y ordenados (ordenados por servidor)
                 // Es la opción más robusta para asegurar que "aparezca más arriba" respetando el sort del servidor.
@@ -378,7 +373,6 @@ const ordenesCanceladas = ordenes?.filter((o: Order) => o.estado?.toLowerCase().
                 }
             })
             .subscribe((status) => {
-                console.log('[Orders] Subscription status:', status);
                 const dot = document.getElementById('status-dot');
                 const text = document.getElementById('status-text');
                 

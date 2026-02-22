@@ -13,8 +13,6 @@ const query = Astro.url.searchParams.get('q');
 const productos: Product[] = query ? await searchProducts(query) : await getProducts();
 const categorias: Category[] = await getCategories();
 
-console.log("Productos cargados:", productos.length);
-console.log("Categorías cargadas:", categorias.length);
 
 const title = "Productos";
 const description = "Catálogo completo de recambios y piezas para coches";

@@ -28,7 +28,7 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
 
     if (error) {
       let errorMessage = error.message;
-      
+
       // Traducir mensajes de error comunes
       if (error.message === 'Invalid login credentials') {
         errorMessage = 'Correo o contraseña inválidos';
@@ -37,32 +37,46 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
       } else if (error.message === 'User not found') {
         errorMessage = 'Usuario no encontrado';
       }
-      
+
       return redirect(`/auth/login?error=${encodeURIComponent(errorMessage)}`);
     }
 
     if (data.session) {
+      const isProduction = import.meta.env.PROD;
+
       // Guardar sesión en cookie
       cookies.set('sb-access-token', data.session.access_token, {
-        secure: true,
+        secure: isProduction,
         httpOnly: true,
+        sameSite: 'lax',
         path: '/',
         maxAge: data.session.expires_in,
       });
 
       cookies.set('sb-refresh-token', data.session.refresh_token, {
-        secure: true,
+        secure: isProduction,
         httpOnly: true,
+        sameSite: 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60, // 7 días
       });
 
       // Cookie legible por JavaScript para el carrito (NO httpOnly)
       cookies.set('user-id', data.session.user.id, {
-        secure: true,
-        httpOnly: false, // JavaScript puede leerla
+        secure: isProduction,
+        httpOnly: false,
+        sameSite: 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60, // 7 días
+      });
+
+      // Cookie de email del usuario
+      cookies.set('user-email', data.session.user.email || '', {
+        secure: isProduction,
+        httpOnly: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60,
       });
 
       return redirect('/');

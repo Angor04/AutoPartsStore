@@ -22,7 +22,6 @@ export default function CartSummary() {
 
       // Escuchar evento de limpieza de carrito
       const handleCartCleared = () => {
-        console.log('🛒 CartSummary: Evento cart-cleared recibido');
         // El useStore se actualiza automáticamente
       };
 
