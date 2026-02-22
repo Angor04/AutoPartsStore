@@ -218,7 +218,7 @@ const isLoggedIn = !!(accessToken || userId);
     </footer>
     
     <!-- Newsletter Popup (solo para usuarios no suscritos) -->
-    {!isLoggedIn && <NewsletterPopup delayMs={8000} />}
+    {!isLoggedIn && <NewsletterPopup delayMs={5000} />}
   </div>
   <script is:inline>
     // Fail-safe para detectar sesión en el cliente cuando el SSR falla por cookies seguras/redirects

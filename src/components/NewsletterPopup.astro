@@ -309,14 +309,14 @@ const { delayMs = 5000, mostrarAlSalir = true } = Astro.props;
   // 1. VERIFICAR SI YA SE MOSTRÓ (localStorage)
   // ============================================================================
   function debesMostrarPopup() {
-    return !localStorage.getItem(STORAGE_KEY);
+    return !sessionStorage.getItem(STORAGE_KEY);
   }
 
   // ============================================================================
   // 2. MARCAR COMO MOSTRADO
   // ============================================================================
   function marcarMostrado() {
-    localStorage.setItem(STORAGE_KEY, 'true');
+    sessionStorage.setItem(STORAGE_KEY, 'true');
   }
 
   // ============================================================================
