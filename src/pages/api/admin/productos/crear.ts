@@ -9,7 +9,7 @@ export const prerender = false;
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { nombre, descripcion, precio_original, precio, stock, categoria_id, urls_imagenes } = body;
+    const { nombre, descripcion, precio_original, precio, stock, categoria_id, urls_imagenes, en_oferta } = body;
 
     // Validaciones
     if (!nombre || precio === undefined || stock === undefined) {
@@ -24,6 +24,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Generar slug a partir del nombre
     const slug = nombre
       .toLowerCase()
+      .trim()
       .replace(/\s+/g, '-')
       .replace(/[^\w-]/g, '')
       .substring(0, 100);
@@ -39,6 +40,7 @@ export const POST: APIRoute = async ({ request }) => {
         categoria_id: categoria_id ? parseInt(categoria_id) : null,
         slug,
         urls_imagenes: urls_imagenes && urls_imagenes.length > 0 ? urls_imagenes : null,
+        especificaciones: { en_oferta: en_oferta ? 'true' : 'false' }
       })
       .select();
 

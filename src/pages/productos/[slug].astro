@@ -39,7 +39,17 @@ const productosRelacionados: Product[] = productos
   .slice(0, 4);
 
 const images = producto.urls_imagenes || [];
-const precioOriginal = producto.precio_original || producto.precio;
+
+const specs = (producto.especificaciones as Record<string, string>) || {};
+const isOfferActive = specs.en_oferta === 'true';
+
+const rawOriginal = producto.precio_original !== null && producto.precio_original !== undefined ? producto.precio_original : producto.precio;
+const originalPrice = Number(rawOriginal) || 0;
+const currentPrice = Number(producto.precio) || 0;
+
+const hasDiscount = isOfferActive && currentPrice > 0 && currentPrice < originalPrice;
+const effectivePrice = hasDiscount ? currentPrice : originalPrice;
+const strikeThroughPrice = hasDiscount ? originalPrice : null;
 
 const title = `${producto.nombre} | AutoPartsStore`;
 const description = producto.descripcion || `Compra ${producto.nombre} en AutoPartsStore`;
@@ -115,22 +125,22 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
         <div class="border-b border-charcoal-200 py-3">
           <div class="flex items-baseline gap-4">
             <span class="text-3xl font-bold text-red-600">
-              {formatPrice(producto.precio)}
+              {formatPrice(effectivePrice)}
             </span>
-            {producto.precio_original && producto.precio < producto.precio_original && (
+            {strikeThroughPrice && (
               <span class="text-lg text-charcoal-500 line-through opacity-70">
-                {formatPrice(producto.precio_original)}
+                {formatPrice(strikeThroughPrice)}
               </span>
             )}
           </div>
         </div>
 
         <!-- Features -->
-        {producto.especificaciones && Object.keys(producto.especificaciones).length > 0 && (
+        {producto.especificaciones && Object.keys(producto.especificaciones).filter(k => k !== 'en_oferta').length > 0 && (
           <div class="bg-ivory-50 rounded-lg p-4 md:p-6 mt-1 md:mt-3">
             <h3 class="text-sm md:text-base font-bold text-charcoal-900 mb-3 md:mb-4">Especificaciones</h3>
             <ul class="space-y-2">
-              {Object.entries(producto.especificaciones).map(([key, value]) => (
+              {Object.entries(producto.especificaciones).filter(([k]) => k !== 'en_oferta').map(([key, value]) => (
                 <li class="flex justify-between text-xs md:text-sm">
                   <span class="text-charcoal-600">{key}:</span>
                   <span class="font-medium text-charcoal-900 text-right">{String(value)}</span>
@@ -146,7 +156,7 @@ const description = producto.descripcion || `Compra ${producto.nombre} en AutoPa
             client:load 
             productId={producto.id}
             productName={producto.nombre}
-            price={producto.precio}
+            price={effectivePrice}
             imageUrl={images[0] || ''}
             stock={producto.stock}
           />

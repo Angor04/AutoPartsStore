@@ -48,9 +48,16 @@ export const GET: APIRoute = async ({ request, cookies }) => {
         for (const item of items) {
           const actual: any = productMap.get(String((item as any).product_id));
           if (actual) {
-            // Actualizar con el precio de venta actual (el que el usuario ve en la web)
-            (item as any).precio = actual.precio;
-            // También actualizar otros datos importantes por si han cambiado
+            const specs = (actual.especificaciones as Record<string, string>) || {};
+            const isOfferActive = specs.en_oferta === 'true';
+
+            // Si la oferta está activa, usamos 'precio' (el rebajado)
+            // Si NO está activa, usamos 'precio_original' (el base)
+            const effectivePrice = isOfferActive
+              ? actual.precio
+              : (actual.precio_original || actual.precio);
+
+            (item as any).precio = effectivePrice;
             (item as any).nombre = actual.nombre;
             (item as any).stock = actual.stock;
           }

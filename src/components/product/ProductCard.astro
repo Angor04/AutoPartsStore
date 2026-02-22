@@ -21,7 +21,10 @@ const rawOriginal = product.precio_original !== null && product.precio_original 
 const originalPrice = Number(rawOriginal) || 0;
 const currentPrice = Number(product.precio) || 0;
 
-const hasDiscount = currentPrice > 0 && currentPrice < originalPrice;
+const specs = (product.especificaciones as Record<string, string>) || {};
+const isOfferActive = specs.en_oferta === 'true';
+
+const hasDiscount = isOfferActive && currentPrice > 0 && currentPrice < originalPrice;
 const discountPrice = hasDiscount ? currentPrice : null;
 
 const priceDisplay = formatPrice(discountPrice || originalPrice);

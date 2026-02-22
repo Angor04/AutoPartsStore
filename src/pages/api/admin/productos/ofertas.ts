@@ -7,7 +7,7 @@ import type { APIRoute } from 'astro';
 export const PUT: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { productIds, precioOriginal, precio } = body;
+    const { productIds, precioOriginal, precio, enOferta, action } = body;
 
     // Validar que tengamos producto IDs
     if (!productIds || productIds.length === 0) {
@@ -18,17 +18,35 @@ export const PUT: APIRoute = async ({ request }) => {
 
     // Actualizar los productos seleccionados
     for (const productId of productIds) {
-      const updateData: any = {};
+      // 1. Obtener especificaciones actuales para no borrarlas
+      const { data: currentProduct } = await (supabaseAdmin as any)
+        .from('productos')
+        .select('especificaciones, precio_original, precio')
+        .eq('id', productId)
+        .single();
 
-      if (precioOriginal !== undefined) updateData.precio_original = precioOriginal;
-      if (precio !== undefined) updateData.precio = precio;
+      const updateData: any = {};
+      const specs = currentProduct?.especificaciones || {};
+
+      if (action === 'restore') {
+        updateData.precio_original = null;
+        updateData.precio = currentProduct?.precio_original || currentProduct?.precio;
+        specs.en_oferta = 'false';
+      } else {
+        if (precioOriginal !== undefined) updateData.precio_original = precioOriginal;
+        if (precio !== undefined) updateData.precio = precio;
+        if (enOferta !== undefined) {
+          specs.en_oferta = enOferta ? 'true' : 'false';
+        }
+      }
+
+      updateData.especificaciones = specs;
 
       // Actualizar el producto
       const { error } = await (supabaseAdmin as any)
         .from('productos')
         .update(updateData)
-        .eq('id', productId)
-        .select();
+        .eq('id', productId);
 
       if (error) {
         console.error('Error updating product:', error);

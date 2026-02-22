@@ -157,23 +157,27 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
             </thead>
             <tbody>
               {products.map(product => {
-                const hasOffer = !!product.precio_original;
+                const specs = (product.especificaciones as Record<string, string>) || {};
+                const hasOffer = specs.en_oferta === 'true';
+                const originalPrice = product.precio_original || product.precio;
+                const currentPrice = product.precio;
+                
                 return (
                   <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 12px 16px; font-weight: 500; color: #1e293b;">{product.nombre}</td>
                     <td style="padding: 12px 16px; text-align: right; color: #64748b;">
-                      {formatPrice(product.precio_original || product.precio)}
+                      {formatPrice(originalPrice)}
                     </td>
                     <td style="padding: 12px 16px; text-align: right;">
                       <span id={`price-display-${product.id}`} style={`font-weight: 700; ${hasOffer ? 'color: #dc2626;' : 'color: #1e293b;'}`}>
-                        {formatPrice(product.precio)}
+                        {formatPrice(hasOffer ? currentPrice : originalPrice)}
                       </span>
                     </td>
                     <td style="padding: 12px 16px; text-align: center;">
                       <label class="switch">
                         <input type="checkbox" 
-                               onchange="toggleProductOffer(this, ${product.id}, ${product.precio_original || product.precio})"
-                               ${hasOffer ? 'checked' : ''}>
+                               onchange={`toggleProductOffer(this, ${product.id}, ${originalPrice}, ${currentPrice})`}
+                               checked={hasOffer}>
                         <span class="slider"></span>
                       </label>
                     </td>
@@ -252,6 +256,16 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
                   <option value={cat.id}>{cat.nombre}</option>
                 ))}
               </select>
+            </div>
+
+            <!-- Oferta Activa Toggle -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 15px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <span style="font-weight: 600; color: #1e293b; font-size: 14px;">¿Oferta Activa?</span>
+              <label class="switch">
+                <input type="checkbox" id="en_oferta" name="en_oferta">
+                <span class="slider"></span>
+              </label>
+              <span style="font-size: 12px; color: #64748b; font-style: italic;">Muestra el precio rojo y tachado</span>
             </div>
 
             <!-- Imágenes: Ancho completo -->
@@ -420,13 +434,14 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
     // --- GESTIÓN DE OFERTAS CON TOGGLES ---
 
     // Función auxiliar para llamar a la API
-    async function updateOfferApi(productIds: number[], action: 'set' | 'restore', price?: number, originalPrice?: number) {
+    async function updateOfferApi(productIds: number[], action: 'set' | 'restore', enOferta?: boolean, price?: number, originalPrice?: number) {
       const response = await fetch('/api/admin/productos/ofertas', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productIds,
           action,
+          enOferta,
           precio: price,
           precioOriginal: originalPrice
         })
@@ -434,30 +449,21 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       return response.ok;
     }
 
-    (window as any).toggleProductOffer = async function(checkbox: HTMLInputElement, productId: number, currentOriginalPrice: number) {
+    (window as any).toggleProductOffer = async function(checkbox: HTMLInputElement, productId: number, originalPrice: number, offerPrice: number) {
       const priceDisplay = document.getElementById(`price-display-${productId}`);
+      const isActivating = checkbox.checked;
       
-      if (checkbox.checked) {
-        // INTENTO DE ACTIVAR OFERTA
-        // El usuario ha indicado que los precios se gestionan desde "Editar".
-        // Por tanto, desde aquí no permitimos crear oferta (requeriría inputs).
-        alert('Para crear una oferta, por favor utiliza el botón "Editar" del producto y define el Precio Final y el Precio Original.');
-        checkbox.checked = false; // Revertir visualmente
-        return;
-
-      } else {
-        // DESACTIVAR (RESTAURAR)
-        const success = await updateOfferApi([productId], 'restore');
-        
-        if (success) {
-          if (priceDisplay) {
-            priceDisplay.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(currentOriginalPrice);
-            priceDisplay.style.color = '#1e293b'; // Normal
-          }
-        } else {
-          alert('Error al restaurar el precio');
-          checkbox.checked = true;
+      const success = await updateOfferApi([productId], 'set', isActivating, offerPrice, originalPrice);
+      
+      if (success) {
+        if (priceDisplay) {
+          const priceToShow = isActivating ? offerPrice : originalPrice;
+          priceDisplay.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(priceToShow);
+          priceDisplay.style.color = isActivating ? '#dc2626' : '#1e293b';
         }
+      } else {
+        alert('Error al actualizar la oferta');
+        checkbox.checked = !isActivating;
       }
     };
 
@@ -638,36 +644,35 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
     }
 
     // ========== EDIT PRODUCT ==========
-    (window as any).editProduct = function(productJson: string | Record<string, any>): void {
-      const product = typeof productJson === 'string' ? JSON.parse(productJson) : productJson;
-      
-      const productIdElem = document.getElementById('productId') as HTMLInputElement | null;
-      const nombreElem = document.getElementById('nombre') as HTMLInputElement | null;
-      const descripcionElem = document.getElementById('descripcion') as HTMLInputElement | null;
-      const precioOriginalElem = document.getElementById('precio_original') as HTMLInputElement | null;
-      const precioElem = document.getElementById('precio') as HTMLInputElement | null;
-      const stockElem = document.getElementById('stock') as HTMLInputElement | null;
-      const categoriaElem = document.getElementById('categoria_id') as HTMLInputElement | null;
+    (window as any).editProduct = function(productStr: string): void {
+      const product = JSON.parse(productStr);
+      const modal = document.getElementById('productModal');
+      const form = document.getElementById('productForm');
       const modalTitle = document.getElementById('modalTitle');
-      const productModal = document.getElementById('productModal');
       
-      const imageInput = document.getElementById('imageInput') as HTMLInputElement | null;
-      if (imageInput) imageInput.value = '';
-
-      if (productIdElem) productIdElem.value = product.id;
-      if (nombreElem) nombreElem.value = product.nombre || '';
-      if (descripcionElem) descripcionElem.value = product.descripcion || '';
-      if (precioOriginalElem) precioOriginalElem.value = product.precio_original || '';
-      if (precioElem) precioElem.value = product.precio || '';
-      if (stockElem) stockElem.value = product.stock || '';
-      if (categoriaElem) categoriaElem.value = product.categoria_id || '';
-      
-      // Load existing images into state
-      imageUrls = Array.isArray(product.urls_imagenes) ? [...product.urls_imagenes] : [];
-      renderImageCards();
-
+      if (modal) modal.classList.add('show');
       if (modalTitle) modalTitle.textContent = 'Editar Producto';
-      if (productModal) productModal.classList.add('show');
+      
+      if (form) {
+        (form.querySelector('#productId') as HTMLInputElement).value = product.id;
+        (form.querySelector('#nombre') as HTMLInputElement).value = product.nombre;
+        (form.querySelector('#descripcion') as HTMLTextAreaElement).value = product.descripcion || '';
+        (form.querySelector('#precio_original') as HTMLInputElement).value = String(product.precio_original || '');
+        (form.querySelector('#precio') as HTMLInputElement).value = String(product.precio || '');
+        (form.querySelector('#stock') as HTMLInputElement).value = String(product.stock || 0);
+        (form.querySelector('#categoria_id') as HTMLSelectElement).value = String(product.categoria_id || '');
+        
+        // Cargar estado de oferta
+        const enOfertaCheckbox = form.querySelector('#en_oferta') as HTMLInputElement;
+        if (enOfertaCheckbox) {
+          const specs = (product.especificaciones as Record<string, string>) || {};
+          enOfertaCheckbox.checked = specs.en_oferta === 'true';
+        }
+        
+        // Cargar imágenes
+        imageUrls = product.urls_imagenes || [];
+        renderImageCards();
+      }
     };
 
     // ========== IMAGE UPLOAD (immediate to Supabase) ==========
@@ -721,15 +726,16 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       const body = {
         nombre: formData.get('nombre'),
         descripcion: formData.get('descripcion'),
-        precio_original: parseFloat(String(formData.get('precio_original'))),
+        precio_original: formData.get('precio_original') ? parseFloat(String(formData.get('precio_original'))) : null,
         precio: parseFloat(String(formData.get('precio'))),
         stock: parseInt(String(formData.get('stock'))),
-        categoria_id: parseInt(String(formData.get('categoria_id'))),
-        urls_imagenes: imageUrls, // Already in correct order from drag-and-drop
+        categoria_id: formData.get('categoria_id') ? parseInt(String(formData.get('categoria_id'))) : null,
+        urls_imagenes: imageUrls,
+        en_oferta: (form.querySelector('#en_oferta') as HTMLInputElement).checked
       };
 
       if (id) {
-        (body as any).id = parseInt(id);
+        (body as any).id = id;
       }
 
       try {
@@ -761,6 +767,9 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
       origOpenModal();
       imageUrls = [];
       renderImageCards();
+      
+      const enOfertaCheckbox = document.getElementById('en_oferta') as HTMLInputElement | null;
+      if (enOfertaCheckbox) enOfertaCheckbox.checked = false;
     };
 
     // ========== DROP ZONE for upload area ==========

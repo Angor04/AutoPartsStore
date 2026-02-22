@@ -185,7 +185,9 @@ const finalUserEmail = authEmail || cookieEmail || '';
                     required
                     value={direccion?.codigo_postal || ''}
                     maxlength="5"
-                    pattern="[0-9]{5}"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                     class="w-full px-4 py-2 border border-charcoal-200 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-transparent"
                   />
                 </div>

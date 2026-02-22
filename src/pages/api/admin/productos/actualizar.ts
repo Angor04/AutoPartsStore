@@ -7,7 +7,7 @@ export const prerender = false;
 export const PUT: APIRoute = async (context) => {
   try {
     const body = await context.request.json();
-    const { id, nombre, descripcion, precio_original, precio, stock, categoria_id, urls_imagenes } = body;
+    const { id, nombre, descripcion, precio_original, precio, stock, categoria_id, urls_imagenes, en_oferta } = body;
 
     if (!id) {
       return new Response(
@@ -18,6 +18,13 @@ export const PUT: APIRoute = async (context) => {
 
     const supabaseAdmin = getSupabaseAdmin();
 
+    // Obtener especificaciones actuales
+    const { data: currentProduct } = await (supabaseAdmin as any)
+      .from('productos')
+      .select('especificaciones')
+      .eq('id', id)
+      .single();
+
     const updateData: any = {};
     if (nombre) updateData.nombre = nombre;
     if (descripcion !== undefined) updateData.descripcion = descripcion || null;
@@ -26,6 +33,12 @@ export const PUT: APIRoute = async (context) => {
     if (stock !== undefined && stock !== null) updateData.stock = parseInt(String(stock));
     if (categoria_id !== undefined) updateData.categoria_id = categoria_id ? parseInt(categoria_id) : null;
     if (urls_imagenes) updateData.urls_imagenes = urls_imagenes;
+
+    const specs = (currentProduct?.especificaciones as Record<string, string>) || {};
+    if (en_oferta !== undefined) {
+      specs.en_oferta = en_oferta ? 'true' : 'false';
+    }
+    updateData.especificaciones = specs;
 
     const { data, error } = await (supabaseAdmin as any)
       .from('productos')
