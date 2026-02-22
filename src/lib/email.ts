@@ -32,7 +32,9 @@ export const getEnv = (key: string): string | undefined => {
  * Retorna el email del administrador configurado o el de respaldo
  */
 export const getAdminEmail = (): string => {
-  return getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+  const email = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+  console.log(`[EmailService] 🛡️ Admin Email Detected: "${email}"`);
+  return email;
 };
 
 // Singleton para el transportador
@@ -102,6 +104,7 @@ export async function sendEmail({ to, subject, html, attachments }: EmailOptions
       From: ${from}
       Transporter established: ${!!transporter}
       Singleton instance: ${!!transporterInstance}
+      SMTP Config: ${getEnv('EMAIL_SMTP_HOST') || 'smtp.gmail.com'}:${getEnv('EMAIL_SMTP_PORT') || '587'}
     `);
 
     const result = await transporter.sendMail({
@@ -806,6 +809,8 @@ export async function sendAdminOrderNotificationEmail(
   customerName: string,
   items: any[]
 ): Promise<boolean> {
+  console.log(`[EmailService] 📦 AdminOrderNotification call: ${adminEmail}, ${orderNumber}, ${total}`);
+
   const itemsList = (items || []).map(item => `
     <li>${item.nombre_producto || item.nombre || 'Producto'} x${item.cantidad || 1}</li>
   `).join('');

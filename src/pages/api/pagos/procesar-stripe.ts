@@ -8,8 +8,9 @@ import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, getAdminEm
 
 export const prerender = false;
 
-// Inicializar Stripe usando getEnv para mayor robustez en producción
-const stripe = new Stripe(getEnv('STRIPE_SECRET_KEY') || '', {
+// Inicialización ultra-segura para SSR
+const stripeSecret = getEnv('STRIPE_SECRET_KEY') || '';
+const stripe = new Stripe(stripeSecret, {
   apiVersion: '2023-10-16' as any,
 });
 
@@ -37,6 +38,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['line_items', 'payment_intent']
     });
+    console.log('[StripeAPI] Session Metadata:', JSON.stringify(session.metadata));
+    console.log('[StripeAPI] Session Payment Status:', session.payment_status);
 
     if (session.payment_status !== 'paid') {
       return new Response(
@@ -251,11 +254,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ENVIAR EMAILS (ADMIN Y LUEGO CLIENTE)
     // ==========================================
 
-    // 1. Notificar al Administrador (Máxima Prioridad e Independiente)
+    // 1. Notificar al Administrador (Máxima Prioridad)
     const adminEmail = getAdminEmail();
 
     try {
-      console.log(`[StripeAPI] 🔔 Intentando notificar admin: ${adminEmail} | Pedido: ${orden.numero_orden}`);
+      console.log(`[StripeAPI] �️ DIAGNOSTIC - Admin Email: ${adminEmail}`);
+      console.log(`[StripeAPI] 🛡️ DIAGNOSTIC - Order: ${orden.numero_orden}`);
+      console.log(`[StripeAPI] 🛡️ DIAGNOSTIC - Total: ${total} (Type: ${typeof total})`);
+      console.log(`[StripeAPI] 🛡️ DIAGNOSTIC - Items count: ${itemsParaEmail?.length}`);
+
       const adminSuccess = await sendAdminOrderNotificationEmail(
         adminEmail,
         orden.numero_orden,
@@ -263,9 +270,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         metadata.nombre_cliente || 'Cliente',
         itemsParaEmail
       );
-      console.log(`[StripeAPI] Resultado notificación admin: ${adminSuccess ? 'EXITO' : 'FALLO'}`);
+      console.log(`[StripeAPI] 🚀 Resultado notificación admin: ${adminSuccess ? 'EXITO' : 'FALLO'}`);
     } catch (adminEmailError) {
-      console.error('❌ Error crítico enviando email al administrador:', adminEmailError);
+      console.error('❌ ERROR FATAL en notificación admin:', adminEmailError);
     }
 
     // 2. Notificar al Cliente (si hay email)
