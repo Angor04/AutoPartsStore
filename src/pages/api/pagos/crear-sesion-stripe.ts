@@ -17,12 +17,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const usuarioId = cookies.get('user-id')?.value;
 
-    console.log('Creando sesión de Stripe. UsuarioID:', usuarioId || 'Invitado');
 
     const { items, email, nombre, apellidos, telefono, subtotal, descuento, total, codigoPostal, direccion, ciudad, provincia, cupon_id, codigo_cupon } = body;
 
-    console.log('Items del carrito:', items.length);
-    console.log('Total:', total, 'Descuento:', descuento);
 
     // Validar que haya items
     if (!items || items.length === 0) {
@@ -83,7 +80,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       subtotalEnCentavos += unit_amount * qty;
 
-      console.log(`Verificado: ${item.nombre}, Precio BD: ${precioReal}€, Cantidad: ${qty}`);
 
       return {
         price_data: {
@@ -103,8 +99,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       };
     });
 
-    console.log('Line items creados:', line_items.length);
-    console.log(`Subtotal en centavos: ${subtotalEnCentavos} (${(subtotalEnCentavos / 100).toFixed(2)}€)`);
 
     // ==========================================
     // 7. CALCULAR MONTO FINAL Y PREPARAR LÍNEAS FINALES
@@ -113,7 +107,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Añadir Gastos de Envío si aplica
     if (costoEnvio > 0) {
-      console.log(`Añadiendo gastos de envío a Stripe: ${costoEnvio}€`);
       lineasFinales.push({
         price_data: {
           currency: 'eur',
@@ -133,7 +126,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (descuentoFinal && descuentoFinal > 0) {
       try {
-        console.log(`Creando cupón temporal en Stripe para descuento de ${descuentoFinal}€`);
         const coupon = await stripe.coupons.create({
           amount_off: Math.round(parseFloat(descuentoFinal) * 100),
           currency: 'eur',
@@ -153,8 +145,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       amountTotal = Math.max(1, amountTotal - Math.round(parseFloat(descuentoFinal) * 100));
     }
 
-    console.log(`Líneas finales para Stripe: ${lineasFinales.length} items (incluyendo envío si procedía)`);
-    console.log(`Total esperado: ${(amountTotal / 100).toFixed(2)}€`);
 
     // Validar que el monto sea positivo
     if (amountTotal <= 0) {
@@ -174,14 +164,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     let successUrl = '';
     let cancelUrl = '';
 
+    const origin = new URL(request.url).origin;
+
     if (body.source === 'mobile_app') {
       // Deep Links para Flutter (con path /app/)
       successUrl = `autopartsstore://app/payment-success?session_id={CHECKOUT_SESSION_ID}`;
       cancelUrl = `autopartsstore://app/payment-cancel`;
     } else {
-      // Redirección Web (Producción)
-      successUrl = `https://boss.victoriafp.online/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`;
-      cancelUrl = `https://boss.victoriafp.online/checkout`;
+      // Redirección Web (Dinámica: localhost o producción)
+      successUrl = `${origin}/pedido-confirmado?session_id={CHECKOUT_SESSION_ID}`;
+      cancelUrl = `${origin}/checkout`;
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -219,7 +211,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       expires_at: Math.floor(Date.now() / 1000) + (23 * 60 * 60)
     });
 
-    console.log('Sesión de Stripe creada:', session.id);
 
     // ==========================================
     // ACTUALIZAR STOCK EN BASE DE DATOS
@@ -229,7 +220,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Nota: En producción, deberías hacer esto en un webhook cuando se confirme el pago
     // Para este MVP, lo hacemos aquí cuando se crea la sesión
 
-    console.log('Iniciando actualización de stock para', items.length, 'productos');
 
     for (const item of items) {
       try {

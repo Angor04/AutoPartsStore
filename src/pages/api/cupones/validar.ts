@@ -16,7 +16,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Usuario puede venir del body o de cookies
     const usuarioId = body.usuario_id || cookies.get('user-id')?.value;
 
-    console.log('Validando cupón:', { codigoCupon, subtotal, usuarioId });
 
     // ==========================================
     // 1. VALIDACIONES
@@ -36,16 +35,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 2. LLAMAR FUNCIÓN SQL DE VALIDACIÓN
     // ==========================================
-    // La función retorna: (cupon_id, valido, descuento_calculado, descripcion, mensaje)
+    interface ValidarCuponResponse {
+      o_cupon_id: string;
+      o_valido: boolean;
+      o_descuento_calculado: number;
+      o_descripcion: string;
+      o_mensaje: string;
+    }
 
-    const { data: resultado, error: funcError } = await supabaseAdmin
-      .rpc('validar_cupon', {
-        p_codigo: codigoCupon.toUpperCase(),
-        p_usuario_id: usuarioId || null,
-        p_subtotal: subtotal
-      });
+    const { data: resultado, error: funcError } = await (supabaseAdmin.rpc as any)('validar_cupon', {
+      p_codigo: codigoCupon.toUpperCase(),
+      p_usuario_id: usuarioId || null,
+      p_subtotal: subtotal
+    });
 
-    console.log('Resultado de validar_cupon:', { resultado, funcError });
 
     if (funcError) {
       console.error('Error en validar_cupon:', funcError);
@@ -62,11 +65,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 3. ANALIZAR RESULTADO
     // ==========================================
-    // El resultado es un array con un objeto
-    let data = Array.isArray(resultado) && resultado.length > 0 ? resultado[0] : resultado;
+    const resultadoArray = resultado as ValidarCuponResponse[];
+    const data = (Array.isArray(resultadoArray) && resultadoArray.length > 0) ? resultadoArray[0] : null;
 
-    console.log('Datos parseados:', JSON.stringify(data, null, 2));
-    console.log('Tipo de resultado:', typeof data, 'Es array:', Array.isArray(resultado));
+    console.log('DEBUG [validar.ts] data extraído:', data);
+
 
     if (!data) {
       console.error('No hay datos en la respuesta');
@@ -80,18 +83,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // Normalizar los nombres de campos (pueden venir con snake_case o diferentes)
-    const cuponId = data.cupon_id;
-    const esValido = data.valido === true;
-    const descuentoCalculado = parseFloat(data.descuento_calculado || data.descuento_cal || 0);
-    const descripcion = data.descripcion;
-    const mensaje = data.mensaje;
+    // Normalizar los nombres de campos (soporta tanto o_prefijo como legacy)
+    const cuponId = data.o_cupon_id || (data as any).cupon_id;
+    const esValido = data.o_valido === true || (data as any).valido === true;
+    const descuentoCalculado = parseFloat(data.o_descuento_calculado as any || (data as any).descuento_calculado || 0);
+    const descripcion = data.o_descripcion || (data as any).descripcion;
+    const mensaje = data.o_mensaje || (data as any).mensaje;
 
-    console.log('Campos normalizados:', { cuponId, esValido, descuentoCalculado, descripcion, mensaje });
+    console.log('DEBUG [validar.ts] Resultado procesado:', { cuponId, esValido, mensaje });
 
     // Si la función retorna valido = false
     if (!esValido) {
-      console.log('Cupón inválido:', mensaje);
       return new Response(
         JSON.stringify({
           valido: false,
@@ -105,7 +107,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
     // 4. RETORNAR DETALLES DEL DESCUENTO
     // ==========================================
-    console.log('Cupón válido, descuento:', descuentoCalculado);
     return new Response(
       JSON.stringify({
         success: true,

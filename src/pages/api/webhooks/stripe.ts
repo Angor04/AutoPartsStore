@@ -15,6 +15,7 @@ const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
 const endpointSecret = import.meta.env.STRIPE_WEBHOOK_SECRET;
 
 export const POST: APIRoute = async ({ request }) => {
+  console.log('🔔 Webhook de Stripe RECIBIDO');
   const signature = request.headers.get('stripe-signature');
 
   if (!signature || !endpointSecret) {
@@ -34,7 +35,6 @@ export const POST: APIRoute = async ({ request }) => {
   // Handle the event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
-    console.log('🔔 Webhook: Pago completado para sesión:', session.id);
     await handleCheckoutSessionCompleted(session);
   }
 
@@ -57,7 +57,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const ordenExistente = ordenExistenteData as any;
 
   if (ordenExistente) {
-    console.log('⚠️ Webhook: Orden ya existe para esta sesión. Saltando.');
     return;
   }
 
@@ -156,7 +155,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   const orden = data as any;
-  console.log('✅ Webhook: Orden creada:', orden.numero_orden);
 
   // 7. CREAR ITEMS
   // Intentar usar el JSON comprimido de metadata primero (más fiable para IDs nuestros)
@@ -184,7 +182,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   if (itemsDB.length === 0 && sessionExpanded.line_items) {
     // Falback complejo: intentar mapear por nombre? Mejor no arriesgar integridad de datos.
     // Asumimos que items_json SIEMPRE viene porque lo enviamos nosotros.
-    console.warn('⚠️ Webhook: Usando items de Stripe (sin ID de producto interno vinculado)');
     // Implementar si es estrictamente necesario
   }
 
@@ -219,7 +216,46 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     );
   }
 
-  // 9. LIMPIAR CARRITO TEMPORAL (Si aplica)
+  // 9. ACTUALIZAR STOCK Y APLICAR CUPÓN
+  console.log(`DEBUG: Procesando post-venta para orden ${orden.id}`);
+
+  // Actualizar stock de cada producto
+  for (const item of itemsDB) {
+    try {
+      const { data: stockRes, error: stockErr } = await (supabaseAdmin as any).rpc('update_stock_after_purchase', {
+        p_product_id: item.producto_id,
+        p_quantity: item.cantidad
+      });
+      if (stockErr) console.error(`Error actualizando stock para producto ${item.producto_id}:`, stockErr);
+      else console.log(`Stock actualizado para ${item.producto_id}:`, stockRes);
+    } catch (e) {
+      console.error('Error crítico en bucle de stock:', e);
+    }
+  }
+
+  // Marcar cupón como usado (si existe)
+  const cuponId = metadata.cupon_id;
+  if (cuponId && cuponId !== '') {
+    console.log(`DEBUG: Aplicando cupón ${cuponId} para usuario ${usuarioId} en orden ${orden.id}`);
+    try {
+      const { data: cupRes, error: cupErr } = await (supabaseAdmin as any).rpc('aplicar_cupon', {
+        p_cupon_id: cuponId,
+        p_usuario_id: usuarioId, // Puede ser null si es invitado, la función SQL lo maneja o lo guardamos igual
+        p_orden_id: orden.id,
+        p_descuento: descuentoMonto
+      });
+
+      if (cupErr) {
+        console.error('❌ Error registrando uso de cupón:', cupErr);
+      } else {
+        console.log('✅ Cupón marcado como usado con éxito:', cupRes);
+      }
+    } catch (e) {
+      console.error('Error crítico aplicando cupón:', e);
+    }
+  }
+
+  // 10. LIMPIAR CARRITO TEMPORAL (Si aplica)
   if (usuarioId) {
     await supabaseAdmin.from('carrito_temporal').delete().eq('usuario_id', usuarioId);
   }
