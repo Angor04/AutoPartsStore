@@ -4,7 +4,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail } from '@/lib/email';
+import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, getAdminEmail } from '@/lib/email';
 
 export const prerender = false;
 
@@ -249,8 +249,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // ==========================================
 
     // 1. Notificar al Administrador (Máxima Prioridad e Independiente)
-    const { getEnv } = await import('@/lib/email');
-    const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+    const adminEmail = getAdminEmail();
 
     try {
       console.log(`[StripeAPI] 🔔 Intentando notificar admin: ${adminEmail} | Pedido: ${orden.numero_orden}`);

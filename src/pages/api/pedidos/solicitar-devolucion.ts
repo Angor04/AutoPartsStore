@@ -4,7 +4,7 @@
 
 import type { APIRoute } from 'astro';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendReturnRequestEmail, sendAdminReturnNotificationEmail } from '@/lib/email';
+import { sendReturnRequestEmail, sendAdminReturnNotificationEmail, getAdminEmail } from '@/lib/email';
 
 export const prerender = false;
 
@@ -91,12 +91,10 @@ export const POST: APIRoute = async ({ request }) => {
     // 4. ENVIAR EMAILS (ADMIN Y LUEGO CLIENTE)
     // ==========================================
 
-    // Al cliente (si hay email)
-    // Al admin (Máxima Prioridad e Independiente)
-    try {
-      const { getEnv } = await import('@/lib/email');
-      const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+    // 1. Notificar al Administrador (Máxima Prioridad e Independiente)
+    const adminEmail = getAdminEmail();
 
+    try {
       console.log(`[ReturnAPI] 🔔 Intentando notificar admin: ${adminEmail} | Pedido: ${resultado.numero_pedido}`);
       const adminSuccess = await sendAdminReturnNotificationEmail(
         adminEmail,

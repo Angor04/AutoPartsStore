@@ -3,29 +3,36 @@ import { generateInvoicePDF } from './invoice-pdf';
 import { generateRefundPDF } from './refund-pdf';
 
 // Helper robosteo para variables de entorno
-// Helper robosteo para variables de entorno
-export const getEnv = (key: string) => {
+export const getEnv = (key: string): string | undefined => {
   let val = undefined;
 
-  // Intentar primero con import.meta.env (Astro standard)
+  // 1. Astro standard (import.meta.env)
   if (import.meta.env && import.meta.env[key] !== undefined) {
     val = import.meta.env[key];
   }
-  // Si no está ahí, intentar con process.env (Node.js standard)
+  // 2. Node standard (process.env)
   else if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
     val = process.env[key];
   }
 
   if (val !== undefined) {
-    const finalVal = typeof val === 'string' ? val.trim() : val;
-    // No hacer log de cosas sensibles
-    if (key !== 'EMAIL_PASSWORD' && key !== 'STRIPE_SECRET_KEY' && key !== 'SUPABASE_SERVICE_ROLE_KEY') {
+    const finalVal = String(val).trim();
+    // No log de secretos
+    const isSecret = key.includes('PASSWORD') || key.includes('SECRET') || key.includes('KEY');
+    if (!isSecret) {
       console.log(`[getEnv] ${key}: ${finalVal}`);
     }
     return finalVal;
   }
 
   return undefined;
+};
+
+/**
+ * Retorna el email del administrador configurado o el de respaldo
+ */
+export const getAdminEmail = (): string => {
+  return getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
 };
 
 // Singleton para el transportador
