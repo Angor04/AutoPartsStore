@@ -23,7 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
         // Usamos admin para asegurar lectura consistente y escritura
         const { data: producto, error: fetchError } = await supabaseAdmin
             .from('productos')
-            .select('id, stock, nombre, precio')
+            .select('id, stock, nombre, precio, precio_original, especificaciones')
             .eq('id', productId)
             .single();
 
@@ -111,6 +111,10 @@ export const POST: APIRoute = async ({ request }) => {
             // (aunque técnicamente sería stockAhora - cantidad)
         }
 
+        const specs = (producto.especificaciones as any) || {};
+        const isOfferActive = specs.en_oferta === 'true';
+        const effectivePrice = isOfferActive ? producto.precio : (producto.precio_original || producto.precio);
+
         return new Response(JSON.stringify({
             success: true,
             mensaje: `${producto.nombre} agregado al carrito`,
@@ -119,7 +123,7 @@ export const POST: APIRoute = async ({ request }) => {
             producto: {
                 id: producto.id,
                 nombre: producto.nombre,
-                precio: producto.precio,
+                precio: effectivePrice,
                 stockDisponible: nuevoStock
             }
         }), {

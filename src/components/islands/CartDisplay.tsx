@@ -52,15 +52,22 @@ export default function CartDisplay() {
         setMounted(true);
       });
 
+      // Escuchar evento de apertura de carrito para refrescar precios
+      const handleCartOpened = () => {
+        loadCart().catch(console.error);
+      };
+
+      window.addEventListener('cart-opened', handleCartOpened);
+
       // Escuchar evento de limpieza de carrito
       const handleCartCleared = () => {
         // En este caso, ya que usamos el store, el update del store triggereará el re-render.
-        // Solo necesitamos limpiar el DOM si es necesario, pero updateSummaryDOM lo hará cuando items cambie.
       };
 
       window.addEventListener('cart-cleared', handleCartCleared);
 
       return () => {
+        window.removeEventListener('cart-opened', handleCartOpened);
         window.removeEventListener('cart-cleared', handleCartCleared);
       };
     } else {

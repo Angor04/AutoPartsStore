@@ -47,9 +47,14 @@ const { class: className = "" } = Astro.props;
   const closeBtn = document.getElementById('close-cart');
 
   function toggleCart() {
+    const isOpening = cartSlideOver?.classList.contains('translate-x-full');
     cartSlideOver?.classList.toggle('translate-x-full');
     cartOverlay?.classList.toggle('opacity-0');
     cartOverlay?.classList.toggle('invisible');
+    
+    if (isOpening) {
+      window.dispatchEvent(new CustomEvent('cart-opened'));
+    }
   }
 
   closeBtn?.addEventListener('click', toggleCart);

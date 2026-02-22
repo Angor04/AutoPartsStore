@@ -241,6 +241,25 @@ export async function loadCart() {
       if (savedCart) {
         try {
           const cartItems = JSON.parse(savedCart);
+
+          // VALIDAR PRECIOS Y STOCK PARA INVITADOS
+          if (cartItems.length > 0) {
+            const res = await fetch('/api/carrito/validar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: cartItems })
+            });
+            if (res.ok) {
+              const validated = await res.json();
+              if (validated.items) {
+                cartStore.set(validated.items);
+                // Guardar de nuevo los precios actualizados en sessionStorage
+                saveCartToSessionStorage(validated.items);
+                return;
+              }
+            }
+          }
+
           cartStore.set(cartItems);
           return;
         } catch (e) {

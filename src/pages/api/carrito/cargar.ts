@@ -49,7 +49,16 @@ export const GET: APIRoute = async ({ cookies }) => {
         for (const item of items) {
           const actual: any = productMap.get(String(item.product_id));
           if (actual) {
-            item.precio = actual.precio;
+            const specs = (actual.especificaciones as any) || {};
+            const isOfferActive = specs.en_oferta === 'true';
+
+            // Si la oferta está activa, usamos 'precio' (el rebajado)
+            // Si NO está activa, usamos 'precio_original' (el base)
+            const effectivePrice = isOfferActive
+              ? actual.precio
+              : (actual.precio_original || actual.precio);
+
+            item.precio = effectivePrice;
             item.nombre = actual.nombre;
             item.stock = actual.stock;
           }
