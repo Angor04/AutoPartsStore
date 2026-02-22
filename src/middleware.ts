@@ -7,20 +7,14 @@ export const onRequest = defineMiddleware(
   async (context, next) => {
     // Rutas que requieren autenticación de admin
     const protectedRoutes = ['/admin'];
-    const secretLoginRoute = '/acceso-interno-privado';
-    const oldLoginRoute = '/admin/login';
+    const loginRoute = '/admin/login';
 
     // Obtener pathname de forma segura
     const pathname = new URL(context.request.url).pathname;
 
-    // BLOQUEAR RUTA ANTIGUA POR SEGURIDAD
-    if (pathname === oldLoginRoute) {
-      return context.redirect('/');
-    }
-
     const isProtectedRoute = protectedRoutes.some((route) =>
       pathname.startsWith(route) &&
-      !pathname.startsWith(secretLoginRoute)
+      !pathname.startsWith(loginRoute)
     );
 
     // Si es una ruta protegida
@@ -29,8 +23,8 @@ export const onRequest = defineMiddleware(
       const authToken = context.cookies.get('sb-auth-token')?.value;
 
       if (!authToken) {
-        // No hay sesión, redirigir a la URL SECRETA de login
-        return context.redirect(secretLoginRoute);
+        // No hay sesión, redirigir a login
+        return context.redirect('/admin/login');
       }
 
       // Verificar inactividad de 1 hora
