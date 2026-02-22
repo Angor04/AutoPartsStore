@@ -271,10 +271,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // 2. Notificar al Administrador (Independiente)
     try {
-      // Intentar obtener el email del admin de varias fuentes para máxima robustez
-      const adminEmail = import.meta.env.EMAIL_USER || process.env.EMAIL_USER || 'agonzalezcruces2004@gmail.com';
+      const { getEnv } = await import('@/lib/email');
+      const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
 
-      console.log(`Intentando notificar al admin (${adminEmail}) sobre pedido ${orden.numero_orden}`);
+      console.log(`[StripeAPI] 🔔 Notificando admin: ${adminEmail} | Pedido: ${orden.numero_orden}`);
 
       await sendAdminOrderNotificationEmail(
         adminEmail,

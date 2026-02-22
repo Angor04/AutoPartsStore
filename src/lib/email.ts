@@ -3,7 +3,7 @@ import { generateInvoicePDF } from './invoice-pdf';
 import { generateRefundPDF } from './refund-pdf';
 
 // Helper robosteo para variables de entorno
-const getEnv = (key: string) => {
+export const getEnv = (key: string) => {
   if (import.meta.env && import.meta.env[key]) {
     return import.meta.env[key];
   }
@@ -37,12 +37,12 @@ const transporter = nodemailer.createTransport({
   try {
     const verified = await transporter.verify();
     if (verified) {
-      console.log('✅ Email service ready');
+      console.log('✅ Email service ready - SMTP connection verified');
     } else {
-      console.error('❌ Email service verification failed');
+      console.error('❌ Email service verification failed - check credentials');
     }
   } catch (error) {
-    console.error('Email service verification error:', error instanceof Error ? error.message : error);
+    console.error('Email service verification error:', error);
   }
 })();
 
@@ -64,8 +64,9 @@ interface EmailOptions {
  */
 export async function sendEmail({ to, subject, html, attachments }: EmailOptions): Promise<boolean> {
   try {
-
     const from = getEnv('EMAIL_FROM') || getEnv('EMAIL_USER');
+
+    console.log(`[EmailService] 📧 Intentando enviar email a: ${to} | Asunto: ${subject}`);
 
     const result = await transporter.sendMail({
       from,
@@ -79,10 +80,10 @@ export async function sendEmail({ to, subject, html, attachments }: EmailOptions
       })),
     });
 
+    console.log(`[EmailService] ✅ Email enviado correctamente. ID: ${result.messageId}`);
     return true;
   } catch (error) {
-    console.error('Error sending email:', error instanceof Error ? error.message : error);
-    console.error('Error details:', error);
+    console.error('[EmailService] ❌ ERROR enviando email:', error);
     return false;
   }
 }
@@ -769,8 +770,8 @@ export async function sendAdminOrderNotificationEmail(
   customerName: string,
   items: any[]
 ): Promise<boolean> {
-  const itemsList = items.map(item => `
-    <li>${item.nombre_producto || item.nombre} x${item.cantidad}</li>
+  const itemsList = (items || []).map(item => `
+    <li>${item.nombre_producto || item.nombre || 'Producto'} x${item.cantidad || 1}</li>
   `).join('');
 
   const html = `

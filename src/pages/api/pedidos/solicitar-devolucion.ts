@@ -107,7 +107,10 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Al admin (Independiente)
     try {
-      const adminEmail = import.meta.env.EMAIL_USER || process.env.EMAIL_USER || 'agonzalezcruces2004@gmail.com';
+      const { getEnv } = await import('@/lib/email');
+      const adminEmail = getEnv('EMAIL_USER') || 'agonzalezcruces2004@gmail.com';
+
+      console.log(`[ReturnAPI] 🔔 Notificando admin: ${adminEmail} | Pedido: ${resultado.numero_pedido}`);
       await sendAdminReturnNotificationEmail(
         adminEmail,
         resultado.numero_pedido,

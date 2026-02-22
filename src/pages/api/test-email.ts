@@ -9,15 +9,30 @@ export const prerender = false;
 export const GET: APIRoute = async () => {
   try {
 
-    const success = await sendEmail({
-      to: 'agonzalezcruces2004@gmail.com',
-      subject: 'Test Email from Auto Parts Store',
-      html: `
-        <h2>Test Email</h2>
-        <p>Si ves este email, Nodemailer está funcionando correctamente.</p>
-        <p>Fecha: ${new Date().toISOString()}</p>
-      `
+    const adminEmail = 'agonzalezcruces2004@gmail.com';
+
+    // 1. Probar email simple
+    const successSimple = await sendEmail({
+      to: adminEmail,
+      subject: 'Test Email Simple - Auto Parts Store',
+      html: `<h2>Test Simple</h2><p>Enviado el: ${new Date().toLocaleString()}</p>`
     });
+
+    // 2. Probar Notificación Admin extendida
+    const successAdmin = await import('@/lib/email').then(m =>
+      m.sendAdminOrderNotificationEmail(
+        adminEmail,
+        'TEST-0001',
+        99.99,
+        'Usuario de Prueba',
+        [
+          { nombre_producto: 'Bujía Premium', cantidad: 4 },
+          { nombre_producto: 'Aceite Motor 5W30', cantidad: 1 }
+        ]
+      )
+    );
+
+    const success = successSimple && successAdmin;
 
     return new Response(
       JSON.stringify({
