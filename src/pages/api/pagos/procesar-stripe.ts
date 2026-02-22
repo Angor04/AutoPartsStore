@@ -147,6 +147,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const subtotal = Math.round((total + descuentoMonto - costoEnvio) * 100) / 100;
 
+    // Detectar si es un cupón de newsletter (sintetizado con sufijo específico)
+    const esCuponNewsletter = metadata.cupon_id?.endsWith('-0000-0000-0000-000000000000');
+
     // Preparar datos para insertar
     const ordenData: any = {
       numero_orden: numeroOrden,
@@ -160,7 +163,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       subtotal: subtotal,
       total: total,
       gastos_envio: costoEnvio,
-      cupon_id: metadata.cupon_id || null,
+      // Solo insertar en ordenes.cupon_id si es un cupón estándar (evita error de clave foránea)
+      cupon_id: (metadata.cupon_id && !esCuponNewsletter) ? metadata.cupon_id : null,
       direccion_envio: {
         nombre: metadata.nombre_cliente || shippingDetails?.name,
         calle: metadata.direccion_cliente || shippingDetails?.address?.line1,
