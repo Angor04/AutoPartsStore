@@ -40,7 +40,7 @@ const productosRelacionados: Product[] = productos
 
 const images = producto.urls_imagenes || [];
 
-const specs = (producto.especificaciones as Record<string, string>) || {};
+const specs = (producto.especificaciones as any) || {};
 const isOfferActive = specs.en_oferta === 'true';
 
 const rawOriginal = producto.precio_original !== null && producto.precio_original !== undefined ? producto.precio_original : producto.precio;

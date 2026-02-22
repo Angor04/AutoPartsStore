@@ -157,7 +157,7 @@ const categoryMap = new Map(categories.map(c => [c.id, c.nombre]));
             </thead>
             <tbody>
               {products.map(product => {
-                const specs = (product.especificaciones as Record<string, string>) || {};
+                const specs = (product.especificaciones as any) || {};
                 const hasOffer = specs.en_oferta === 'true';
                 const originalPrice = product.precio_original || product.precio;
                 const currentPrice = product.precio;
