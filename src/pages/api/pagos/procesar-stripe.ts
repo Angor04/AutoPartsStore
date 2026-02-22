@@ -245,9 +245,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // ==========================================
-    // ENVIAR EMAIL DE CONFIRMACIÓN Y NOTIFICACIÓN ADMIN
+    // ENVIAR EMAILS (CLIENTE Y ADMIN)
     // ==========================================
     const emailDestino = session.customer_email || metadata.email_cliente || (session as any).customer_details?.email;
+
+    // 1. Notificar al Cliente (si hay email)
     if (emailDestino) {
       try {
         await sendOrderConfirmationEmail(
@@ -262,21 +264,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             descuento: descuentoMonto
           }
         );
-
-        // Notificar al Administrador
-        const adminEmail = import.meta.env.EMAIL_USER;
-        if (adminEmail) {
-          await sendAdminOrderNotificationEmail(
-            adminEmail,
-            orden.numero_orden,
-            total,
-            metadata.nombre_cliente || 'Cliente',
-            itemsParaEmail
-          );
-        }
       } catch (emailError) {
-        console.error('Error enviando emails:', emailError);
+        console.error('Error enviando email al cliente:', emailError);
       }
+    }
+
+    // 2. Notificar al Administrador (Independiente)
+    try {
+      // Intentar obtener el email del admin de varias fuentes para máxima robustez
+      const adminEmail = import.meta.env.EMAIL_USER || process.env.EMAIL_USER || 'agonzalezcruces2004@gmail.com';
+
+      console.log(`Intentando notificar al admin (${adminEmail}) sobre pedido ${orden.numero_orden}`);
+
+      await sendAdminOrderNotificationEmail(
+        adminEmail,
+        orden.numero_orden,
+        total,
+        metadata.nombre_cliente || 'Cliente',
+        itemsParaEmail
+      );
+
+      console.log('✅ Notificación admin enviada correctamente');
+    } catch (adminEmailError) {
+      console.error('❌ Error enviando email al administrador:', adminEmailError);
     }
 
     // ==========================================

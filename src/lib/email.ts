@@ -2,22 +2,33 @@ import nodemailer from 'nodemailer';
 import { generateInvoicePDF } from './invoice-pdf';
 import { generateRefundPDF } from './refund-pdf';
 
+// Helper robosteo para variables de entorno
+const getEnv = (key: string) => {
+  if (import.meta.env && import.meta.env[key]) {
+    return import.meta.env[key];
+  }
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 // Log de variables de entorno al iniciar
-console.log('Config ELMAIL:', {
-  host: import.meta.env.EMAIL_SMTP_HOST,
-  port: import.meta.env.EMAIL_SMTP_PORT,
-  user: import.meta.env.EMAIL_USER ? import.meta.env.EMAIL_USER.slice(0, 5) + '***' : 'NO CONFIGURADO',
-  from: import.meta.env.EMAIL_FROM
+console.log('Config EMAIL (Robust):', {
+  host: getEnv('EMAIL_SMTP_HOST'),
+  port: getEnv('EMAIL_SMTP_PORT'),
+  user: getEnv('EMAIL_USER') ? getEnv('EMAIL_USER').slice(0, 5) + '***' : 'NO CONFIGURADO',
+  from: getEnv('EMAIL_FROM')
 });
 
 // Crear transportador de correo con Gmail
 const transporter = nodemailer.createTransport({
-  host: import.meta.env.EMAIL_SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(import.meta.env.EMAIL_SMTP_PORT || '587'),
+  host: getEnv('EMAIL_SMTP_HOST') || 'smtp.gmail.com',
+  port: parseInt(getEnv('EMAIL_SMTP_PORT') || '587'),
   secure: false, // true para 465, false para otros puertos
   auth: {
-    user: import.meta.env.EMAIL_USER,
-    pass: import.meta.env.EMAIL_PASSWORD,
+    user: getEnv('EMAIL_USER'),
+    pass: getEnv('EMAIL_PASSWORD'),
   },
 });
 
@@ -26,7 +37,9 @@ const transporter = nodemailer.createTransport({
   try {
     const verified = await transporter.verify();
     if (verified) {
+      console.log('✅ Email service ready');
     } else {
+      console.error('❌ Email service verification failed');
     }
   } catch (error) {
     console.error('Email service verification error:', error instanceof Error ? error.message : error);
@@ -52,8 +65,10 @@ interface EmailOptions {
 export async function sendEmail({ to, subject, html, attachments }: EmailOptions): Promise<boolean> {
   try {
 
+    const from = getEnv('EMAIL_FROM') || getEnv('EMAIL_USER');
+
     const result = await transporter.sendMail({
-      from: import.meta.env.EMAIL_FROM || import.meta.env.EMAIL_USER,
+      from,
       to,
       subject,
       html,
