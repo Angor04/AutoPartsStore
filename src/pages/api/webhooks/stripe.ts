@@ -4,15 +4,17 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendOrderConfirmationEmail } from '@/lib/email';
+import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, getAdminEmail, getEnv } from '@/lib/email';
 
 export const prerender = false;
 
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
+// Inicialización robusta usando getEnv
+const stripeSecret = getEnv('STRIPE_SECRET_KEY') || '';
+const stripe = new Stripe(stripeSecret, {
   apiVersion: '2023-10-16' as any,
 });
 
-const endpointSecret = import.meta.env.STRIPE_WEBHOOK_SECRET;
+const endpointSecret = getEnv('STRIPE_WEBHOOK_SECRET');
 
 export const POST: APIRoute = async ({ request }) => {
   console.log('🔔 Webhook de Stripe RECIBIDO');
@@ -200,20 +202,43 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }));
   }
 
-  // 8. ENVIAR EMAIL
-  if (orden.email) {
-    await sendOrderConfirmationEmail(
-      orden.email,
+  // 8. ENVIAR EMAILS (ADMIN Y LUEGO CLIENTE)
+
+  // 1. Notificar al Administrador (Máxima Prioridad)
+  const adminEmail = getAdminEmail();
+  try {
+    console.log(`[Webhook] 🛡️ DIAGNOSTIC - Admin Email: ${adminEmail}`);
+    const adminSuccess = await sendAdminOrderNotificationEmail(
+      adminEmail,
       orden.numero_orden,
       total,
       orden.nombre,
-      itemsParaEmail,
-      {
-        subtotal,
-        envio: costoEnvio,
-        descuento: descuentoMonto
-      }
+      itemsParaEmail
     );
+    console.log(`[Webhook] 🚀 Resultado notificación admin: ${adminSuccess ? 'EXITO' : 'FALLO'}`);
+  } catch (adminError) {
+    console.error('❌ Webhook: Error en notificación admin:', adminError);
+  }
+
+  // 2. Notificar al Cliente (si hay email)
+  if (orden.email) {
+    try {
+      await sendOrderConfirmationEmail(
+        orden.email,
+        orden.numero_orden,
+        total,
+        orden.nombre,
+        itemsParaEmail,
+        {
+          subtotal,
+          envio: costoEnvio,
+          descuento: descuentoMonto
+        }
+      );
+      console.log(`[Webhook] ✅ Notificación enviada al cliente: ${orden.email}`);
+    } catch (emailError) {
+      console.error('❌ Webhook: Error en notificación cliente:', emailError);
+    }
   }
 
   // 9. ACTUALIZAR STOCK Y APLICAR CUPÓN
